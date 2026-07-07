@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: alin-platform
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120 server:app
+    envVars:
+      - key: ALIN_DATA_DIR
+        value: /var/data
+      - key: ALIN_SECRET
+        generateValue: true
+      - key: ALIN_ADMIN_USER
+        value: admin
+      - key: ALIN_ADMIN_PASS
+        sync: false
+    disk:
+      name: alin-data
+      mountPath: /var/data
+      sizeGB: 5
