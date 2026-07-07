@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>منصة آلين V12 Complete Server</title>
+  <link rel="stylesheet" href="style.css?v=12.2">
+</head>
+<body>
+  <section id="login" class="login">
+    <div class="login-card">
+      <div class="logo">A</div>
+      <h1>منصة آلين V12 Complete Server</h1>
+      <div class="login-actions">
+        <button onclick="openPage('store')">المتجر</button>
+        <button onclick="showLogin('teacher')">دخول المدرس</button>
+        <button onclick="showLogin('library')">دخول المكتبة</button>
+        <button class="admin" onclick="showLogin('admin')">لوحة آلين</button>
+      </div>
+      <div id="loginForm" class="login-form hidden">
+        <input id="loginUser" placeholder="اليوزر">
+        <input id="loginPass" type="password" placeholder="الرقم السري">
+        <button onclick="doLogin()">دخول</button>
+        <div id="loginMsg"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="app" class="hidden">
+    <header class="topbar">
+      <div class="brand"><span>A</span><b>منصة آلين</b></div>
+      <nav id="activeNav"></nav>
+      <button class="exit" onclick="logout()">خروج</button>
+    </header>
+
+    <main>
+      <section id="storePage" class="page">
+        <div class="page-head">
+          <h1>المتجر</h1>
+          <input id="searchInput" placeholder="بحث" oninput="renderStore()">
+        </div>
+        <div id="bannerBox" class="banner"></div>
+        <div class="tabs">
+          <button class="tab active" onclick="setStoreType('booklet',this)">الملازم</button>
+          <button class="tab" onclick="setStoreType('stationery',this)">القرطاسية</button>
+          <button class="tab" onclick="setStoreType('gift',this)">الهدايا</button>
+        </div>
+        <div class="filters">
+          <select id="filterCategory" onchange="renderStore()"></select>
+          <select id="filterTeacher" onchange="renderStore()"></select>
+        </div>
+        <div id="storeGrid" class="cards"></div>
+        <div id="checkoutModal" class="modal hidden">
+          <div class="modal-card">
+            <button class="modal-close" onclick="closeCheckout()">×</button>
+            <div id="checkoutBox"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="teacherPage" class="page hidden">
+        <div class="page-head"><h1>حساب المدرس</h1></div>
+        <div id="teacherStats" class="stats"></div>
+        <div class="panel"><h2>ملازمي</h2><div id="teacherBooks"></div></div>
+        <div class="panel"><h2>المبيعات</h2><div id="teacherSales"></div></div>
+        <div class="panel"><h2>طلب سحب</h2><div class="form-grid"><input id="teacherWithdrawAmount" type="number" placeholder="المبلغ"><button onclick="requestWithdraw('teacher')">إرسال</button></div></div>
+      </section>
+
+      <section id="libraryPage" class="page hidden">
+        <div class="page-head"><h1>حساب المكتبة</h1></div>
+        <div id="libraryStats" class="stats"></div>
+        <div class="panel"><h2>طلبات النسخ</h2><div id="libraryPermits"></div></div>
+        <div class="panel"><h2>سجل التنفيذ</h2><div id="libraryHistory"></div></div>
+        <div class="panel"><h2>طلب سحب</h2><div class="form-grid"><input id="libraryWithdrawAmount" type="number" placeholder="المبلغ"><button onclick="requestWithdraw('library')">إرسال</button></div></div>
+      </section>
+
+      <section id="adminPage" class="page hidden">
+        <div class="page-head"><h1>لوحة آلين</h1></div>
+        <div id="adminStats" class="stats"></div>
+        <div class="admin-tabs">
+          <button onclick="adminTab('accounts')">الحسابات</button>
+          <button onclick="adminTab('booklets')">الملازم</button>
+          <button onclick="adminTab('products')">المنتجات</button>
+          <button onclick="adminTab('categories')">الأقسام</button>
+          <button onclick="adminTab('orders')">الطلبات</button>
+          <button onclick="adminTab('finance')">المالية</button>
+          <button onclick="adminTab('ads')">الإعلانات</button>
+          <button onclick="adminTab('audit')">السجل</button>
+          <button onclick="backup()">نسخ احتياطي</button>
+          <button onclick="restore()">استعادة</button>
+        </div>
+        <div id="adminContent" class="panel"></div>
+      </section>
+    </main>
+  </section>
+
+  <script src="app.js?v=12.2"></script>
+</body>
+</html>
