@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>منصة آلين V20 PWA</title>
+
+  <meta name="theme-color" content="#111827">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="منصة آلين">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <section id="login" class="login">
+    <div class="login-card">
+      <div class="logo">آ</div>
+      <h1>منصة آلين</h1>
+      <p>للتصميم والقرطاسية والملازم</p>
+      <div class="login-actions">
+        <button onclick="openPage('store')">المتجر</button>
+        <button onclick="showLogin('teacher')">دخول المدرس</button>
+        <button onclick="showLogin('library')">دخول المكتبة</button>
+        <button class="admin" onclick="showLogin('admin')">لوحة آلين</button>
+      </div>
+      <div id="loginForm" class="login-form hidden">
+        <input id="loginU" placeholder="اسم الدخول">
+        <input id="loginPass" type="password" placeholder="الرمز السري">
+        <button onclick="doLogin()">دخول</button>
+        <div id="loginMsg"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="app" class="hidden">
+    <header class="topbar">
+      <div class="brand"><div class="logo small">آ</div><div><b>آلين</b><small>تصاميم • ملازم • قرطاسية</small></div></div>
+      <nav id="activeNav"></nav>
+      <button onclick="logout()">خروج</button>
+    </header>
+
+    <main>
+      <section id="storePage" class="page">
+        <div class="hero"><h2>منصة آلين للمدرسين والمكتبات</h2><p>اختار الملزمة أو المنتج وحدد مكتبة الاستلام.</p></div>
+        <div id="bannerBox" class="banners"></div>
+        <div class="tabs">
+          <button class="tab active" onclick="setStoreType('booklet',this)">الملازم</button>
+          <button class="tab" onclick="setStoreType('stationery',this)">القرطاسية</button>
+          <button class="tab" onclick="setStoreType('gift',this)">الهدايا</button>
+        </div>
+        <div class="filters">
+          <input id="searchInput" oninput="renderStore()" placeholder="بحث">
+          <select id="filterCategory" onchange="renderStore()"></select>
+          <select id="filterTeacher" onchange="renderStore()"></select>
+        </div>
+        <div class="store-title"><h2 id="storeHeading">المتجر</h2><span id="cartSummary"></span></div><div id="storeGrid" class="grid"></div><button class="cart-fab" onclick="openCart()">🛒 السلة <span id="cartCount">0</span></button>
+      </section>
+
+      <section id="teacherPage" class="page hidden">
+        <h2>لوحة المدرس</h2>
+        <div id="teacherStats" class="stats"></div>
+        <div class="two">
+          <div class="panel"><h3>ملازمي</h3><div id="teacherBooks"></div></div>
+          <div class="panel"><h3>المبيعات والأرباح</h3><div id="teacherSales"></div><input id="teacherWithdrawAmount" type="number" placeholder="مبلغ السحب"><button onclick="requestWithdraw('teacher')">طلب سحب</button></div>
+        </div>
+      </section>
+
+      <section id="libraryPage" class="page hidden">
+        <h2>لوحة المكتبة</h2>
+        <div id="libraryStats" class="stats"></div>
+        <div class="two">
+          <div class="panel"><h3>طلبات النسخ</h3><div id="libraryPermits"></div></div>
+          <div class="panel"><h3>السجل والمستحقات</h3><div id="libraryHistory"></div><input id="libraryWithdrawAmount" type="number" placeholder="مبلغ السحب"><button onclick="requestWithdraw('library')">طلب سحب</button></div>
+        </div>
+      </section>
+
+      <section id="adminPage" class="page hidden">
+        <div class="admin-heading"><div><h2>لوحة إدارة آلين</h2><p>إدارة المنصة من مكان واحد</p></div><span class="version-badge">V20 PWA</span></div>
+        <div id="adminStats" class="stats"></div>
+        <div class="admin-tabs">
+          <button onclick="adminTab('accounts')">الحسابات</button>
+          <button onclick="adminTab('booklets')">الملازم</button>
+          <button onclick="adminTab('products')">المنتجات</button>
+          <button onclick="adminTab('categories')">الأقسام</button>
+          <button onclick="adminTab('orders')">الطلبات</button>
+          <button onclick="adminTab('finance')">الأرباح</button>
+          <button onclick="adminTab('ads')">الإعلانات</button>
+          <button onclick="adminTab('coupons')">الكوبونات</button>
+          <button onclick="adminTab('notifications')">الإشعارات</button>
+          <button onclick="adminTab('audit')">السجل</button>
+          <button onclick="adminTab('settings')">الإعدادات</button>
+        </div>
+        <div id="adminContent" class="panel"></div>
+      </section>
+    <nav class="bottom-nav"><button onclick="setStoreType('booklet')">ملازم</button><button onclick="setStoreType('stationery')">قرطاسية</button><button onclick="setStoreType('gift')">هدايا</button><button onclick="openCart()">السلة</button></nav>
+    <footer class="alin-footer">منصة آلين للتصاميم والقرطاسية</footer>
+    </main>
+  </section>
+
+  <div id="checkoutModal" class="modal hidden">
+    <div class="modal-card">
+      <button class="x" onclick="closeCheckout()">×</button>
+      <div id="checkoutBox"></div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./service-worker.js').catch(function (err) {
+      console.warn('Service Worker registration failed:', err);
+    });
+  });
+}
+</script>
+</body>
+</html>
