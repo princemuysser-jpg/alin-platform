@@ -1,0 +1,16 @@
+/* ===== store/css/delivery-gps-v162.css ===== */
+/* V162 delivery GPS */
+#checkoutBox .v162-gps-box{margin-top:12px;padding:14px;border:1px solid #dfe8f3;border-radius:17px;background:linear-gradient(180deg,#fbfdff,#f5f9ff)}
+#checkoutBox .v162-gps-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:11px}
+#checkoutBox .v162-gps-head>div{display:grid;gap:4px}#checkoutBox .v162-gps-head b{color:#102c50;font-size:13px}#checkoutBox .v162-gps-head small{color:#667085;font-size:10px;line-height:1.6}
+#checkoutBox .v162-gps-status{padding:6px 10px;border-radius:999px;background:#eef2f7;color:#667085;font-size:10px;font-weight:900;white-space:nowrap}
+#checkoutBox .v162-gps-status.is-set{background:#e7f7ee;color:#157347}
+#checkoutBox .v162-gps-actions{display:flex;flex-wrap:wrap;gap:8px}
+#checkoutBox .v162-gps-actions button,#checkoutBox .v162-map-link{min-height:40px;border-radius:12px;padding:9px 13px;font-size:11px;font-weight:900;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+#checkoutBox .v162-gps-primary{background:linear-gradient(135deg,#153d70,#092448);color:#fff;box-shadow:0 9px 20px rgba(9,36,72,.17)}
+#checkoutBox .v162-gps-details{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}#checkoutBox .v162-gps-details span{padding:6px 9px;border-radius:10px;background:#fff;border:1px solid #e3eaf3;color:#59677a;font-size:9px}
+#checkoutBox .v162-gps-note{margin:9px 0 0;color:#758196;font-size:9px;line-height:1.7}
+.v162-map-link{background:#eaf3ff;color:#124b85;border:1px solid #cfe2f7!important;white-space:nowrap}
+.v161-delivery-actions .v162-map-link,.v161-courier-order-actions .v162-map-link{min-height:38px;border-radius:11px;padding:9px 13px;font-size:11px;font-weight:900;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+@media(max-width:640px){#checkoutBox .v162-gps-head{flex-direction:column}#checkoutBox .v162-gps-actions{display:grid;grid-template-columns:1fr}#checkoutBox .v162-gps-actions button{width:100%}}
+
