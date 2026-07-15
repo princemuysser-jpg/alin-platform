@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar">
+<head>
+<meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/>
+<meta content="no-cache" http-equiv="Pragma"/>
+<meta content="0" http-equiv="Expires"/>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<title>متجر آلين V106</title>
+<meta content="#111827" name="theme-color"/>
+<meta content="yes" name="mobile-web-app-capable"/>
+<meta content="yes" name="apple-mobile-web-app-capable"/>
+<meta content="منصة آلين" name="apple-mobile-web-app-title"/>
+<link href="./manifest-desktop.webmanifest" rel="manifest"/>
+<link href="assets/icons/icon-192.png" rel="icon" sizes="192x192" type="image/png"/>
+<link href="assets/icons/icon-192.png" rel="apple-touch-icon"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./dist/js/desktop.early.bundle.js?v=1.0.1"></script>
+
+
+
+
+
+
+
+
+
+
+<link href="./dist/css/desktop.bundle.css?v=1.0.1" rel="stylesheet"/>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</head>
+<body class="store-desktop">
+<section class="login" id="login">
+<div class="login-card">
+<div class="logo">آ</div>
+<h1>منصة آلين</h1>
+<p>للتصميم والقرطاسية والملازم</p>
+<div class="login-actions">
+<button onclick="openPage('store')">المتجر</button>
+<button onclick="showLogin('teacher')">دخول المدرس</button>
+<button onclick="openLibraryJoinPortal()">لوحة المكتبة</button>
+<button onclick="showLogin('courier')">المندوب</button>
+<button class="admin" onclick="showLogin('admin')">لوحة آلين</button>
+</div>
+<div class="login-form hidden" id="loginForm">
+<input id="loginU" placeholder="اسم الدخول"/>
+<input id="loginPass" placeholder="الرمز السري" type="password"/>
+<button onclick="doLogin()">دخول</button>
+<div id="loginMsg"></div>
+</div>
+</div>
+</section>
+<section class="hidden" id="app">
+<header class="topbar">
+<div class="brand"><div class="logo small">آ</div><div><b>آلين</b><small>تصاميم • ملازم • قرطاسية</small></div></div>
+<nav id="activeNav"></nav>
+<button onclick="logout()">خروج</button>
+</header>
+<main>
+<section class="page alin-storefront" id="storePage">
+<header class="alin98-header">
+<div class="alin98-brand">
+<b class="alin98-logo">آ</b>
+<span><strong>منصة آلين</strong><small>ملازم • قرطاسية • هدايا</small></span>
+</div>
+<label aria-label="البحث في المتجر" class="desktop-header-search">
+<span aria-hidden="true" class="desktop-search-icon"></span>
+<input id="searchInput" oninput="renderStore()" placeholder="ابحث عن ملزمة، مادة، مدرس أو منتج" type="search"/>
+</label>
+<div class="alin98-actions desktop-store-actions">
+<button aria-expanded="false" aria-label="فلترة المنتجات" class="desktop-action" data-desktop-control="filter" data-v99-action="toggleFilters" type="button"><span aria-hidden="true" class="desktop-filter-icon"></span><small>فلترة</small><span class="desktop-action-count" hidden="" id="v99DesktopFilterCount">0</span></button>
+<button aria-label="المفضلة" class="desktop-action" data-desktop-control="favorites" data-v99-action="desktopFavorites" type="button"><span aria-hidden="true" class="desktop-heart-icon"></span><small>المفضلة</small><span class="desktop-action-count" hidden="" id="v99DesktopFavoriteCount">0</span></button>
+<button aria-label="الإشعارات" class="desktop-action desktop-notification" data-desktop-control="notifications" onclick="document.querySelector('.alin-v78-notify-btn,.alin-v94-notification-button')?.click()" type="button"><span aria-hidden="true" class="v99-icon v99-icon-bell"></span><small>الإشعارات</small><span class="alin98-notify-count desktop-action-count" hidden="">0</span></button>
+<button aria-label="حساب الطالب" class="desktop-action desktop-account" data-desktop-control="account" id="studentAuthBtn" onclick="openStudentAuth()" type="button"><span aria-hidden="true" class="desktop-account-icon"></span><small>تسجيل الدخول</small></button>
+<button aria-label="سلة المشتريات" class="desktop-action desktop-cart" data-desktop-control="cart" onclick="openCart()" type="button"><span aria-hidden="true" class="desktop-cart-icon"></span><small>السلة</small><span class="desktop-action-count" hidden="" id="desktopCartCount">0</span></button>
+<button aria-label="خروج إلى القائمة الرئيسية" class="desktop-action desktop-exit" data-desktop-control="exit" onclick="logout()" type="button"><span aria-hidden="true" class="desktop-exit-icon"></span><small>خروج</small></button>
+<span aria-live="polite" class="desktop-account-status" id="studentAuthStatus">التسجيل اختياري</span>
+</div>
+</header>
+<section class="alin98-hero">
+<div>
+<span class="badge">منصة الطالب</span>
+<h1>كل ما تحتاجه للدراسة<br/>بمكان واحد</h1>
+<p>اختر ملزمتك أو قرطاسيتك واطلبها بسهولة.</p>
+<div class="alin98-hero-actions">
+<button onclick="document.getElementById('storeGrid')?.scrollIntoView({behavior:'smooth'})" type="button">تصفح المتجر</button>
+<button class="secondary" onclick="document.getElementById('orderTrackBox')?.scrollIntoView({behavior:'smooth'})" type="button">تتبع الطلب</button>
+</div>
+</div>
+<div aria-hidden="true" class="alin-hero-visual"><span class="hero-glow"></span></div>
+</section>
+<section class="alin98-cats">
+<button aria-pressed="false" data-v99-category="booklet" type="button"><span class="cat-icon cat-book"></span><span class="cat-copy"><strong>ملازم</strong><small>جميع المواد والمراحل</small></span></button>
+<button aria-pressed="false" data-v99-category="stationery" type="button"><span class="cat-icon cat-pen"></span><span class="cat-copy"><strong>قرطاسية</strong><small>أدوات الدراسة والكتب</small></span></button>
+<button aria-pressed="false" data-v99-category="gift" type="button"><span class="cat-icon cat-gift"></span><span class="cat-copy"><strong>هدايا</strong><small>هدايا راقية ومميزة</small></span></button>
+<button aria-pressed="false" data-v99-category="deal" type="button"><span class="cat-icon cat-deal">%</span><span class="cat-copy"><strong>عروض</strong><small>خصومات وعروض حصرية</small></span></button>
+</section>
+<section class="v99-rail-root" id="v99NewArrivals"></section>
+<section aria-live="polite" class="v99-personalized" id="v99Personalized"></section>
+<div class="store-shell">
+<div class="banners store-admin-banners" id="bannerBox"></div>
+<section aria-live="polite" class="v99-rail-root" id="v99DailyDeals"></section>
+<button aria-label="إغلاق لوحة الفلاتر" class="desktop-filter-backdrop" data-v99-action="closeDesktopFilters" hidden="" type="button"></button>
+<section aria-label="فرز وتصفية المنتجات" class="v99-discovery-tools" id="v99DiscoveryTools"></section>
+<div class="v99-curated-rails">
+<section class="v99-rail-root" id="v99BestSellers"></section>
+<section aria-hidden="true" class="v99-rail-root" hidden="" id="v99TeacherRail"></section>
+<section class="v99-rail-root" id="v99Bundles"></section>
+</div>
+<div class="alin98-title">
+<div id="v99CatalogHeading" tabindex="-1"><small id="v99CatalogKicker">الكتالوج الكامل</small><h2 id="v99CatalogTitle">كل المنتجات</h2></div>
+<button data-v99-action="clearDesktopCategory" type="button">عرض الكل</button>
+</div>
+<div class="store-products-head compact-store-head" id="storeProducts"></div>
+<div class="grid store-product-grid" id="storeGrid"></div>
+<section class="v99-student-hub" id="v99StudentHub"></section>
+<section class="v31-track-box" id="orderTrackBox">
+<div><h2>تتبع حالة الطلب</h2><p>اكتب رقم الطلب لمعرفة هل هو قيد التجهيز، جاهز بالمكتبة، أو تم التسليم.</p></div>
+<div class="track-form"><input id="trackOrderInput" placeholder="مثال: ALIN-0001 أو رقم الطلب"/><button onclick="trackOrder()">تتبع</button></div>
+<div class="track-result" id="trackOrderResult"></div>
+</section>
+<section class="store-real-stats" id="storeAbout"><div><span id="alinStatBooklets">0</span><small>ملزمة متاحة</small></div><div><span id="alinStatOrders">0</span><small>طلب مكتمل</small></div><div><span id="alinStatTeachers">0</span><small>مدرس</small></div><div><span id="alinStatLibraries">0</span><small>مكتبة</small></div></section>
+<section class="store-bottom-info">
+<article id="aboutPlatformBox"><h2>عن المنصة</h2><p>منصة آلين تجمع الملازم والقرطاسية والهدايا في مكان واحد، مع طلب سريع وتواصل واضح بين الطالب والمكتبة والإدارة.</p></article>
+<article id="contactPlatformBox"><h2>تواصل معنا</h2><p>للاستفسار أو الانضمام كمدرس أو مكتبة، تواصل مع إدارة منصة آلين.</p></article>
+</section>
+<nav aria-label="بوابات الشركاء" class="desktop-partner-access"><span>بوابات الشركاء:</span><button onclick="logout();showLogin('teacher')" type="button">المدرس</button><button onclick="logout();openLibraryJoinPortal()" type="button">المكتبة</button><button onclick="logout();showLogin('admin')" type="button">الإدارة</button></nav>
+<div class="store-success">آلين... نرافقك في طريق النجاح ♡</div>
+</div>
+</section>
+<section class="page hidden" id="teacherPage">
+<h2>لوحة المدرس</h2>
+<div class="stats" id="teacherStats"></div>
+<div class="teacher-tabs">
+<button onclick="teacherTab('dashboard')">الرئيسية</button>
+<button onclick="teacherTab('booklets')">ملازمي</button>
+<button onclick="teacherTab('orders')">الطلبات</button>
+<button onclick="teacherTab('finance')">الأرباح</button>
+<button data-teacher-tab="notifications" id="teacherNotificationsTabV160" onclick="teacherTab('notifications')" type="button"><span aria-hidden="true">🔔</span> الإشعارات <span class="teacher-v160-badge" hidden="" id="teacherNotificationsBadgeV160">0</span></button>
+<button onclick="teacherTab('requests')">رفع ملزمة</button>
+<button onclick="teacherTab('review')">طلبات النشر</button>
+<button onclick="teacherTab('profile')">ملفي</button>
+</div>
+<div class="panel" id="teacherContent"></div>
+</section>
+<section class="page hidden library-v116-page" id="libraryPage">
+<header class="library-v116-header">
+<div class="library-v116-identity">
+<div aria-hidden="true" class="library-v116-logo">م</div>
+<div><small>لوحة إدارة المكتبة</small><h2 id="libraryV116Name">المكتبة</h2><p id="libraryV116Location">إدارة الطلبات والطباعة والتسليم</p></div>
+</div>
+<div id="libraryV116Status"></div>
+</header>
+<nav aria-label="أقسام المكتبة" class="library-v116-tabs">
+<button class="active" data-library-tab="home" type="button">الرئيسية</button>
+<button data-library-tab="orders" type="button">الطلبات <span hidden="" id="libraryV116OrdersBadge">0</span></button>
+<button data-library-tab="finance" type="button">الحسابات</button>
+<button data-library-tab="notifications" type="button">الإشعارات <span hidden="" id="libraryV116NotifyBadge">0</span></button>
+<button data-library-tab="settings" type="button">الإعدادات</button>
+</nav>
+<main aria-live="polite" class="library-v116-content" id="libraryV116Content"></main>
+<div class="hidden" id="libraryStats"></div><div class="hidden" id="libraryPermits"></div><div class="hidden" id="libraryHistory"></div>
+</section>
+<section class="page hidden courier-v161-page" id="courierPage">
+<header class="courier-v161-hero"><div><small>صفحة المندوب</small><h1 id="courierV161Name">المندوب</h1><p>مناطق العمل: <span id="courierV161Areas">—</span></p></div><span>منصة آلين للتوصيل</span></header>
+<nav class="courier-v161-tabs"><button class="active" data-courier-tab="home" onclick="renderCourierDashboard('home')">الرئيسية</button><button data-courier-tab="current" onclick="renderCourierDashboard('current')">طلبات التوصيل</button><button data-courier-tab="completed" onclick="renderCourierDashboard('completed')">المكتملة</button><button data-courier-tab="finance" onclick="renderCourierDashboard('finance')">الحسابات</button><button data-courier-tab="notifications" onclick="renderCourierDashboard('notifications')">الإشعارات</button><button data-courier-tab="profile" onclick="renderCourierDashboard('profile')">حسابي</button></nav>
+<main id="courierV161Content"></main>
+</section>
+<section class="page hidden" id="adminPage">
+<div class="admin-heading"><div><h2>لوحة إدارة آلين</h2><p>إدارة المنصة من مكان واحد</p></div><span class="version-badge">منصة آلين</span></div>
+<div class="stats" id="adminStats"></div>
+<div class="admin-tabs">
+<button onclick="adminTab('dashboard')">الرئيسية</button>
+<button onclick="adminTab('accounts')">الحسابات</button>
+<button onclick="adminTab('booklets')">الملازم</button>
+<button onclick="adminTab('teacherRequests')">طلبات المدرسين</button>
+<button onclick="adminTab('products')">المنتجات</button>
+<button onclick="adminTab('categories')">الأقسام</button>
+<button onclick="adminTab('orders')">الطلبات</button>
+<button onclick="adminTab('couriers')">إدارة المندوبين</button>
+<button onclick="adminTab('courierAreas')">إدارة المناطق</button>
+<button onclick="adminTab('deliveryOrders')">طلبات التوصيل</button>
+<button onclick="adminTab('courierSettlements')">تسويات المندوبين</button>
+<button onclick="adminTab('finance')">الأرباح</button>
+<button onclick="adminTab('ads')">الإعلانات</button>
+<button onclick="adminTab('coupons')">الكوبونات</button>
+<button onclick="adminTab('notifications')">مركز الإشعارات</button>
+<button onclick="adminTab('audit')">السجل</button>
+<button onclick="adminTab('brandIdentity')">الهوية البصرية</button>
+<button onclick="adminTab('backup')">النسخ الاحتياطي</button>
+<button onclick="adminTab('systemHealth')">صحة النظام</button>
+<button onclick="adminTab('settings')">الإعدادات</button>
+</div>
+<div class="panel" id="adminContent"></div>
+</section>
+<footer class="alin-footer">منصة آلين للتصميم والملازم والقرطاسية</footer>
+</main>
+</section>
+<div class="modal hidden" id="studentAuthModal">
+<div class="modal-card student-auth-card">
+<button class="x" onclick="closeStudentAuth()">×</button>
+<div id="studentAuthBox"></div>
+</div>
+</div>
+<div class="modal hidden" id="checkoutModal">
+<div class="modal-card">
+<button class="x" onclick="closeCheckout()">×</button>
+<div id="checkoutBox"></div>
+</div>
+</div>
+<aside aria-hidden="true" hidden="" id="alin98Menu"></aside>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+<script src="./dist/js/desktop.app.bundle.js?v=1.0.1"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
