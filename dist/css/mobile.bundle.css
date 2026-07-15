@@ -2241,3 +2241,107 @@ body.store-mobile .alin98-bottom small{font-size:9px;font-weight:800}
 
 
 
+
+/* ===== Alin v1.0.2 responsive phone + tablet override ===== */
+:root{--alin-mobile-nav-h:74px}
+body.store-mobile{overflow-x:hidden;min-width:320px}
+body.store-mobile #app.store-mode>.topbar,
+body.store-mobile #app:has(#storePage:not(.hidden))>.topbar{display:none!important}
+body.store-mobile #app.store-mode>main{padding:0!important;max-width:none!important}
+body.store-mobile #storePage{max-width:1180px;margin:0 auto!important}
+body.store-mobile .alin-cloud-status,
+body.store-mobile .alin-cloud-rc53{left:12px!important;bottom:calc(var(--alin-mobile-nav-h) + env(safe-area-inset-bottom) + 10px)!important;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:7px 10px!important;font-size:10px!important;z-index:9400!important}
+
+/* phones: one clean navigation system only */
+@media (max-width:599px){
+  body.store-mobile{padding-bottom:calc(var(--alin-mobile-nav-h) + 18px + env(safe-area-inset-bottom))!important}
+  body.store-mobile #storePage{padding:0 12px calc(var(--alin-mobile-nav-h) + 26px + env(safe-area-inset-bottom))!important}
+  body.store-mobile .mobile-quick-actions{display:none!important}
+  body.store-mobile .alin98-header{position:sticky;top:0;z-index:1000;margin:0 -12px!important;padding:10px 12px 12px!important;gap:10px!important;background:rgba(255,255,255,.97)!important;backdrop-filter:blur(14px)}
+  body.store-mobile .alin98-brand{justify-content:flex-start!important;width:100%!important}
+  body.store-mobile .alin98-logo{width:44px!important;height:44px!important;border-radius:14px!important}
+  body.store-mobile .alin98-brand strong{font-size:18px!important}
+  body.store-mobile .alin98-brand small{font-size:10px!important}
+  body.store-mobile .mobile-search-row{grid-template-columns:52px minmax(0,1fr)!important;direction:ltr}
+  body.store-mobile .mobile-search-row label{direction:rtl;height:50px!important;border-radius:16px!important;padding-inline:14px!important}
+  body.store-mobile .mobile-filter-button{width:52px!important;min-width:52px!important;height:50px!important;border-radius:16px!important}
+  body.store-mobile .alin98-hero{display:flex!important;flex-direction:column!important;gap:14px!important;margin:14px 0 18px!important;padding:16px!important;border-radius:24px!important;min-height:0!important}
+  body.store-mobile .alin-hero-visual{order:1!important;width:100%!important;min-height:150px!important;height:150px!important;border-radius:18px!important;background-position:center 42%!important}
+  body.store-mobile .alin98-hero>div:first-child{order:2!important;width:100%!important;text-align:right!important}
+  body.store-mobile .alin98-hero h1{font-size:27px!important;line-height:1.3!important;margin:10px 0 7px!important}
+  body.store-mobile .alin98-hero p{font-size:13px!important;line-height:1.75!important;margin-bottom:12px!important}
+  body.store-mobile .alin98-hero-actions{grid-template-columns:1fr 1fr!important}
+  body.store-mobile .alin98-hero-actions button{min-height:44px!important;font-size:12px!important;border-radius:12px!important}
+  body.store-mobile .alin98-cats{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;margin:0 0 18px!important}
+  body.store-mobile .alin98-cats button{min-height:82px!important;border-radius:17px!important;padding:12px!important}
+  body.store-mobile .alin98-cats .cat-icon{width:44px!important;height:44px!important;min-width:44px!important}
+  body.store-mobile #storeGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+  body.store-mobile #storeGrid .alin-v76-cover{height:155px!important}
+  body.store-mobile .alin98-bottom{right:10px!important;left:10px!important;bottom:max(8px,env(safe-area-inset-bottom))!important;min-height:66px!important;padding:6px!important;border-radius:22px!important;grid-template-columns:repeat(5,minmax(0,1fr))!important}
+  body.store-mobile .alin98-bottom button{min-height:54px!important;padding:6px 2px!important;border-radius:15px!important}
+  body.store-mobile .alin98-bottom .mobile-center-action{margin-top:-18px!important;min-height:70px!important;border-radius:22px!important}
+  body.store-mobile .alin98-bottom small{font-size:9px!important}
+}
+
+/* small phones: 320–374 */
+@media (max-width:374px){
+  body.store-mobile #storePage{padding-inline:8px!important}
+  body.store-mobile .alin98-header{margin-inline:-8px!important;padding-inline:8px!important}
+  body.store-mobile .alin98-brand strong{font-size:16px!important}
+  body.store-mobile .alin98-hero{padding:13px!important}
+  body.store-mobile .alin-hero-visual{height:125px!important;min-height:125px!important}
+  body.store-mobile .alin98-hero h1{font-size:23px!important}
+  body.store-mobile .alin98-cats{gap:7px!important}
+  body.store-mobile .alin98-cats button{padding:9px!important;min-height:76px!important}
+  body.store-mobile #storeGrid{gap:7px!important}
+  body.store-mobile #storeGrid .alin-v76-cover{height:135px!important}
+  body.store-mobile .alin98-bottom{right:5px!important;left:5px!important}
+  body.store-mobile .alin98-bottom small{font-size:8px!important}
+}
+
+/* standard and large phones: 375–599 */
+@media (min-width:375px) and (max-width:599px){
+  body.store-mobile .alin-hero-visual{height:165px!important;min-height:165px!important}
+}
+
+/* tablets portrait: 600–899 */
+@media (min-width:600px) and (max-width:899px){
+  :root{--alin-mobile-nav-h:78px}
+  body.store-mobile #storePage{padding:0 24px calc(var(--alin-mobile-nav-h) + 28px + env(safe-area-inset-bottom))!important}
+  body.store-mobile .mobile-quick-actions{display:none!important}
+  body.store-mobile .alin98-header{margin:0 -24px!important;padding:14px 24px!important;display:grid!important;grid-template-columns:auto minmax(0,1fr)!important;align-items:center!important;gap:18px!important}
+  body.store-mobile .alin98-brand{width:auto!important;justify-content:flex-start!important}
+  body.store-mobile .mobile-search-row{width:100%!important;grid-template-columns:58px minmax(0,1fr)!important;direction:ltr}
+  body.store-mobile .mobile-search-row label{direction:rtl;height:54px!important;border-radius:17px!important}
+  body.store-mobile .mobile-filter-button{width:58px!important;height:54px!important;border-radius:17px!important}
+  body.store-mobile .alin98-hero{grid-template-columns:minmax(0,1fr) 42%!important;gap:20px!important;padding:24px!important;border-radius:28px!important;margin:20px 0!important}
+  body.store-mobile .alin-hero-visual{min-height:255px!important;height:255px!important;border-radius:22px!important}
+  body.store-mobile .alin98-hero h1{font-size:34px!important}
+  body.store-mobile .alin98-hero p{font-size:15px!important}
+  body.store-mobile .alin98-cats{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:12px!important}
+  body.store-mobile .alin98-cats button{display:grid!important;grid-template-columns:1fr!important;justify-items:center!important;text-align:center!important;min-height:108px!important;padding:14px 8px!important;border-radius:19px!important}
+  body.store-mobile #storeGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:14px!important}
+  body.store-mobile #storeGrid .alin-v76-cover{height:190px!important}
+  body.store-mobile .alin98-bottom{right:22px!important;left:22px!important;max-width:720px!important;margin:auto!important}
+}
+
+/* tablets landscape / small laptops: 900–1199 */
+@media (min-width:900px) and (max-width:1199px){
+  body.store-mobile{padding-bottom:24px!important}
+  body.store-mobile #storePage{padding:0 30px 40px!important}
+  body.store-mobile .alin98-bottom{display:none!important}
+  body.store-mobile .mobile-quick-actions{display:grid!important;grid-template-columns:repeat(5,minmax(90px,1fr))!important;max-width:650px!important;margin:14px 0 18px auto!important;gap:10px!important}
+  body.store-mobile .mobile-quick-actions button{min-height:64px!important;border-radius:17px!important}
+  body.store-mobile .alin98-header{margin:0 -30px!important;padding:14px 30px!important;display:grid!important;grid-template-columns:auto minmax(420px,1fr)!important;gap:24px!important}
+  body.store-mobile .alin98-brand{width:auto!important;justify-content:flex-start!important}
+  body.store-mobile .mobile-search-row{width:100%!important;grid-template-columns:58px minmax(0,1fr)!important;direction:ltr}
+  body.store-mobile .mobile-search-row label{direction:rtl;height:54px!important;border-radius:17px!important}
+  body.store-mobile .mobile-filter-button{width:58px!important;height:54px!important;border-radius:17px!important}
+  body.store-mobile .alin98-hero{grid-template-columns:minmax(0,1fr) 44%!important;gap:28px!important;padding:30px!important;border-radius:30px!important}
+  body.store-mobile .alin-hero-visual{min-height:300px!important;height:300px!important}
+  body.store-mobile .alin98-hero h1{font-size:40px!important}
+  body.store-mobile .alin98-cats{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:14px!important}
+  body.store-mobile #storeGrid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:16px!important}
+  body.store-mobile #storeGrid .alin-v76-cover{height:210px!important}
+  body.store-mobile .alin-cloud-status,body.store-mobile .alin-cloud-rc53{bottom:18px!important}
+}
