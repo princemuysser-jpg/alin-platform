@@ -28,6 +28,7 @@
 
 
 <link href="./dist/css/mobile.bundle.css?v=1.0.2-responsive" rel="stylesheet"/>
+<link href="./store/mobile-navigation-v103.css?v=1.0.3" rel="stylesheet"/>
 
 
 
@@ -92,23 +93,19 @@
 </header>
 <main>
 <section class="page alin-storefront" id="storePage">
-<header class="alin98-header">
-<div class="alin98-brand">
+<header class="alin98-header alin-mobile-premium-header">
+<div class="alin98-brand alin-mobile-brand">
 <b class="alin98-logo">آ</b>
 <span><strong>منصة آلين</strong><small>ملازم • قرطاسية • هدايا</small></span>
 </div>
-<div class="mobile-search-row">
-<label><span aria-hidden="true" class="mobile-search-icon"></span><input id="searchInput" oninput="renderStore()" placeholder="ابحث عن مادة أو مدرس أو منتج" type="search"/></label>
-<button aria-expanded="false" aria-label="فلترة المنتجات" class="mobile-filter-button" data-mobile-control="filter" data-v99-action="toggleMobileFilters" type="button"><span aria-hidden="true" class="mobile-filter-icon"></span><span class="mobile-action-count" hidden="" id="v99MobileFilterCount">0</span></button>
+<div class="mobile-search-row mobile-search-premium">
+<label><span aria-hidden="true" class="mobile-search-icon"></span><input id="searchInput" oninput="renderStore()" placeholder="ابحث عن ملزمة، مادة، مدرس أو منتج" type="search"/></label>
+</div>
+<div class="mobile-header-actions" aria-label="إجراءات سريعة">
+<button aria-label="الإشعارات" class="mobile-header-icon-btn" onclick="document.querySelector('.alin-v78-notify-btn,.alin-v94-notification-button')?.click()" type="button"><span class="mobile-bell-icon" aria-hidden="true"></span><span class="alin98-notify-count mobile-action-count" hidden>0</span><small>إشعارات</small></button>
+<button aria-label="خروج" class="mobile-header-icon-btn" onclick="logout()" type="button"><span class="mobile-exit-icon" aria-hidden="true"></span><small>خروج</small></button>
 </div>
 </header>
-<nav aria-label="إجراءات المتجر السريعة" class="mobile-quick-actions">
-<button data-mobile-control="favorites" data-v99-action="mobileFavorites" type="button"><span aria-hidden="true" class="mobile-heart-icon"></span><small>المفضلة</small><span class="mobile-action-count" hidden="" id="mobileFavoriteCount">0</span></button>
-<button aria-label="الإشعارات" data-mobile-control="notifications" onclick="document.querySelector('.alin-v78-notify-btn,.alin-v94-notification-button')?.click()" type="button"><span aria-hidden="true" class="v99-icon v99-icon-bell"></span><small>الإشعارات</small><span class="alin98-notify-count mobile-action-count" hidden="">0</span></button>
-<button data-mobile-control="account" id="studentAuthBtn" onclick="openStudentAuth()" type="button"><span aria-hidden="true" class="mobile-account-icon"></span><small>الحساب</small></button>
-<button aria-label="سلة المشتريات" data-mobile-control="cart" onclick="openCart()" type="button"><span aria-hidden="true" class="mobile-cart-icon"></span><small>السلة</small><span class="mobile-action-count" hidden="" id="mobileCartCount">0</span></button>
-<button aria-label="خروج إلى القائمة الرئيسية" data-mobile-control="exit" onclick="logout()" type="button"><span aria-hidden="true" class="mobile-exit-icon"></span><small>خروج</small></button>
-</nav>
 <span aria-live="polite" class="mobile-account-status" id="studentAuthStatus">التسجيل اختياري</span>
 <section class="alin98-hero">
 <div>
@@ -241,15 +238,30 @@
 </div>
 </div>
 <aside aria-hidden="true" hidden="" id="alin98Menu"></aside>
-<nav aria-label="التنقل السريع" class="alin98-bottom">
-<button class="active" data-mobile-control="home" onclick="window.scrollTo({top:0,behavior:'smooth'})"><span aria-hidden="true" class="mobile-home-icon"></span><small>الرئيسية</small></button>
-<button data-mobile-control="cart" onclick="openCart()"><span aria-hidden="true" class="mobile-cart-icon"></span><small>السلة</small><span class="mobile-action-count" hidden="" id="mobileBottomCartCount">0</span></button>
-<button class="mobile-center-action" data-mobile-control="categories" onclick="document.querySelector('.alin98-cats')?.scrollIntoView({behavior:'smooth'})"><span aria-hidden="true" class="mobile-categories-icon"></span><small>الأقسام</small></button>
+<nav aria-label="التنقل السريع" class="alin98-bottom alin-mobile-bottom-v103">
+<button data-mobile-control="cart" onclick="openCart()"><span aria-hidden="true" class="mobile-cart-icon"></span><small>السلة</small><span class="mobile-action-count" hidden id="mobileBottomCartCount">0</span></button>
 <button data-mobile-control="favorites" data-v99-action="mobileFavorites"><span aria-hidden="true" class="mobile-heart-icon"></span><small>المفضلة</small></button>
-<button data-mobile-control="account" onclick="openStudentAuth()"><span aria-hidden="true" class="mobile-account-icon"></span><small>حسابي</small></button>
+<button class="mobile-center-action" data-mobile-control="tracking" onclick="alinOpenTrackingSheet()"><span aria-hidden="true" class="mobile-track-icon"></span><small>تتبع الطلب</small></button>
+<button data-mobile-control="filter" data-v99-action="toggleMobileFilters"><span aria-hidden="true" class="mobile-filter-icon"></span><small>فلتر</small><span class="mobile-action-count" hidden id="v99MobileFilterCount">0</span></button>
+<button data-mobile-control="account" onclick="alinOpenAccountSheet()"><span aria-hidden="true" class="mobile-account-icon"></span><small>حسابي</small></button>
 </nav>
+<div class="alin-sheet-backdrop" id="alinSheetBackdrop" hidden onclick="alinCloseMobileSheets()"></div>
+<section class="alin-mobile-sheet" id="alinAccountSheet" hidden aria-modal="true" role="dialog" aria-label="حسابي">
+<div class="alin-sheet-handle"></div><div class="alin-sheet-head"><div><h2>حسابي</h2><p>إدارة الحساب وإعدادات المنصة</p></div><button onclick="alinCloseMobileSheets()" aria-label="إغلاق">×</button></div>
+<div class="alin-account-list">
+<button onclick="alinAccountAction('login')"><span class="alin-sheet-icon login"></span><div><b>تسجيل الدخول</b><small>الدخول إلى حساب الطالب</small></div></button>
+<button onclick="alinAccountAction('signup')"><span class="alin-sheet-icon signup"></span><div><b>إنشاء حساب</b><small>إنشاء حساب طالب جديد</small></div></button>
+<div class="alin-account-info"><span class="alin-sheet-icon language"></span><div><b>اللغة المستخدمة</b><small>العربية</small></div></div>
+<button onclick="alinAccountAction('about')"><span class="alin-sheet-icon about"></span><div><b>حول منصة آلين</b><small>تعرف على المنصة وخدماتها</small></div></button>
+</div>
+</section>
+<section class="alin-mobile-sheet" id="alinTrackingSheet" hidden aria-modal="true" role="dialog" aria-label="تتبع الطلب">
+<div class="alin-sheet-handle"></div><div class="alin-sheet-head"><div><h2>تتبع الطلب</h2><p>اكتب رقم الطلب لمعرفة حالته</p></div><button onclick="alinCloseMobileSheets()" aria-label="إغلاق">×</button></div>
+<div class="alin-tracking-form"><input id="alinMobileTrackingInput" placeholder="مثال: ALIN-0001 أو رقم الطلب"><button onclick="alinSubmitMobileTracking()">تتبع الآن</button></div><div id="alinMobileTrackingResult" class="alin-mobile-tracking-result"></div>
+</section>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
 <script src="./dist/js/mobile.app.bundle.js?v=1.0.2-responsive"></script>
+<script src="./store/mobile-navigation-v103.js?v=1.0.3"></script>
 
 
 
