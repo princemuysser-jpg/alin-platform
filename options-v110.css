@@ -55,3 +55,33 @@ html[dir=ltr] .alin-option-chevron,html[dir=ltr] .alin-help-row>span:last-child{
 @media(max-width:680px){.alin-options-dialog{top:auto;bottom:10px;transform:translateX(-50%);border-radius:22px 22px 12px 12px;max-height:calc(100dvh - 20px)}.alin-options-dialog>header{padding:18px 18px 13px}.alin-options-sections{padding:13px 16px 20px}.alin-options-dialog h2{font-size:21px}.alin-options-dialog{animation:aoMobile .22s ease-out}.alin-contact-actions{grid-template-columns:1fr}.alin-account-copy em{display:none}}
 @keyframes aoMobile{from{opacity:0;transform:translate(-50%,18px)}to{opacity:1;transform:translate(-50%,0)}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}.alin-options-dialog,.alin-contact-dialog,.alin-options-backdrop{animation:none!important}}
+
+/* 1.1.5: resilient notification icon + storefront banners */
+body.store-mobile .alin-v94-notification-button{
+  display:grid!important;visibility:visible!important;opacity:1!important;place-items:center!important;
+  order:1!important;width:44px!important;min-width:44px!important;height:44px!important;padding:0!important;
+  border-radius:14px!important;background:#fff8e7!important;border:1px solid #d7ad54!important;color:#0b3158!important
+}
+body.store-mobile .alin-v94-notification-button small{display:none!important}
+body.store-mobile .alin-v94-notification-button .alin-v94-bell{
+  display:block!important;position:relative!important;width:24px!important;height:24px!important;
+  overflow:visible!important;font-size:0!important;color:transparent!important
+}
+body.store-mobile .alin-v94-notification-button .alin-v94-bell:before{
+  content:""!important;position:absolute!important;left:4px!important;top:3px!important;width:14px!important;height:14px!important;
+  border:2px solid #0b3158!important;border-bottom:0!important;border-radius:10px 10px 4px 4px!important;
+  box-sizing:border-box!important
+}
+body.store-mobile .alin-v94-notification-button .alin-v94-bell:after{
+  content:""!important;position:absolute!important;left:5px!important;bottom:3px!important;width:14px!important;height:2px!important;
+  border-radius:3px!important;background:#0b3158!important;box-shadow:5px 3px 0 -3px #0b3158!important
+}
+.alin-store-banners-v115{margin:14px 0 18px;display:block}
+.alin-store-banners-v115[hidden]{display:none!important}
+.alin-store-banner-v115{position:relative;overflow:hidden;min-height:150px;border-radius:22px;background:linear-gradient(135deg,#062b50,#07588a);box-shadow:0 14px 34px rgba(7,43,80,.2);color:#fff}
+.alin-store-banner-v115 img{display:block;width:100%;max-height:300px;object-fit:cover}
+.alin-store-banner-v115__copy{padding:18px 20px}
+.alin-store-banner-v115__copy span{display:inline-block;margin-bottom:7px;padding:4px 9px;border:1px solid #d7ad54;border-radius:8px;color:#f1ce7a;font-size:12px;font-weight:800}
+.alin-store-banner-v115__copy h2{margin:0;color:#fff;font-size:clamp(21px,4vw,30px)}
+.alin-store-banner-v115__copy p{margin:8px 0 0;color:#e9f2f8;line-height:1.7}
+body.store-mobile .alin-store-banners-v115{margin-inline:20px}
