@@ -1,4 +1,4 @@
-const VERSION='alin-v1.2.0';
+const VERSION='alin-v1.2.1';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[
@@ -20,7 +20,7 @@ self.addEventListener('fetch',event=>{
   if(url.hostname.includes('supabase.co')) return; // never cache live API data
   if(url.origin===self.location.origin){
     event.respondWith(caches.match(req).then(hit=>hit||fetch(req).then(res=>{
-      const copy=res.clone(); caches.open(RUNTIME_CACHE).then(c=>c.put(req,copy)); return res;
+      if(res.ok){const copy=res.clone();caches.open(RUNTIME_CACHE).then(c=>c.put(req,copy));} return res;
     }).catch(()=>req.mode==='navigate'?caches.match('./index.html'):Response.error())));
     return;
   }
