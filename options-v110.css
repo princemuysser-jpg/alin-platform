@@ -85,3 +85,15 @@ body.store-mobile .alin-v94-notification-button .alin-v94-bell:after{
 .alin-store-banner-v115__copy h2{margin:0;color:#fff;font-size:clamp(21px,4vw,30px)}
 .alin-store-banner-v115__copy p{margin:8px 0 0;color:#e9f2f8;line-height:1.7}
 body.store-mobile .alin-store-banners-v115{margin-inline:20px}
+.alin98-hero{display:none!important}
+.alin-store-banner-v115__strip{
+  position:absolute;right:18px;left:18px;bottom:14px;z-index:2;
+  min-height:38px;display:flex;align-items:center;justify-content:center;
+  box-sizing:border-box;padding:8px 18px;border:1px solid rgba(255,255,255,.38);
+  border-radius:12px;background:rgba(5,35,65,.68);backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);color:#fff;font-size:clamp(13px,1.5vw,18px);
+  font-weight:800;line-height:1.4;text-align:center;box-shadow:0 5px 18px rgba(0,20,42,.2)
+}
+@media(max-width:680px){
+  .alin-store-banner-v115__strip{right:10px;left:10px;bottom:9px;min-height:34px;padding:7px 12px;border-radius:10px;font-size:13px}
+}
