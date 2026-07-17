@@ -12,10 +12,14 @@ html[data-alin-theme=dark] body .store-real-stats>div,html[data-alin-theme=dark]
 html[data-alin-theme=dark] body .desktop-header-search,html[data-alin-theme=dark] body .mobile-search-premium label{background:#102a44!important;border-color:var(--ao-border)!important}
 html[data-alin-theme=dark] body .desktop-filter-backdrop,html[data-alin-theme=dark] body .alin-sheet-backdrop{background:rgba(1,8,16,.72)!important}
 .alin-cloud-status,.alin-cloud-rc53,#alinCloudRc53{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-.mobile-header-actions{display:flex!important;align-items:center!important;gap:8px!important;margin-inline-start:auto!important}
-.mobile-header-actions .mobile-header-icon-btn{display:grid!important;visibility:visible!important;opacity:1!important;place-items:center!important;min-width:58px!important}
-.mobile-header-actions .mobile-header-icon-btn[aria-label="الإشعارات"]{order:1!important}
-.mobile-header-actions .mobile-header-icon-btn[aria-label="خروج"]{order:2!important}
+body.store-mobile .mobile-header-actions{display:flex!important;align-items:center!important;gap:6px!important;margin:0!important;min-width:0!important}
+body.store-mobile .mobile-header-actions .mobile-header-icon-btn{display:grid!important;visibility:visible!important;opacity:1!important;place-items:center!important}
+body.store-mobile .mobile-header-actions .mobile-header-icon-btn[aria-label="الإشعارات"]{order:1!important;width:44px!important;min-width:44px!important;height:44px!important;padding:0!important;border-radius:14px!important;background:#fff8e7!important;border:1px solid #d7ad54!important;color:#0b3158!important}
+body.store-mobile .mobile-header-actions .mobile-header-icon-btn[aria-label="الإشعارات"] small{display:none!important}
+body.store-mobile .mobile-header-actions .mobile-header-icon-btn[aria-label="الإشعارات"] .mobile-bell-icon{display:block!important;width:22px!important;height:23px!important}
+body.store-mobile .mobile-header-actions .mobile-header-icon-btn[aria-label="الإشعارات"] .mobile-bell-icon:before{border-color:#0b3158!important}
+body.store-mobile .mobile-header-actions .mobile-header-icon-btn[aria-label="الإشعارات"] .mobile-bell-icon:after{background:#0b3158!important;box-shadow:0 -5px 0 -1px #0b3158!important}
+body.store-mobile .mobile-header-actions .mobile-header-icon-btn[aria-label="خروج"]{order:2!important;width:52px!important;min-width:52px!important}
 .alin-desktop-options-icon{width:21px;height:18px;display:block;background:linear-gradient(var(--ao-ink),var(--ao-ink)) 0 2px/21px 2px no-repeat,linear-gradient(var(--ao-ink),var(--ao-ink)) 0 8px/21px 2px no-repeat,linear-gradient(var(--ao-ink),var(--ao-ink)) 0 14px/21px 2px no-repeat;position:relative}
 .alin-desktop-options-icon:after{content:"";position:absolute;inset:0;background:radial-gradient(circle,var(--ao-gold) 0 2px,transparent 2.5px) 5px 0/12px 6px repeat-y}
 .alin-options-backdrop{position:fixed;inset:0;background:rgba(3,15,28,.58);z-index:9998;animation:aoFade .18s ease}
