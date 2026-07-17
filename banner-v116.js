@@ -46,7 +46,10 @@
       if(!b){h.hidden=true;h.innerHTML='';return}
       const images=imageCandidates(b.image_path||b.image_url);
       const sources=esc(JSON.stringify(images));
-      h.innerHTML=`<article class="alin-store-banner-v115">${images.length?`<img src="${esc(images[0])}" data-sources='${sources}' data-index="0" onerror="window.alinBanner116Fallback(this)" alt="${esc(b.title||'إعلان منصة آلين')}">`:''}<div class="alin-store-banner-v115__copy"><span>إعلان منصة آلين</span><h2>${esc(b.title||'')}</h2>${b.text?`<p>${esc(b.text)}</p>`:''}</div></article>`;
+      h.innerHTML=`<article class="alin-store-banner-v115">${images.length
+        ? `<img src="${esc(images[0])}" data-sources='${sources}' data-index="0" onerror="window.alinBanner116Fallback(this)" alt="${esc(b.title||'إعلان منصة آلين')}">`
+        : `<div class="alin-store-banner-v115__copy"><span>إعلان منصة آلين</span><h2>${esc(b.title||'')}</h2>${b.text?`<p>${esc(b.text)}</p>`:''}</div>`
+      }</article>`;
       h.hidden=false;
     }catch(e){console.warn('[Alin banner 1.1.6]',e)}
   }
