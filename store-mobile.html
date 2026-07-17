@@ -7,7 +7,7 @@
 <meta content="0" http-equiv="Expires"/>
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
-<title>منصة آلين V1.1.0 - موبايل وتابلت</title>
+<title>منصة آلين V1.0.9 - موبايل وتابلت</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
 <meta content="#111827" name="theme-color"/>
@@ -17,10 +17,11 @@
 <link href="./manifest-mobile.webmanifest" rel="manifest"/>
 <link href="assets/icons/icon-192.png" rel="icon" sizes="192x192" type="image/png"/>
 <link href="assets/icons/icon-192.png" rel="apple-touch-icon"/>
-<link href="./dist/css/mobile.bundle.css?v=1.1.0" rel="stylesheet"/>
-<link href="./store/mobile-navigation-v103.css?v=1.1.0" rel="stylesheet"/>
+<link href="./dist/css/mobile.bundle.css?v=1.0.9" rel="stylesheet"/>
+<link href="./store/options-v110.css?v=1.1.0" rel="stylesheet"/>
+<link href="./store/mobile-navigation-v103.css?v=1.0.9" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer onerror="window.__ALIN_CDN_ERROR__=true;console.error('تعذر تحميل Supabase')"></script>
-<script src="./dist/js/mobile.early.bundle.js?v=1.1.0" defer></script>
+<script src="./dist/js/mobile.early.bundle.js?v=1.0.9" defer></script>
 
 
 
@@ -65,7 +66,7 @@
 
 
 
-  <link rel="stylesheet" href="./store/banners-final.css?v=1.1.0">
+  <link rel="stylesheet" href="./store/banners-final.css?v=1.0.9">
 </head>
 <body class="store-mobile">
 <section class="login" id="login">
@@ -246,33 +247,27 @@
 <button data-mobile-control="favorites" data-v99-action="mobileFavorites"><span aria-hidden="true" class="mobile-heart-icon"></span><small>المفضلة</small></button>
 <button class="mobile-center-action" data-mobile-control="tracking" onclick="alinOpenTrackingSheet()"><span aria-hidden="true" class="mobile-track-icon"></span><small>تتبع الطلب</small></button>
 <button data-mobile-control="filter" data-v99-action="toggleMobileFilters"><span aria-hidden="true" class="mobile-filter-icon"></span><small>فلتر</small><span class="mobile-action-count" hidden id="v99MobileFilterCount">0</span></button>
-<button data-mobile-control="account" onclick="alinOpenAccountSheet()"><span aria-hidden="true" class="mobile-options-icon"></span><small id="alinOptionsNavLabel">خيارات</small></button>
+<button data-mobile-control="account" onclick="alinOpenAccountSheet()"><span aria-hidden="true" class="mobile-account-icon"></span><small>خيارات</small></button>
 </nav>
 <div class="alin-sheet-backdrop" id="alinSheetBackdrop" hidden onclick="alinCloseMobileSheets()"></div>
-<section class="alin-mobile-sheet alin-options-sheet" id="alinAccountSheet" hidden aria-modal="true" role="dialog" aria-label="خيارات">
-<div class="alin-sheet-handle"></div>
-<div class="alin-sheet-head"><div><h2 data-alin-i18n="optionsTitle">خيارات</h2><p data-alin-i18n="optionsSubtitle">الحساب واللغة ومظهر المنصة</p></div><button onclick="alinCloseMobileSheets()" aria-label="إغلاق">×</button></div>
-<div class="alin-account-list alin-options-list">
-<button onclick="alinAccountAction('account')"><span class="alin-sheet-icon account"></span><div><b data-alin-i18n="account">حسابي</b><small id="alinAccountSummary">تسجيل الدخول أو إدارة حساب الطالب</small></div><span class="alin-option-chevron">‹</span></button>
-<button onclick="alinToggleLanguagePanel()"><span class="alin-sheet-icon language"></span><div><b data-alin-i18n="language">اللغة</b><small id="alinLanguageSummary">العربية</small></div><span class="alin-option-chevron">‹</span></button>
-<div class="alin-language-panel" id="alinLanguagePanel" hidden>
-<button type="button" data-lang="ar" onclick="alinSetLanguage('ar')"><b>العربية</b><small>العربية</small></button>
-<button type="button" data-lang="ku" onclick="alinSetLanguage('ku')"><b>کوردی</b><small>کوردی</small></button>
-<button type="button" data-lang="en" onclick="alinSetLanguage('en')"><b>English</b><small>English</small></button>
-</div>
-<button onclick="alinToggleTheme()"><span class="alin-sheet-icon theme"></span><div><b data-alin-i18n="appearance">الوضع</b><small id="alinThemeSummary">الوضع النهاري</small></div><span class="alin-theme-switch" id="alinThemeSwitch" aria-hidden="true"><i></i></span></button>
-<button onclick="alinAccountAction('contact')"><span class="alin-sheet-icon contact"></span><div><b data-alin-i18n="contact">تواصل معنا</b><small data-alin-i18n="contactSubtitle">الدعم والاستفسارات والانضمام للمنصة</small></div><span class="alin-option-chevron">‹</span></button>
-<button onclick="alinAccountAction('about')"><span class="alin-sheet-icon about"></span><div><b data-alin-i18n="about">حول منصة آلين</b><small data-alin-i18n="aboutSubtitle">تعرف على المنصة وخدماتها</small></div><span class="alin-option-chevron">‹</span></button>
-<button class="alin-options-logout" onclick="logout()"><span class="alin-sheet-icon logout"></span><div><b data-alin-i18n="logout">تسجيل الخروج</b><small data-alin-i18n="logoutSubtitle">الخروج من المنصة بأمان</small></div></button>
+<section class="alin-mobile-sheet" id="alinAccountSheet" hidden aria-modal="true" role="dialog" aria-label="خيارات">
+<div class="alin-sheet-handle"></div><div class="alin-sheet-head"><div><h2>خيارات</h2><p>الحساب واللغة ومظهر المنصة</p></div><button onclick="alinCloseMobileSheets()" aria-label="إغلاق">×</button></div>
+<div class="alin-options-list">
+<button class="alin-option-action" onclick="alinOpenRealAccount()"><span class="alin-option-icon">👤</span><div><b data-option-title="account">حسابي</b><small data-option-sub="account">تسجيل الدخول وإدارة حساب الطالب</small></div><span class="alin-option-chevron">‹</span></button>
+<div class="alin-option-row"><span class="alin-option-icon">🌐</span><div><b data-option-title="language">اللغة</b><small data-option-sub="language">اختر لغة واجهة المنصة</small></div><div class="alin-choice-group"><button class="alin-choice" data-lang="ar" onclick="alinSetLanguage('ar')">العربية</button><button class="alin-choice" data-lang="ku" onclick="alinSetLanguage('ku')">کوردی</button><button class="alin-choice" data-lang="en" onclick="alinSetLanguage('en')">English</button></div></div>
+<div class="alin-option-row"><span class="alin-option-icon">◐</span><div><b data-option-title="theme">المظهر</b><small data-option-sub="theme">الوضع النهاري أو الليلي</small></div><div class="alin-choice-group alin-theme-toggle"><button class="alin-choice" data-theme="light" onclick="alinSetTheme('light')" data-theme-label="light">نهاري</button><button class="alin-choice" data-theme="dark" onclick="alinSetTheme('dark')" data-theme-label="dark">ليلي</button></div></div>
+<button class="alin-option-action" onclick="alinContactUs()"><span class="alin-option-icon">💬</span><div><b data-option-title="contact">تواصل معنا</b><small data-option-sub="contact">للاستفسار والدعم</small></div><span class="alin-option-chevron">‹</span></button>
+<button class="alin-option-action" onclick="alinAboutPlatform()"><span class="alin-option-icon">ⓘ</span><div><b data-option-title="about">حول منصة آلين</b><small data-option-sub="about">معلومات عن المنصة وخدماتها</small></div><span class="alin-option-chevron">‹</span></button>
 </div>
 </section>
 <section class="alin-mobile-sheet" id="alinTrackingSheet" hidden aria-modal="true" role="dialog" aria-label="تتبع الطلب">
 <div class="alin-sheet-handle"></div><div class="alin-sheet-head"><div><h2>تتبع الطلب</h2><p>اكتب رقم الطلب لمعرفة حالته</p></div><button onclick="alinCloseMobileSheets()" aria-label="إغلاق">×</button></div>
 <div class="alin-tracking-form"><input id="alinMobileTrackingInput" placeholder="مثال: ALIN-0001 أو رقم الطلب"><button onclick="alinSubmitMobileTracking()">تتبع الآن</button></div><div id="alinMobileTrackingResult" class="alin-mobile-tracking-result"></div>
 </section>
-<script src="./core/lazy-libs.js?v=1.1.0" defer></script>
-<script src="./dist/js/mobile.app.bundle.js?v=1.1.0" defer></script>
-<script src="./store/mobile-navigation-v103.js?v=1.1.0" defer></script>
+<script src="./core/lazy-libs.js?v=1.0.9" defer></script>
+<script src="./dist/js/mobile.app.bundle.js?v=1.0.9" defer></script>
+<script src="./store/mobile-navigation-v103.js?v=1.0.9" defer></script>
+<script src="./store/options-v110.js?v=1.1.0" defer></script>
 
 
 
@@ -304,6 +299,6 @@
 
 
 
-  <script src="./store/banners-final.js?v=1.1.0" defer></script>
+  <script src="./store/banners-final.js?v=1.0.9" defer></script>
 </body>
 </html>
