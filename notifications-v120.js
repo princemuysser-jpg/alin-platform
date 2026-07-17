@@ -1,4 +1,5 @@
-/* ALIN 1.2.0 - reliable storefront notifications */
+/* ALIN 1.2.2 - reliable storefront notifications */
+window.alinNotificationsV120Boot='loading';
 (function(){
   'use strict';
   const URL='https://jyavewwlgiaibtdqyzpd.supabase.co';
@@ -63,6 +64,13 @@
     refresh();state.timer=setInterval(refresh,20000);
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
   window.alinRefreshNotifications=refresh;
+  try{
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+    window.alinNotificationsV120Boot='ready';
+  }catch(e){
+    window.alinNotificationsV120Boot='error';
+    window.alinNotificationsV120Error=String(e?.message||e);
+    console.error('[Alin notifications boot]',e);
+  }
 })();
