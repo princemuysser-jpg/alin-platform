@@ -71,7 +71,7 @@
   function badges(){
     const n=unread();
     document.querySelectorAll('.alin-v94-notify-count,.alin98-notify-count,.mobile-action-count,.desktop-action-count').forEach(x=>{x.textContent=n>99?'99+':String(n);x.hidden=!n});
-    document.querySelectorAll('.alin-v94-notification-button,[data-desktop-control="notifications"]').forEach(x=>x.classList.toggle('has-unread',!!n));
+    document.querySelectorAll('[data-notification-trigger],.alin-v94-notification-button,[data-desktop-control="notifications"]').forEach(x=>x.classList.toggle('has-unread',!!n));
   }
   function close(){document.getElementById('alinNotificationsV120')?.remove();document.body.classList.remove('alin-notifications-open')}
   function open(){
@@ -102,7 +102,7 @@
     setTimeout(decorateBell,900);
     setTimeout(decorateBell,2200);
     document.addEventListener('click',e=>{
-      const b=e.target.closest('.alin-v94-notification-button,.alin-v78-notify-btn,[data-desktop-control="notifications"],.mobile-header-icon-btn[aria-label^="الإشعارات"]');
+      const b=e.target.closest('[data-notification-trigger],.alin-v94-notification-button,.alin-v78-notify-btn,[data-desktop-control="notifications"]');
       if(!b)return;
       const store=document.getElementById('storePage');
       if(store&&(store.hidden||getComputedStyle(store).display==='none'))return;
