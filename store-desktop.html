@@ -18,7 +18,7 @@
 <link href="assets/icons/icon-192.png" rel="icon" sizes="192x192" type="image/png"/>
 <link href="assets/icons/icon-192.png" rel="apple-touch-icon"/>
 <link href="./dist/css/desktop.bundle.css?v=1.0.9" rel="stylesheet"/>
-<link href="./options-v110.css?v=1.3.3" rel="stylesheet"/>
+<link href="./options-v110.css?v=1.3.4" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer onerror="window.__ALIN_CDN_ERROR__=true;console.error('تعذر تحميل Supabase')"></script>
 <script src="./dist/js/desktop.early.bundle.js?v=1.0.9" defer></script>
 
@@ -110,7 +110,7 @@
 <button aria-label="المفضلة" class="desktop-action" data-desktop-control="favorites" data-v99-action="desktopFavorites" type="button"><span aria-hidden="true" class="desktop-heart-icon"></span><small>المفضلة</small><span class="desktop-action-count" hidden="" id="v99DesktopFavoriteCount">0</span></button>
 <button aria-label="الإشعارات" class="desktop-action desktop-notification" data-desktop-control="notifications" onclick="document.querySelector('.alin-v78-notify-btn,.alin-v94-notification-button')?.click()" type="button"><span aria-hidden="true" class="v99-icon v99-icon-bell"></span><small>الإشعارات</small><span class="alin98-notify-count desktop-action-count" hidden="">0</span></button>
 <button aria-label="حساب الطالب" class="desktop-action desktop-account" data-desktop-control="account" id="studentAuthBtn" onclick="openStudentAuth()" type="button"><span aria-hidden="true" class="desktop-account-icon"></span><small>تسجيل الدخول</small></button>
-<button aria-label="سلة المشتريات" class="desktop-action desktop-cart" data-desktop-control="cart" onclick="openCart()" type="button"><span aria-hidden="true" class="desktop-cart-icon"></span><small>السلة</small><span class="desktop-action-count" hidden="" id="desktopCartCount">0</span></button>
+<button aria-label="سلة المشتريات" class="desktop-action desktop-cart" data-desktop-control="cart" onclick="openCart()" type="button"><svg aria-hidden="true" class="desktop-cart-icon alin-cart-nav-icon" viewBox="0 0 28 28"><path d="M2.8 4.5h3.1l2.2 11.1a2.3 2.3 0 0 0 2.3 1.9h10.2a2.3 2.3 0 0 0 2.2-1.8l1.5-7.1H7"/><path d="M10 12.9h12.9"/><circle cx="11" cy="22.2" r="1.7"/><circle cx="21" cy="22.2" r="1.7"/></svg><small>السلة</small><span class="desktop-action-count" hidden="" id="desktopCartCount">0</span></button>
 <button aria-label="خروج إلى القائمة الرئيسية" class="desktop-action desktop-exit" data-desktop-control="exit" onclick="logout()" type="button"><span aria-hidden="true" class="desktop-exit-icon"></span><small>خروج</small></button>
 <span aria-live="polite" class="desktop-account-status" id="studentAuthStatus">التسجيل اختياري</span>
 </div>
