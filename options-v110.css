@@ -114,3 +114,7 @@ body.store-mobile .alin-store-banners-v115{margin-inline:20px}
 .alin-notifications-v120__empty{padding:45px 18px;text-align:center;color:#68737c}.alin-notifications-v120__empty span{display:block;font-size:36px;margin-bottom:8px}.alin-notifications-v120__empty b{display:block;color:#0d2b49}.alin-notifications-v120__empty p{margin:5px 0}
 body.alin-notifications-open{overflow:hidden}
 @media(max-width:680px){.alin-notifications-v120__panel{top:auto;right:10px;left:10px;bottom:10px;width:auto;max-height:72dvh;border-radius:22px 22px 13px 13px}.alin-notifications-v120__panel>header{padding:15px}.alin-notifications-v120__list{padding-bottom:max(10px,env(safe-area-inset-bottom))}}
+body.store-mobile .alin98-hero{display:none!important;visibility:hidden!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important}
+body.store-mobile .alin-v94-notification-button .alin-v94-bell svg{display:block;width:23px;height:23px;fill:none;stroke:#0b3158;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body.store-mobile .alin-v94-notification-button .alin-v94-bell:before,
+body.store-mobile .alin-v94-notification-button .alin-v94-bell:after{display:none!important}

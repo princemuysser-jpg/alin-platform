@@ -92,6 +92,11 @@
     }catch(e){console.warn('[Alin notifications 1.2.3]',e)}
   }
   function installNotifications(){
+    document.querySelectorAll('.alin98-hero').forEach(hero=>hero.remove());
+    document.querySelectorAll('.alin-v94-notification-button .alin-v94-bell').forEach(bell=>{
+      bell.textContent='';
+      bell.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>';
+    });
     document.addEventListener('click',e=>{const b=e.target.closest('.alin-v94-notification-button,.alin-v78-notify-btn,[data-desktop-control="notifications"],.mobile-header-icon-btn[aria-label^="الإشعارات"]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();open()},true);
     document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
     loadNotifications();setInterval(loadNotifications,20000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadNotifications()});
