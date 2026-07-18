@@ -15,7 +15,7 @@
     let h=document.getElementById('alinStoreBannersV115');
     if(h)return h;
     h=document.createElement('section');h.id='alinStoreBannersV115';h.className='alin-store-banners-v115';h.hidden=true;
-    const anchor=document.querySelector('.alin98-hero,.alin-hero,.hero,#bannerBox,.store-hero');
+    const anchor=document.querySelector('.alin98-cats,#bannerBox,.store-hero');
     if(anchor?.parentNode)anchor.parentNode.insertBefore(h,anchor);
     else (document.querySelector('main,#storePage')||document.body).prepend(h);
     return h;
@@ -92,17 +92,22 @@
     }catch(e){console.warn('[Alin notifications 1.2.3]',e)}
   }
   function installNotifications(){
-    document.querySelectorAll('.alin98-hero').forEach(hero=>hero.remove());
     const decorateBell=()=>document.querySelectorAll('.alin-v94-notification-button .alin-v94-bell').forEach(bell=>{
       if(bell.querySelector('svg'))return;
       bell.textContent='';
       bell.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>';
     });
     decorateBell();
-    new MutationObserver(decorateBell).observe(document.body,{childList:true,subtree:true});
-    setTimeout(decorateBell,700);
-    setTimeout(decorateBell,1800);
-    document.addEventListener('click',e=>{const b=e.target.closest('.alin-v94-notification-button,.alin-v78-notify-btn,[data-desktop-control="notifications"],.mobile-header-icon-btn[aria-label^="الإشعارات"]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();open()},true);
+    setTimeout(decorateBell,100);
+    setTimeout(decorateBell,900);
+    setTimeout(decorateBell,2200);
+    document.addEventListener('click',e=>{
+      const b=e.target.closest('.alin-v94-notification-button,.alin-v78-notify-btn,[data-desktop-control="notifications"],.mobile-header-icon-btn[aria-label^="الإشعارات"]');
+      if(!b)return;
+      const store=document.getElementById('storePage');
+      if(store&&(store.hidden||getComputedStyle(store).display==='none'))return;
+      e.preventDefault();e.stopImmediatePropagation();open();
+    },true);
     document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
     loadNotifications();setInterval(loadNotifications,20000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadNotifications()});
     window.alinRefreshNotifications=loadNotifications;window.alinNotificationsReady=true;

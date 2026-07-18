@@ -198,8 +198,6 @@
     const shell = [
       ['.alin98-brand small','brandSub'],['[data-desktop-control="filter"] small','filter'],
       ['[data-desktop-control="account"] small','login'],['#studentAuthStatus','optional'],
-      ['.alin98-hero .badge','heroBadge'],['.alin98-hero h1','heroTitle',true],['.alin98-hero p','heroText'],
-      ['.alin98-hero-actions button:first-child','browse'],['.alin98-hero-actions button:last-child','trackOrder'],
       ['[data-v99-category="booklet"] strong','booklet'],['[data-v99-category="booklet"] small','bookletSub'],
       ['[data-v99-category="stationery"] strong','stationery'],['[data-v99-category="stationery"] small','stationerySub'],
       ['[data-v99-category="gift"] strong','gifts'],['[data-v99-category="gift"] small','giftsSub'],
@@ -368,48 +366,4 @@
     applyTheme(themeMode(), false);
     applyLanguage(language(), false);
   });
-})();
-
-/* ALIN 1.1.5: resilient public banner renderer */
-(function(){
-  'use strict';
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const active=b=>{
-    const d=new Date().toISOString().slice(0,10);
-    return (b.active===true||b.active===1||String(b.active).toLowerCase()==='true')
-      && (!b.start_date||String(b.start_date).slice(0,10)<=d)
-      && (!b.end_date||String(b.end_date).slice(0,10)>=d);
-  };
-  const client=()=>window.sb||window.supabaseClient||window.AlinSupabase?.client?.()||null;
-  function imageUrl(c,b){
-    const raw=String(b.image_path||b.image_url||'').trim();
-    if(!raw)return '';
-    if(/^https?:\/\//i.test(raw))return raw;
-    const clean=raw.replace(/^\/+/,'').replace(/^banners\//i,'');
-    try{return c.storage.from('banners').getPublicUrl(clean).data?.publicUrl||''}catch(_){return ''}
-  }
-  function host(){
-    let h=document.getElementById('alinStoreBannersV115');
-    if(h)return h;
-    h=document.createElement('section');h.id='alinStoreBannersV115';h.className='alin-store-banners-v115';h.hidden=true;
-    const anchor=document.querySelector('.alin98-hero,.alin-hero,.hero,#bannerBox,.store-hero');
-    if(anchor?.parentNode)anchor.parentNode.insertBefore(h,anchor);
-    else (document.querySelector('main,#storePage')||document.body).prepend(h);
-    return h;
-  }
-  async function refresh(){
-    const c=client(),h=host(); if(!c)return;
-    try{
-      const {data,error}=await c.from('banners').select('*').order('created_at',{ascending:false});
-      if(error)throw error;
-      const b=(data||[]).find(active);
-      if(!b){h.hidden=true;h.innerHTML='';return}
-      const src=imageUrl(c,b);
-      h.innerHTML=`<article class="alin-store-banner-v115">${src?`<img src="${esc(src)}" alt="${esc(b.title||'إعلان منصة آلين')}" onerror="this.remove()">`:''}<div class="alin-store-banner-v115__copy"><span>إعلان منصة آلين</span><h2>${esc(b.title||'')}</h2>${b.text?`<p>${esc(b.text)}</p>`:''}</div></article>`;
-      h.hidden=false;
-    }catch(e){console.warn('[Alin banner 1.1.5]',e)}
-  }
-  function start(){refresh();setTimeout(refresh,1200);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()})}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
-  window.alinRefreshStoreBannersV115=refresh;
 })();

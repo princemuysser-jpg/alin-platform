@@ -4,10 +4,10 @@ html[data-alin-theme=dark] body{background:var(--ao-bg)!important;color:var(--ao
 html[data-alin-theme=dark] body .alin-mobile-premium-header,html[data-alin-theme=dark] body .alin98-bottom,html[data-alin-theme=dark] body .alin-footer,html[data-alin-theme=dark] body .alin-mobile-sheet,html[data-alin-theme=dark] body .modal-card{background:var(--ao-surface)!important;color:var(--ao-ink)!important;border-color:var(--ao-border)!important}
 html[data-alin-theme=dark] body .product-card,html[data-alin-theme=dark] body .book-card,html[data-alin-theme=dark] body .store-bottom-info article,html[data-alin-theme=dark] body .store-real-stats,html[data-alin-theme=dark] body .filter-box{background:var(--ao-surface)!important;color:var(--ao-ink)!important;border-color:var(--ao-border)!important}
 html[data-alin-theme=dark] body input,html[data-alin-theme=dark] body select,html[data-alin-theme=dark] body textarea{background:#102a44!important;color:var(--ao-ink)!important;border-color:var(--ao-border)!important}
-html[data-alin-theme=dark] body .alin98-header,html[data-alin-theme=dark] body .alin98-hero,html[data-alin-theme=dark] body .alin98-cats>button,html[data-alin-theme=dark] body .v99-rail-root,html[data-alin-theme=dark] body .v99-personalized,html[data-alin-theme=dark] body .v99-discovery-tools,html[data-alin-theme=dark] body .v99-student-hub,html[data-alin-theme=dark] body .v31-track-box,html[data-alin-theme=dark] body .desktop-partner-access{background:var(--ao-surface)!important;color:var(--ao-ink)!important;border-color:var(--ao-border)!important}
-html[data-alin-theme=dark] body .alin98-header strong,html[data-alin-theme=dark] body .alin98-hero h1,html[data-alin-theme=dark] body .alin98-cats strong,html[data-alin-theme=dark] body .alin98-title h2,html[data-alin-theme=dark] body .v31-track-box h2,html[data-alin-theme=dark] body .store-bottom-info h2{color:var(--ao-ink)!important}
-html[data-alin-theme=dark] body .alin98-header small,html[data-alin-theme=dark] body .alin98-hero p,html[data-alin-theme=dark] body .alin98-cats small,html[data-alin-theme=dark] body .v31-track-box p,html[data-alin-theme=dark] body .product-card small,html[data-alin-theme=dark] body .book-card small{color:var(--ao-muted)!important}
-html[data-alin-theme=dark] body .desktop-action,html[data-alin-theme=dark] body .alin98-hero-actions .secondary,html[data-alin-theme=dark] body .desktop-partner-access button,html[data-alin-theme=dark] body .alin98-title button{background:var(--ao-soft)!important;color:var(--ao-ink)!important;border-color:var(--ao-border)!important}
+html[data-alin-theme=dark] body .alin98-header,html[data-alin-theme=dark] body .alin98-cats>button,html[data-alin-theme=dark] body .v99-rail-root,html[data-alin-theme=dark] body .v99-personalized,html[data-alin-theme=dark] body .v99-discovery-tools,html[data-alin-theme=dark] body .v99-student-hub,html[data-alin-theme=dark] body .v31-track-box,html[data-alin-theme=dark] body .desktop-partner-access{background:var(--ao-surface)!important;color:var(--ao-ink)!important;border-color:var(--ao-border)!important}
+html[data-alin-theme=dark] body .alin98-header strong,html[data-alin-theme=dark] body .alin98-cats strong,html[data-alin-theme=dark] body .alin98-title h2,html[data-alin-theme=dark] body .v31-track-box h2,html[data-alin-theme=dark] body .store-bottom-info h2{color:var(--ao-ink)!important}
+html[data-alin-theme=dark] body .alin98-header small,html[data-alin-theme=dark] body .alin98-cats small,html[data-alin-theme=dark] body .v31-track-box p,html[data-alin-theme=dark] body .product-card small,html[data-alin-theme=dark] body .book-card small{color:var(--ao-muted)!important}
+html[data-alin-theme=dark] body .desktop-action,html[data-alin-theme=dark] body .desktop-partner-access button,html[data-alin-theme=dark] body .alin98-title button{background:var(--ao-soft)!important;color:var(--ao-ink)!important;border-color:var(--ao-border)!important}
 html[data-alin-theme=dark] body .store-real-stats>div,html[data-alin-theme=dark] body .track-result,html[data-alin-theme=dark] body .rail-card,html[data-alin-theme=dark] body [class*="product-card"],html[data-alin-theme=dark] body [class*="booklet-card"],html[data-alin-theme=dark] body [class*="student-hub"] article{background:var(--ao-surface)!important;color:var(--ao-ink)!important;border-color:var(--ao-border)!important}
 html[data-alin-theme=dark] body .desktop-header-search,html[data-alin-theme=dark] body .mobile-search-premium label{background:#102a44!important;border-color:var(--ao-border)!important}
 html[data-alin-theme=dark] body .desktop-filter-backdrop,html[data-alin-theme=dark] body .alin-sheet-backdrop{background:rgba(1,8,16,.72)!important}
@@ -67,15 +67,6 @@ body.store-mobile .alin-v94-notification-button .alin-v94-bell{
   display:block!important;position:relative!important;width:24px!important;height:24px!important;
   overflow:visible!important;font-size:0!important;color:transparent!important
 }
-body.store-mobile .alin-v94-notification-button .alin-v94-bell:before{
-  content:""!important;position:absolute!important;left:4px!important;top:3px!important;width:14px!important;height:14px!important;
-  border:2px solid #0b3158!important;border-bottom:0!important;border-radius:10px 10px 4px 4px!important;
-  box-sizing:border-box!important
-}
-body.store-mobile .alin-v94-notification-button .alin-v94-bell:after{
-  content:""!important;position:absolute!important;left:5px!important;bottom:3px!important;width:14px!important;height:2px!important;
-  border-radius:3px!important;background:#0b3158!important;box-shadow:5px 3px 0 -3px #0b3158!important
-}
 .alin-store-banners-v115{margin:14px 0 18px;display:block}
 .alin-store-banners-v115[hidden]{display:none!important}
 .alin-store-banner-v115{position:relative;overflow:hidden;min-height:150px;border-radius:22px;background:linear-gradient(135deg,#062b50,#07588a);box-shadow:0 14px 34px rgba(7,43,80,.2);color:#fff}
@@ -85,7 +76,6 @@ body.store-mobile .alin-v94-notification-button .alin-v94-bell:after{
 .alin-store-banner-v115__copy h2{margin:0;color:#fff;font-size:clamp(21px,4vw,30px)}
 .alin-store-banner-v115__copy p{margin:8px 0 0;color:#e9f2f8;line-height:1.7}
 body.store-mobile .alin-store-banners-v115{margin-inline:20px}
-.alin98-hero{display:none!important}
 .alin-store-banner-v115__strip{
   position:absolute;right:18px;left:18px;bottom:14px;z-index:2;
   min-height:38px;display:flex;align-items:center;justify-content:center;
@@ -114,7 +104,4 @@ body.store-mobile .alin-store-banners-v115{margin-inline:20px}
 .alin-notifications-v120__empty{padding:45px 18px;text-align:center;color:#68737c}.alin-notifications-v120__empty span{display:block;font-size:36px;margin-bottom:8px}.alin-notifications-v120__empty b{display:block;color:#0d2b49}.alin-notifications-v120__empty p{margin:5px 0}
 body.alin-notifications-open{overflow:hidden}
 @media(max-width:680px){.alin-notifications-v120__panel{top:auto;right:10px;left:10px;bottom:10px;width:auto;max-height:72dvh;border-radius:22px 22px 13px 13px}.alin-notifications-v120__panel>header{padding:15px}.alin-notifications-v120__list{padding-bottom:max(10px,env(safe-area-inset-bottom))}}
-body.store-mobile .alin98-hero{display:none!important;visibility:hidden!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important}
 body.store-mobile .alin-v94-notification-button .alin-v94-bell svg{display:block;width:23px;height:23px;fill:none;stroke:#0b3158;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-body.store-mobile .alin-v94-notification-button .alin-v94-bell:before,
-body.store-mobile .alin-v94-notification-button .alin-v94-bell:after{display:none!important}
