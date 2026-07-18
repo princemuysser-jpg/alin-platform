@@ -10,20 +10,17 @@ html[data-alin-theme=dark] body .alin98-header small,html[data-alin-theme=dark] 
 html[data-alin-theme=dark] body .desktop-action,html[data-alin-theme=dark] body .desktop-partner-access button,html[data-alin-theme=dark] body .alin98-title button{background:var(--ao-soft)!important;color:var(--ao-ink)!important;border-color:var(--ao-border)!important}
 
 /* Alin storefront: high-contrast categories and crisp navigation icons. */
-body.store-desktop .alin98-cats [data-v99-category] .cat-copy strong,
-body.store-mobile .alin98-cats [data-v99-category] .cat-copy strong{
+body.store-desktop .alin98-cats [data-v99-category] .cat-copy strong{
   color:#fff!important;
   font-weight:800!important;
   text-shadow:0 1px 1px rgba(0,0,0,.16);
 }
-body.store-desktop .alin98-cats [data-v99-category] .cat-copy small,
-body.store-mobile .alin98-cats [data-v99-category] .cat-copy small{
+body.store-desktop .alin98-cats [data-v99-category] .cat-copy small{
   color:rgba(255,255,255,.86)!important;
   font-weight:600!important;
 }
 
-body.store-desktop .desktop-cart-icon,
-body.store-mobile .mobile-cart-icon{
+body.store-desktop .desktop-cart-icon{
   display:block!important;
   width:26px!important;
   height:26px!important;
@@ -43,13 +40,11 @@ body.store-mobile .mobile-cart-icon{
   stroke-linejoin:round!important;
   vector-effect:non-scaling-stroke;
 }
-body.store-desktop .desktop-cart-icon::before,
-body.store-mobile .mobile-cart-icon::before{
+body.store-desktop .desktop-cart-icon::before{
   content:none!important;
   display:none!important;
 }
-body.store-desktop .desktop-cart-icon::after,
-body.store-mobile .mobile-cart-icon::after{
+body.store-desktop .desktop-cart-icon::after{
   content:none!important;
   display:none!important;
 }
@@ -192,45 +187,34 @@ body.store-mobile .alin-v94-notification-button .alin-v94-bell svg{display:block
 
 /* Final storefront category cascade: white copy always sits on a navy card. */
 body.store-desktop .alin98-cats > button[data-v99-category],
-body.store-mobile .alin98-cats > button[data-v99-category],
-html[data-alin-theme="dark"] body.store-desktop .alin98-cats > button[data-v99-category],
-html[data-alin-theme="dark"] body.store-mobile .alin98-cats > button[data-v99-category]{
+html[data-alin-theme="dark"] body.store-desktop .alin98-cats > button[data-v99-category]{
   background:#082d57!important;
   color:#fff!important;
   border-color:rgba(205,163,70,.38)!important;
   box-shadow:0 8px 24px rgba(7,26,55,.16)!important;
 }
 body.store-desktop .alin98-cats > button[data-v99-category]:hover,
-body.store-desktop .alin98-cats > button[data-v99-category]:focus-visible,
-body.store-mobile .alin98-cats > button[data-v99-category]:hover,
-body.store-mobile .alin98-cats > button[data-v99-category]:focus-visible{
+body.store-desktop .alin98-cats > button[data-v99-category]:focus-visible{
   background:#0b3a6d!important;
   border-color:#d1a33c!important;
   box-shadow:0 11px 28px rgba(7,26,55,.23)!important;
 }
-body.store-desktop .alin98-cats > button[data-v99-category]:focus-visible,
-body.store-mobile .alin98-cats > button[data-v99-category]:focus-visible{
+body.store-desktop .alin98-cats > button[data-v99-category]:focus-visible{
   outline:3px solid rgba(209,163,60,.38)!important;
   outline-offset:3px!important;
 }
 body.store-desktop .alin98-cats > button[data-v99-category][aria-pressed="true"],
-body.store-mobile .alin98-cats > button[data-v99-category][aria-pressed="true"],
-html[data-alin-theme="dark"] body.store-desktop .alin98-cats > button[data-v99-category][aria-pressed="true"],
-html[data-alin-theme="dark"] body.store-mobile .alin98-cats > button[data-v99-category][aria-pressed="true"]{
+html[data-alin-theme="dark"] body.store-desktop .alin98-cats > button[data-v99-category][aria-pressed="true"]{
   background:#0d3f73!important;
   color:#fff!important;
   border-color:#e0b34f!important;
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 0 0 3px rgba(214,166,51,.18)!important;
 }
 body.store-desktop .alin98-cats > button[data-v99-category] .cat-copy strong,
-body.store-mobile .alin98-cats > button[data-v99-category] .cat-copy strong,
-body.store-desktop .alin98-cats > button[data-v99-category][aria-pressed="true"] .cat-copy strong,
-body.store-mobile .alin98-cats > button[data-v99-category][aria-pressed="true"] .cat-copy strong{
+body.store-desktop .alin98-cats > button[data-v99-category][aria-pressed="true"] .cat-copy strong{
   color:#fff!important;
 }
 body.store-desktop .alin98-cats > button[data-v99-category] .cat-copy small,
-body.store-mobile .alin98-cats > button[data-v99-category] .cat-copy small,
-body.store-desktop .alin98-cats > button[data-v99-category][aria-pressed="true"] .cat-copy small,
-body.store-mobile .alin98-cats > button[data-v99-category][aria-pressed="true"] .cat-copy small{
+body.store-desktop .alin98-cats > button[data-v99-category][aria-pressed="true"] .cat-copy small{
   color:rgba(255,255,255,.86)!important;
 }
