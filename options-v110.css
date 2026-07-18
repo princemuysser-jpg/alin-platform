@@ -8,6 +8,98 @@ html[data-alin-theme=dark] body .alin98-header,html[data-alin-theme=dark] body .
 html[data-alin-theme=dark] body .alin98-header strong,html[data-alin-theme=dark] body .alin98-cats strong,html[data-alin-theme=dark] body .alin98-title h2,html[data-alin-theme=dark] body .v31-track-box h2,html[data-alin-theme=dark] body .store-bottom-info h2{color:var(--ao-ink)!important}
 html[data-alin-theme=dark] body .alin98-header small,html[data-alin-theme=dark] body .alin98-cats small,html[data-alin-theme=dark] body .v31-track-box p,html[data-alin-theme=dark] body .product-card small,html[data-alin-theme=dark] body .book-card small{color:var(--ao-muted)!important}
 html[data-alin-theme=dark] body .desktop-action,html[data-alin-theme=dark] body .desktop-partner-access button,html[data-alin-theme=dark] body .alin98-title button{background:var(--ao-soft)!important;color:var(--ao-ink)!important;border-color:var(--ao-border)!important}
+
+/* Alin storefront: high-contrast categories and crisp navigation icons. */
+body.store-desktop .alin98-cats [data-v99-category] .cat-copy strong,
+body.store-mobile .alin98-cats [data-v99-category] .cat-copy strong{
+  color:#fff!important;
+  font-weight:800!important;
+  text-shadow:0 1px 1px rgba(0,0,0,.16);
+}
+body.store-desktop .alin98-cats [data-v99-category] .cat-copy small,
+body.store-mobile .alin98-cats [data-v99-category] .cat-copy small{
+  color:rgba(255,255,255,.86)!important;
+  font-weight:600!important;
+}
+
+body.store-desktop .desktop-cart-icon,
+body.store-mobile .mobile-cart-icon{
+  display:block!important;
+  width:21px!important;
+  height:14px!important;
+  box-sizing:border-box!important;
+  position:relative!important;
+  border:2px solid #0b2b55!important;
+  border-top:0!important;
+  border-radius:1px 1px 4px 4px!important;
+  background:transparent!important;
+  color:#0b2b55!important;
+  opacity:1!important;
+  transform:skew(-7deg)!important;
+}
+body.store-desktop .desktop-cart-icon::before,
+body.store-mobile .mobile-cart-icon::before{
+  content:""!important;
+  position:absolute!important;
+  width:7px!important;
+  height:6px!important;
+  top:-6px!important;
+  right:13px!important;
+  border-top:2px solid #c38b16!important;
+  border-right:2px solid #c38b16!important;
+  border-radius:0 3px 0 0!important;
+}
+body.store-desktop .desktop-cart-icon::after,
+body.store-mobile .mobile-cart-icon::after{
+  content:""!important;
+  position:absolute!important;
+  width:4px!important;
+  height:4px!important;
+  right:2px!important;
+  bottom:-7px!important;
+  border-radius:50%!important;
+  background:#0b2b55!important;
+  box-shadow:-12px 0 #0b2b55!important;
+}
+
+body.store-desktop .desktop-account-icon{
+  display:block!important;
+  width:22px!important;
+  height:22px!important;
+  box-sizing:border-box!important;
+  position:relative!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:#0b2b55!important;
+  opacity:1!important;
+  clip-path:none!important;
+}
+body.store-desktop .desktop-account-icon::before{
+  content:""!important;
+  position:absolute!important;
+  width:8px!important;
+  height:8px!important;
+  top:0!important;
+  right:5px!important;
+  box-sizing:border-box!important;
+  border:2px solid #0b2b55!important;
+  border-radius:50%!important;
+  background:#fff!important;
+}
+body.store-desktop .desktop-account-icon::after{
+  content:""!important;
+  position:absolute!important;
+  width:18px!important;
+  height:10px!important;
+  right:0!important;
+  top:11px!important;
+  box-sizing:border-box!important;
+  border:2px solid #0b2b55!important;
+  border-bottom:0!important;
+  border-radius:10px 10px 2px 2px!important;
+  background:transparent!important;
+}
 html[data-alin-theme=dark] body .store-real-stats>div,html[data-alin-theme=dark] body .track-result,html[data-alin-theme=dark] body .rail-card,html[data-alin-theme=dark] body [class*="product-card"],html[data-alin-theme=dark] body [class*="booklet-card"],html[data-alin-theme=dark] body [class*="student-hub"] article{background:var(--ao-surface)!important;color:var(--ao-ink)!important;border-color:var(--ao-border)!important}
 html[data-alin-theme=dark] body .desktop-header-search,html[data-alin-theme=dark] body .mobile-search-premium label{background:#102a44!important;border-color:var(--ao-border)!important}
 html[data-alin-theme=dark] body .desktop-filter-backdrop,html[data-alin-theme=dark] body .alin-sheet-backdrop{background:rgba(1,8,16,.72)!important}
@@ -105,3 +197,48 @@ body.store-mobile .alin-store-banners-v115{margin-inline:20px}
 body.alin-notifications-open{overflow:hidden}
 @media(max-width:680px){.alin-notifications-v120__panel{top:auto;right:10px;left:10px;bottom:10px;width:auto;max-height:72dvh;border-radius:22px 22px 13px 13px}.alin-notifications-v120__panel>header{padding:15px}.alin-notifications-v120__list{padding-bottom:max(10px,env(safe-area-inset-bottom))}}
 body.store-mobile .alin-v94-notification-button .alin-v94-bell svg{display:block;width:23px;height:23px;fill:none;stroke:#0b3158;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Final storefront category cascade: white copy always sits on a navy card. */
+body.store-desktop .alin98-cats > button[data-v99-category],
+body.store-mobile .alin98-cats > button[data-v99-category],
+html[data-alin-theme="dark"] body.store-desktop .alin98-cats > button[data-v99-category],
+html[data-alin-theme="dark"] body.store-mobile .alin98-cats > button[data-v99-category]{
+  background:#082d57!important;
+  color:#fff!important;
+  border-color:rgba(205,163,70,.38)!important;
+  box-shadow:0 8px 24px rgba(7,26,55,.16)!important;
+}
+body.store-desktop .alin98-cats > button[data-v99-category]:hover,
+body.store-desktop .alin98-cats > button[data-v99-category]:focus-visible,
+body.store-mobile .alin98-cats > button[data-v99-category]:hover,
+body.store-mobile .alin98-cats > button[data-v99-category]:focus-visible{
+  background:#0b3a6d!important;
+  border-color:#d1a33c!important;
+  box-shadow:0 11px 28px rgba(7,26,55,.23)!important;
+}
+body.store-desktop .alin98-cats > button[data-v99-category]:focus-visible,
+body.store-mobile .alin98-cats > button[data-v99-category]:focus-visible{
+  outline:3px solid rgba(209,163,60,.38)!important;
+  outline-offset:3px!important;
+}
+body.store-desktop .alin98-cats > button[data-v99-category][aria-pressed="true"],
+body.store-mobile .alin98-cats > button[data-v99-category][aria-pressed="true"],
+html[data-alin-theme="dark"] body.store-desktop .alin98-cats > button[data-v99-category][aria-pressed="true"],
+html[data-alin-theme="dark"] body.store-mobile .alin98-cats > button[data-v99-category][aria-pressed="true"]{
+  background:#0d3f73!important;
+  color:#fff!important;
+  border-color:#e0b34f!important;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 0 0 3px rgba(214,166,51,.18)!important;
+}
+body.store-desktop .alin98-cats > button[data-v99-category] .cat-copy strong,
+body.store-mobile .alin98-cats > button[data-v99-category] .cat-copy strong,
+body.store-desktop .alin98-cats > button[data-v99-category][aria-pressed="true"] .cat-copy strong,
+body.store-mobile .alin98-cats > button[data-v99-category][aria-pressed="true"] .cat-copy strong{
+  color:#fff!important;
+}
+body.store-desktop .alin98-cats > button[data-v99-category] .cat-copy small,
+body.store-mobile .alin98-cats > button[data-v99-category] .cat-copy small,
+body.store-desktop .alin98-cats > button[data-v99-category][aria-pressed="true"] .cat-copy small,
+body.store-mobile .alin98-cats > button[data-v99-category][aria-pressed="true"] .cat-copy small{
+  color:rgba(255,255,255,.86)!important;
+}
