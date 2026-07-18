@@ -1,4 +1,4 @@
-// Alin mobile app bundle
+﻿// Alin mobile app bundle
 
 // === teacher/booklets.js ===
 /* ===== teacher/js/booklets.js ===== */
@@ -81,7 +81,8 @@ async function openTeacherRequestSource(id){
   checkoutBox.innerHTML=`<section class="teacher-word-viewer"><div class="teacher-word-head"><div><h2>معاينة ملف Word</h2><p>${esc(r.title||'ملزمة')} — مشاهدة داخلية فقط</p></div><span>DOCX</span></div><div class="teacher-word-security">لا يوجد زر تنزيل داخل المعاينة. استخدم ملاحظات الإدارة لطلب أي تعديل من المدرس.</div><div id="teacherWordPreview" class="teacher-word-pages"><div class="teacher-word-loading">جاري تجهيز المعاينة...</div></div><div class="row-actions no-print"><button class="secondary" onclick="closeCheckout()">إغلاق</button></div></section>`;
   checkoutModal.classList.remove('hidden');
   try{
-    if(!window.mammoth) throw new Error('مكتبة معاينة Word غير متاحة');
+    if(typeof window.AlinLoadMammoth!=='function') throw new Error('محمل مكتبة معاينة Word غير متاح');
+    await window.AlinLoadMammoth();
     const resolved=typeof alinResolveStoredFile==='function'?await alinResolveStoredFile(r.source_file_path,'teacher-requests'):null;
     const url=resolved?.url||mediaUrl(r.source_file_path);
     const response=await fetch(url,{cache:'no-store'});
@@ -1931,7 +1932,7 @@ window.AlinLibraryModules['alinV67LibrarySettlementRows']=typeof alinV67LibraryS
       return changeStatus(id,'hidden');
     }
     if(!confirm('حذف هذه الملزمة نهائياً؟ لا يمكن التراجع عن العملية.'))return;
-    try{if(typeof del==='function')await del('booklets',{id});else if(typeof deleteBooklet==='function')return deleteBooklet(id);await audit('booklet',`حذف ملزمة ${b.title||id}`);await load();render();if(typeof toast==='function')toast('تم حذف الملزمة')}catch(e){alert(e.message||'تعذر حذف الملزمة')}
+    try{if(typeof removeRow!=='function')throw new Error('خدمة حذف الملازم غير متاحة');await removeRow('booklets',{id});await audit('booklet',`حذف ملزمة ${b.title||id}`);await load();render();if(typeof toast==='function')toast('تم حذف الملزمة')}catch(e){alert(e.message||'تعذر حذف الملزمة')}
   }
   async function changeStatus(id,status){
     const b=books().find(x=>String(x.id)===String(id));if(!b)return;
@@ -3871,3 +3872,110 @@ window.AlinCourierModules['recordCourierSettlementForOrder']=typeof recordCourie
 
 
 ;
+
+/* ALIN 1.0.9 - Supabase Auth adapter. */
+(function(){
+  'use strict';
+  const cfg=()=>window.ALIN_CONFIG||{};
+  const enabled=()=>cfg().authEnabled===true;
+  const client=()=>window.sb||(window.AlinCloud&&window.AlinCloud.client?.())||null;
+  const emailFor=value=>{
+    const raw=String(value||'').trim().toLowerCase();
+    if(raw.includes('@'))return raw;
+    const safe=raw.replace(/[^a-z0-9._-]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');
+    return `${safe}@${cfg().authEmailDomain||'users.alin.local'}`;
+  };
+  const msg=text=>{const el=window.loginMsg||document.getElementById('loginMsg');if(el)el.textContent=text};
+
+  async function accountForUser(user){
+    const c=client();if(!c||!user)return null;
+    const {data,error}=await c.from('accounts').select('id,role,name,username,status,auth_user_id').eq('auth_user_id',user.id).maybeSingle();
+    if(error)throw error;
+    return data||null;
+  }
+
+  async function login(){
+    const c=client();if(!c)throw new Error('خدمة تسجيل الدخول غير متاحة');
+    const username=(window.loginU||document.getElementById('loginU'))?.value||'';
+    const password=(window.loginPass||document.getElementById('loginPass'))?.value||'';
+    if(!username.trim()||!password)throw new Error('اكتب اسم الدخول وكلمة المرور');
+    const {data,error}=await c.auth.signInWithPassword({email:emailFor(username),password});
+    if(error)throw new Error('بيانات الدخول غير صحيحة');
+    const account=await accountForUser(data.user);
+    if(!account||account.status!=='active'){
+      await c.auth.signOut();
+      throw new Error('الحساب غير مربوط أو غير فعال');
+    }
+    const requested=String(window.pendingRole||'');
+    if(requested&&requested!=='store'&&account.role!==requested&&account.role!=='admin'){
+      await c.auth.signOut();
+      throw new Error('نوع الحساب لا يطابق البوابة المختارة');
+    }
+    window.current={role:account.role,id:account.id,name:account.name,username:account.username,auth_user_id:data.user.id};
+    if(typeof window.load==='function')await window.load();
+    if(typeof window.openPage==='function')window.openPage(account.role);
+    const passEl=window.loginPass||document.getElementById('loginPass');if(passEl)passEl.value='';
+    return account;
+  }
+
+  async function secureCheckout(){
+    try{
+      if(typeof cart==='undefined'||!Array.isArray(cart)||!cart.length)throw new Error('السلة فارغة');
+      const name=(document.getElementById('studentName')?.value||'').trim();
+      const phone=(document.getElementById('studentPhone')?.value||'').trim();
+      if(!name||!phone)throw new Error('أكمل اسم الطالب ورقم الهاتف');
+      const fulfillment=typeof alinOrderExtra==='function'?alinOrderExtra():{};
+      const coupon=(document.getElementById('couponInput')?.value||'').trim();
+      const items=cart.map(x=>({kind:x.kind,id:x.id,qty:Number(x.qty)||1}));
+      const {data,error}=await client().rpc('alin_create_store_orders',{
+        p_items:items,p_customer:{name,phone},p_fulfillment:fulfillment,p_coupon_code:coupon||null
+      });
+      if(error)throw error;
+      const numbers=Array.isArray(data)?data.map(x=>x.order_number):[];
+      cart=[];if(typeof cartSave==='function')cartSave();
+      if(typeof load==='function')await load();
+      const box=window.checkoutBox||document.getElementById('checkoutBox');
+      if(box)box.innerHTML=`<h2>تم استلام طلبك</h2><p>أرقام التتبع: ${numbers.join(' — ')}</p><button onclick="closeCheckout()">إغلاق</button>`;
+    }catch(e){alert(e.message||'تعذر إنشاء الطلب')}
+  }
+
+  async function createAccountFromAdmin(){
+    try{
+      const role=document.getElementById('aRole')?.value||'';
+      const name=document.getElementById('aName')?.value?.trim()||'';
+      const username=document.getElementById('aUser')?.value?.trim()||'';
+      const password=document.getElementById('aPass')?.value||'';
+      const area=document.getElementById('aArea')?.value?.trim()||'';
+      const landmark=document.getElementById('aLandmark')?.value?.trim()||'';
+      if(!name||!username||!password)throw new Error('أكمل الاسم واسم الدخول وكلمة المرور');
+      const {data,error}=await client().functions.invoke('admin-create-account',{
+        body:{role,name,username,password,area,landmark}
+      });
+      if(error){
+        let message=error.message;
+        try{message=(await error.context?.json())?.error||message}catch(_){}
+        throw new Error(message||'تعذر إنشاء الحساب');
+      }
+      if(!data?.ok)throw new Error(data?.error||'تعذر إنشاء الحساب');
+      if(document.getElementById('aPass'))document.getElementById('aPass').value='';
+      if(typeof load==='function')await load();
+      if(typeof renderAccountsAdmin==='function')renderAccountsAdmin();
+      if(typeof toast==='function')toast(`تم إنشاء الحساب: ${data.account.username}`);
+      else alert(`تم إنشاء الحساب بنجاح: ${data.account.username}`);
+      return data.account;
+    }catch(e){alert(e.message||'تعذر إنشاء الحساب');throw e}
+  }
+
+  function install(){
+    if(!enabled()){window.ALIN_AUTH_MODE='legacy';return}
+    window.ALIN_AUTH_MODE='supabase';
+    window.doLogin=async function(){try{msg('جارٍ التحقق...');await login();msg('')}catch(e){msg(e.message||'تعذر تسجيل الدخول')}};
+    window.confirmCartCheckout=secureCheckout;
+    window.addAccount=createAccountFromAdmin;
+    const oldLogout=window.logout;
+    window.logout=async function(){try{await client()?.auth?.signOut()}catch(_){};window.current=null;return typeof oldLogout==='function'?oldLogout.apply(this,arguments):location.reload()};
+    client()?.auth?.onAuthStateChange?.((event)=>{if(event==='SIGNED_OUT')window.current=null});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+  window.ALINAuth=Object.freeze({enabled,emailFor,login,accountForUser,secureCheckout,createAccountFromAdmin});
+})();
