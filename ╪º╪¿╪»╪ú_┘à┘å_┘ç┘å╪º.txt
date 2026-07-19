@@ -1,0 +1,7 @@
+منصة آلين v2.0.2
+
+1) افتح Supabase > SQL Editor > New query.
+2) شغّل الملف كاملاً: RUN_ON_SUPABASE_v2_0_2_IDEMPOTENT.sql
+3) يمكن تشغيل الملف أكثر من مرة بدون خطأ policy already exists.
+4) بعدها شغّل: CHECK_SUPABASE_READINESS_v2_0_2.sql
+5) إذا كانت العناصر OK ارفع ملفات الموقع.

@@ -1,0 +1,8 @@
+ALIN v2.0.1 release checks
+==========================
+Module files: 41
+Missing page references: 0
+Old bundle references: 0
+Classic JavaScript syntax failures: 0
+Service worker module references: 41
+Release test failures: 0

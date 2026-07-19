@@ -1,204 +1,4 @@
-// Alin landing bundle
-
-/* ===== store/js/delivery-gps-v162.js ===== */
-/* V162: student GPS point for delivery + map actions for admin/courier */
-(function(){
-  'use strict';
-  const $=(s,r=document)=>r.querySelector(s);
-  const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
-  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const areas=()=>Array.isArray(window.ALIN_KIRKUK_AREAS)&&window.ALIN_KIRKUK_AREAS.length?window.ALIN_KIRKUK_AREAS:[];
-  const mapUrl=(lat,lng)=>lat&&lng?`https://www.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}`:'';
-
-  function areaOptions(selected=''){
-    return `<option value="">اختر منطقة التوصيل في كركوك</option>`+areas().map(a=>`<option value="${esc(a)}" ${String(a)===String(selected)?'selected':''}>${esc(a)}</option>`).join('');
-  }
-  function gpsMarkup(){
-    return `<section class="v162-gps-box" id="v162GpsBox">
-      <div class="v162-gps-head"><div><b>نقطة موقع التوصيل GPS</b><small>تساعد المدير والمندوب على الوصول للعنوان بدقة.</small></div><span id="v162GpsStatus" class="v162-gps-status">غير محدد</span></div>
-      <div class="v162-gps-actions">
-        <button type="button" class="v162-gps-primary" onclick="alinV162UseCurrentLocation()"><span aria-hidden="true">⌖</span> استخدام موقعي الحالي</button>
-        <button type="button" id="v162OpenMapBtn" class="secondary" onclick="alinV162OpenSelectedMap()" disabled>فتح الموقع على الخريطة</button>
-        <button type="button" id="v162ClearGpsBtn" class="secondary" onclick="alinV162ClearGps()" hidden>مسح الموقع</button>
-      </div>
-      <div id="v162GpsDetails" class="v162-gps-details" hidden></div>
-      <input type="hidden" id="deliveryLatitude"><input type="hidden" id="deliveryLongitude"><input type="hidden" id="deliveryLocationUrl"><input type="hidden" id="deliveryLocationAccuracy">
-      <p class="v162-gps-note">يلزم السماح للموقع من المتصفح. إذا تعذر تحديد GPS، اكتب العنوان الكامل وأقرب نقطة دالة بدقة.</p>
-    </section>`;
-  }
-  function enhanceDeliveryFields(){
-    const root=$('#checkoutBox'); if(!root)return;
-    const fields=$('#deliveryFields',root); if(!fields)return;
-    const oldArea=$('#deliveryArea',root);
-    if(oldArea && oldArea.tagName!=='SELECT'){
-      const select=document.createElement('select');select.id='deliveryArea';select.required=true;select.innerHTML=areaOptions(oldArea.value);
-      oldArea.replaceWith(select);
-    } else if(oldArea && oldArea.tagName==='SELECT' && oldArea.options.length<2){ oldArea.innerHTML=areaOptions(oldArea.value); }
-    const courier=$('#courierSelect',root); if(courier) courier.closest('label')?.remove(),courier.remove();
-    if(!$('#v162GpsBox',root)){
-      const grid=$('.form-grid',fields);
-      if(grid) grid.insertAdjacentHTML('afterend',gpsMarkup()); else fields.insertAdjacentHTML('beforeend',gpsMarkup());
-    }
-    restoreGpsState();
-  }
-  const stateKey='alin_v162_checkout_gps';
-  function saveGpsState(data){try{sessionStorage.setItem(stateKey,JSON.stringify(data))}catch(_){}}
-  function readGpsState(){try{return JSON.parse(sessionStorage.getItem(stateKey)||'null')}catch(_){return null}}
-  function restoreGpsState(){const s=readGpsState();if(s?.lat&&s?.lng)setGps(s.lat,s.lng,s.accuracy,false)}
-  function setGps(lat,lng,accuracy,store=true){
-    const la=$('#deliveryLatitude'),lo=$('#deliveryLongitude'),url=$('#deliveryLocationUrl'),acc=$('#deliveryLocationAccuracy');if(!la||!lo)return;
-    la.value=Number(lat).toFixed(7);lo.value=Number(lng).toFixed(7);url.value=mapUrl(la.value,lo.value);if(acc)acc.value=Math.round(Number(accuracy||0));
-    const status=$('#v162GpsStatus'),details=$('#v162GpsDetails'),open=$('#v162OpenMapBtn'),clear=$('#v162ClearGpsBtn');
-    if(status){status.textContent='تم تحديد الموقع';status.classList.add('is-set')}
-    if(details){details.hidden=false;details.innerHTML=`<span>خط العرض: <b>${esc(la.value)}</b></span><span>خط الطول: <b>${esc(lo.value)}</b></span>${accuracy?`<span>الدقة التقريبية: <b>${Math.round(accuracy)} متر</b></span>`:''}`}
-    if(open)open.disabled=false;if(clear)clear.hidden=false;if(store)saveGpsState({lat:la.value,lng:lo.value,accuracy:Number(accuracy||0)});
-  }
-  window.alinV162UseCurrentLocation=function(){
-    const status=$('#v162GpsStatus');
-    if(!navigator.geolocation){if(status)status.textContent='المتصفح لا يدعم GPS';return}
-    if(status){status.textContent='جاري تحديد الموقع...';status.classList.remove('is-set')}
-    navigator.geolocation.getCurrentPosition(p=>setGps(p.coords.latitude,p.coords.longitude,p.coords.accuracy),e=>{
-      if(status)status.textContent=e.code===1?'لم يتم السماح بالموقع':'تعذر تحديد الموقع';
-      if(typeof toast==='function')toast('تعذر تحديد GPS. اسمح للموقع أو اكتب العنوان ونقطة الدلالة بدقة.');
-    },{enableHighAccuracy:true,timeout:15000,maximumAge:30000});
-  };
-  window.alinV162OpenSelectedMap=function(){const u=$('#deliveryLocationUrl')?.value;if(u)window.open(u,'_blank','noopener')};
-  window.alinV162ClearGps=function(){['deliveryLatitude','deliveryLongitude','deliveryLocationUrl','deliveryLocationAccuracy'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});try{sessionStorage.removeItem(stateKey)}catch(_){};const st=$('#v162GpsStatus'),dt=$('#v162GpsDetails'),op=$('#v162OpenMapBtn'),cl=$('#v162ClearGpsBtn');if(st){st.textContent='غير محدد';st.classList.remove('is-set')}if(dt)dt.hidden=true;if(op)op.disabled=true;if(cl)cl.hidden=true};
-
-  function installCartHook(){
-    if(typeof window.openCart==='function'){
-      const old=window.openCart;window.openCart=function(){const r=old.apply(this,arguments);setTimeout(enhanceDeliveryFields,0);return r};
-    }
-    if(typeof window.toggleDeliveryFields==='function'){
-      const oldToggle=window.toggleDeliveryFields;window.toggleDeliveryFields=function(){const r=oldToggle.apply(this,arguments);setTimeout(enhanceDeliveryFields,0);return r};
-    }
-    document.addEventListener('change',e=>{if(e.target?.name==='fulfillment')setTimeout(enhanceDeliveryFields,0)});
-  }
-
-  function orderMapLink(o){
-    const lat=o.delivery_latitude||o.latitude||o.delivery_lat,lng=o.delivery_longitude||o.longitude||o.delivery_lng;
-    return o.delivery_location_url||o.location_url||mapUrl(lat,lng);
-  }
-  function decorateAdminDelivery(){
-    const rows=(window.db?.orders||[]).filter(o=>o.fulfillment_type==='home_delivery'||o.delivery_area);
-    $$('.v161-delivery-card').forEach((card,i)=>{const o=rows[i];if(!o)return;const url=orderMapLink(o);if(!url||$('.v162-map-link',card))return;const actions=$('.v161-delivery-actions',card)||card;actions.insertAdjacentHTML('afterbegin',`<a class="v162-map-link" href="${esc(url)}" target="_blank" rel="noopener">فتح موقع الطالب GPS</a>`)});
-  }
-  function decorateCourierOrders(){
-    const currentId=window.current?.id;
-    const rows=(window.db?.orders||[]).filter(o=>String(o.courier_id||o.delegate_id||'')===String(currentId));
-    $$('.v161-courier-orders>article').forEach(card=>{
-      const numText=$('small',card)?.textContent||'';const o=rows.find(x=>String(x.order_number||x.id)===numText.trim());if(!o)return;const url=orderMapLink(o);if(!url||$('.v162-map-link',card))return;const target=$('.v161-courier-order-actions',card)||card;target.insertAdjacentHTML('afterbegin',`<a class="v162-map-link" href="${esc(url)}" target="_blank" rel="noopener">فتح موقع الطالب</a>`)});
-  }
-  function installDashboardHooks(){
-    if(typeof window.renderDeliveryOrdersAdmin==='function'){const old=window.renderDeliveryOrdersAdmin;window.renderDeliveryOrdersAdmin=function(){const r=old.apply(this,arguments);setTimeout(decorateAdminDelivery,0);return r}}
-    if(typeof window.renderCourierDashboard==='function'){const old=window.renderCourierDashboard;window.renderCourierDashboard=function(){const r=old.apply(this,arguments);setTimeout(decorateCourierOrders,0);return r}}
-  }
-  function install(){installCartHook();installDashboardHooks();setTimeout(enhanceDeliveryFields,100)}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
-})();
-
-
-/* ===== admin/js/admin-courier-account-link-v163.js ===== */
-(function(){
-  'use strict';
-  const $ = (s,r=document)=>r.querySelector(s);
-  const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
-  const escx = v => typeof esc==='function' ? esc(v) : String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const oldAddAccount = window.addAccount;
-  const oldRenderAccounts = window.renderAccountsAdmin;
-  const oldAdminTab = window.adminTab;
-
-  function areaRows(){
-    const rows = Array.isArray(window.db?.delivery_areas) ? window.db.delivery_areas.filter(x=>x.active!==false) : [];
-    if(rows.length) return rows.map(x=>({id:x.id||x.name,name:x.name}));
-    return ['القادسية','الحرية','الإسكان','عرفة','رحيم آوه','شوراو','طريق بغداد','الواسطي','دوميز','بنجا علي','تسعين','حي النصر','حي النداء','الخضراء','المصلى','القورية','الشورجة','واحد حزيران','الحي العسكري','حي المعلمين','حي الجامعة','حي عدن','حي الزوراء'].map((name,i)=>({id:'K'+i,name}));
-  }
-
-  function patchAccountForm(){
-    const form = $('#v131AccountForm');
-    const role = $('#aRole');
-    if(!form || !role) return;
-
-    if(!role.querySelector('option[value="courier"]')){
-      const option=document.createElement('option');
-      option.value='courier';
-      option.textContent='مندوب';
-      role.appendChild(option);
-    }
-
-    const grid=form.querySelector('.form-grid');
-    if(grid && !$('#v163CourierAccountFields')){
-      const box=document.createElement('div');
-      box.id='v163CourierAccountFields';
-      box.className='v163-courier-account-fields';
-      box.hidden=true;
-      box.innerHTML=`
-        <div class="v163-courier-fields-title">
-          <div><b>بيانات المندوب</b><small>الحساب يُربط مباشرة بصفحة المندوب ونظام طلبات التوصيل.</small></div>
-          <span>صفحة المندوب</span>
-        </div>
-        <div class="form-grid v163-courier-fields-grid">
-          <input id="v163CourierPhone" inputmode="tel" placeholder="رقم هاتف المندوب">
-          <select id="v163CourierAvailability">
-            <option value="available">متاح</option>
-            <option value="busy">مشغول</option>
-            <option value="offline">غير متصل</option>
-          </select>
-        </div>
-        <h4>مناطق العمل في كركوك</h4>
-        <div id="v163CourierAreaPicker" class="v163-area-picker">
-          ${areaRows().map(a=>`<label><input type="checkbox" value="${escx(a.name)}"><span>${escx(a.name)}</span></label>`).join('')}
-        </div>
-        <p class="v163-account-note">بعد الحفظ يستطيع المندوب تسجيل الدخول من صفحة المندوب بنفس اسم المستخدم والرقم السري.</p>`;
-      grid.insertAdjacentElement('afterend',box);
-    }
-
-    const sync=()=>{
-      const courier=role.value==='courier';
-      const courierBox=$('#v163CourierAccountFields');
-      if(courierBox) courierBox.hidden=!courier;
-      const area=$('#aArea'), landmark=$('#aLandmark');
-      if(area){ area.hidden=courier; area.required=!courier; }
-      if(landmark){ landmark.hidden=courier; landmark.required=false; }
-      const title=form.querySelector('h3');
-      if(title) title.textContent=courier?'إضافة حساب مندوب':'إضافة حساب';
-    };
-    role.onchange=sync;
-    sync();
-  }
-
-  async function saveCourierFromAccount(){
-    if(window.ALINAuth?.createAccountFromAdmin) return window.ALINAuth.createAccountFromAdmin();
-    alert('خدمة إنشاء حساب المندوب الآمن غير جاهزة');
-  }
-
-  window.addAccount=async function(){
-    if($('#aRole')?.value==='courier') return saveCourierFromAccount();
-    if(typeof oldAddAccount==='function') return oldAddAccount.apply(this,arguments);
-  };
-
-  window.renderAccountsAdmin=function(){
-    const r=typeof oldRenderAccounts==='function'?oldRenderAccounts.apply(this,arguments):undefined;
-    patchAccountForm();
-    return r;
-  };
-
-  window.adminTab=function(tab){
-    const r=typeof oldAdminTab==='function'?oldAdminTab.apply(this,arguments):undefined;
-    if(tab==='accounts') patchAccountForm();
-    return r;
-  };
-
-  document.addEventListener('click',e=>{
-    const b=e.target.closest('.v131-add-account');
-    if(b) setTimeout(patchAccountForm,0);
-  });
-
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',patchAccountForm);
-  else patchAccountForm();
-})();
-
-
+// Alin module: core/security.js | v2.0.1
 /* ===== core/js/auth-security-v167.js ===== */
 /* ALIN V167 — login throttling, session expiry, and role guards. */
 (function(){
@@ -286,7 +86,6 @@
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
-
 
 /* ===== core/js/file-security-v168.js ===== */
 /* ALIN V168 — file upload and URL safety without changing current auth. */
@@ -475,20 +274,22 @@
   protectForms();
 })();
 
-
-/* ===== core/js/auth-mode-compatibility.js ===== */
+/* ===== core/js/legacy-auth-stabilizer-v173.js ===== */
 (function(){
   "use strict";
-  // Supabase Auth is installed by the final secure-auth module after the application loads.
-  // Keep this compatibility marker neutral so older layers cannot force legacy authentication.
+  // V173: keep the proven username/password login until final Supabase migration.
+  // This intentionally prevents experimental email-auth adapters from replacing legacy handlers.
+  if(window.ALIN_CONFIG?.authEnabled===true){
+    window.ALIN_AUTH_MODE = "pending-supabase";
+    return;
+  }
+  const legacyDoLogin = window.doLogin;
+  const legacyLogout = window.logout;
+  if (typeof legacyDoLogin === "function") window.doLogin = legacyDoLogin;
+  if (typeof legacyLogout === "function") window.logout = legacyLogout;
   if (window.ALIN_CONFIG?.authEnabled === true) window.ALIN_AUTH_MODE = "pending-supabase";
 })();
 
 
-/* ===== core/design/design-system.js ===== */
-(function(){
-  document.documentElement.classList.add('alin-design-v175');
-  function ready(){document.body?.classList.add('alin-ui-ready')}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready,{once:true});else ready();
-  document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;b.classList.add('alin-click');setTimeout(()=>b.classList.remove('alin-click'),180)});
-})();
+;
+

@@ -1,0 +1,35 @@
+html[data-alin-theme="dark"] body.store-mobile .alin-mobile-premium-header,
+html[data-alin-theme="dark"] body.store-mobile .alin98-bottom,
+html[data-alin-theme="dark"] body.store-mobile .alin-mobile-sheet{background:var(--ao-surface)!important;color:var(--ao-ink)!important;border-color:var(--ao-border)!important}
+html[data-alin-theme="dark"] body.store-mobile .mobile-search-premium label{background:#102a44!important;border-color:var(--ao-border)!important}
+html[data-alin-theme="dark"] body.store-mobile .alin-sheet-backdrop{background:rgba(1,8,16,.72)!important}
+
+/* The compiled mobile header declares these dimensions as important; this is its sole override owner. */
+body.store-mobile .mobile-header-actions{display:flex!important;align-items:center!important;gap:6px!important;margin:0!important;min-width:0!important}
+body.store-mobile .mobile-header-actions .mobile-header-icon-btn{display:grid!important;visibility:visible!important;opacity:1!important;place-items:center!important}
+/* Stable structural selectors replace the former mojibake aria-label selectors. */
+body.store-mobile .mobile-header-actions>.mobile-header-icon-btn:first-child{order:1!important;width:44px!important;min-width:44px!important;height:44px!important;padding:0!important;border-radius:14px!important;background:#fff8e7!important;border:1px solid #d7ad54!important;color:#0b3158!important}
+body.store-mobile .mobile-header-actions>.mobile-header-icon-btn:first-child small{display:none!important}
+body.store-mobile .mobile-header-actions>.mobile-header-icon-btn:first-child .mobile-bell-icon{display:block!important;width:22px!important;height:23px!important}
+body.store-mobile .mobile-header-actions>.mobile-header-icon-btn:first-child .mobile-bell-icon::before{border-color:#0b3158!important}
+body.store-mobile .mobile-header-actions>.mobile-header-icon-btn:first-child .mobile-bell-icon::after{background:#0b3158!important;box-shadow:0 -5px 0 -1px #0b3158!important}
+body.store-mobile .mobile-header-actions>.mobile-header-icon-btn:last-child{order:2!important;width:52px!important;min-width:52px!important}
+
+/* The injected mobile sheet carries inline geometry; keep its proven v1.3.6 bounds authoritative. */
+body.store-mobile .alin-mobile-sheet{right:10px!important;left:10px!important;width:auto!important;max-width:none!important;max-height:calc(100dvh - 20px)!important;overflow:auto!important;box-sizing:border-box!important;background:var(--ao-bg)!important;color:var(--ao-ink)!important;border-radius:22px 22px 12px 12px!important}
+body.store-mobile .alin-mobile-sheet .alin-sheet-head{position:sticky;top:0;z-index:3;background:var(--ao-bg)!important;padding-top:15px}
+body.store-mobile .alin-mobile-sheet .alin-options-sections{padding:14px 16px 24px}
+
+/* This button is injected dynamically with legacy inline presentation. */
+body.store-mobile .alin-v94-notification-button{display:grid!important;visibility:visible!important;opacity:1!important;place-items:center!important;order:1!important;width:44px!important;min-width:44px!important;height:44px!important;padding:0!important;border-radius:14px!important;background:#fff8e7!important;border:1px solid #d7ad54!important;color:#0b3158!important}
+body.store-mobile .alin-v94-notification-button small{display:none!important}
+body.store-mobile .alin-v94-notification-button .alin-v94-bell{display:block!important;position:relative!important;width:24px!important;height:24px!important;overflow:visible!important;font-size:0!important;color:transparent!important}
+body.store-mobile .alin-v94-notification-button .alin-v94-bell svg{display:block;width:23px;height:23px;fill:none;stroke:#0b3158;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body.store-mobile .alin-store-banners-v115{margin-inline:20px}
+
+@media(max-width:680px){
+  body.store-mobile .alin-store-banner-v115__strip{right:10px;left:10px;bottom:9px;min-height:34px;padding:7px 12px;border-radius:10px;font-size:13px}
+  body.store-mobile .alin-notifications-v120__panel{top:auto;right:10px;left:10px;bottom:10px;width:auto;max-height:72dvh;border-radius:22px 22px 13px 13px}
+  body.store-mobile .alin-notifications-v120__panel>header{padding:15px}
+  body.store-mobile .alin-notifications-v120__list{padding-bottom:max(10px,env(safe-area-inset-bottom))}
+}
