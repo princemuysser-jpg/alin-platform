@@ -1,4 +1,4 @@
-const VERSION='alin-v1.3.7-easy-edit';
+const VERSION='alin-v1.3.7-mobile-repair-2';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[
