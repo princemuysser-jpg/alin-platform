@@ -5,6 +5,7 @@
 ## الحالة
 
 - الإصدار: `2.0.3`
+- الموقع: [https://princemuysser-jpg.github.io/alin-platform/](https://princemuysser-jpg.github.io/alin-platform/)
 - الواجهة: HTML/CSS/JavaScript بدون خطوة build
 - الخلفية: Supabase Database, Auth, Storage وEdge Functions
 - الفحص المحلي: `npm test`
