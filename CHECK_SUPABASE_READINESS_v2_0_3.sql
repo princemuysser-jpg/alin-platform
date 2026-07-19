@@ -17,6 +17,7 @@ union all select 'table:orders', case when to_regclass('public.orders') is not n
 union all select 'table:delivery_areas', case when to_regclass('public.delivery_areas') is not null then 'OK' else 'MISSING' end, 'Required delivery areas table'
 union all select 'table:coupons', case when to_regclass('public.coupons') is not null then 'OK' else 'MISSING' end, 'Required coupons table'
 union all select 'table:banners', case when to_regclass('public.banners') is not null then 'OK' else 'MISSING' end, 'Required banners table'
+union all select 'view:alin_public_accounts', case when to_regclass('public.alin_public_accounts') is not null then 'OK' else 'MISSING' end, 'Safe public teacher and library directory'
 union all select 'function:alin_current_account_id()', case when to_regprocedure('public.alin_current_account_id()') is not null then 'OK' else 'MISSING' end, 'Current account helper'
 union all select 'function:alin_current_role()', case when to_regprocedure('public.alin_current_role()') is not null then 'OK' else 'MISSING' end, 'Current role helper'
 union all select 'function:alin_is_admin()', case when to_regprocedure('public.alin_is_admin()') is not null then 'OK' else 'MISSING' end, 'Admin permission helper'
