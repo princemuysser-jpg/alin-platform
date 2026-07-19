@@ -1,0 +1,17 @@
+{
+  "name": "متجر منصة آلين — الكمبيوتر",
+  "short_name": "آلين",
+  "description": "متجر آلين للملازم والقرطاسية والهدايا",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./store-desktop.html?view=desktop",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f5f7fb",
+  "theme_color": "#0b1830",
+  "icons": [
+    {"src":"./assets/icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"./assets/icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
+}
