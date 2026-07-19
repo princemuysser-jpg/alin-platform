@@ -1,9 +1,10 @@
-import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
+import { corsHeaders, isAllowedOrigin, jsonResponse } from '../_shared/cors.ts';
 import { cleanText, requireAdmin } from '../_shared/admin.ts';
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (req.method !== 'POST') return jsonResponse({ ok: false, error: 'الطريقة غير مسموحة' }, 405);
+  if (req.method === 'OPTIONS') return new Response(isAllowedOrigin(req) ? 'ok' : 'origin not allowed', { status: isAllowedOrigin(req) ? 200 : 403, headers: corsHeaders(req) });
+  if (!isAllowedOrigin(req)) return jsonResponse(req, { ok: false, error: 'المصدر غير مسموح' }, 403);
+  if (req.method !== 'POST') return jsonResponse(req, { ok: false, error: 'الطريقة غير مسموحة' }, 405);
 
   try {
     const { admin, caller } = await requireAdmin(req);
@@ -32,8 +33,8 @@ Deno.serve(async (req: Request) => {
       const { error: authDeleteError } = await admin.auth.admin.deleteUser(String(account.auth_user_id));
       if (authDeleteError) authWarning = 'تم حذف الحساب من قاعدة البيانات لكن تعذر حذف مستخدم Auth؛ راجعه من Authentication > Users';
     }
-    return jsonResponse({ ok: true, warning: authWarning || undefined });
+    return jsonResponse(req, { ok: true, warning: authWarning || undefined });
   } catch (error) {
-    return jsonResponse({ ok: false, error: error instanceof Error ? error.message : 'تعذر حذف الحساب' }, 400);
+    return jsonResponse(req, { ok: false, error: error instanceof Error ? error.message : 'تعذر حذف الحساب' }, 400);
   }
 });

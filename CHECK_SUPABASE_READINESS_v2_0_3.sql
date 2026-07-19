@@ -32,6 +32,26 @@ union all select 'function:alin_validate_coupon(text)',
   case when to_regprocedure('public.alin_validate_coupon(text)') is not null then 'OK' else 'MISSING' end,
   'Secure coupon validation RPC';
 
+insert into alin_readiness_result(item, status, details)
+select 'rls:' || c.relname,
+  case when c.relrowsecurity then 'OK' else 'MISSING' end,
+  'Row level security must be enabled'
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public'
+  and c.relname in ('accounts','booklets','products','orders','delivery_areas','coupons','banners');
+
+insert into alin_readiness_result(item, status, details)
+select 'privilege:anon_direct_order_insert',
+  case when has_table_privilege('anon','public.orders','INSERT') then 'MISSING' else 'OK' end,
+  'anon must create orders through RPC, not direct INSERT'
+where to_regclass('public.orders') is not null
+union all
+select 'privilege:anon_coupon_table_read',
+  case when has_table_privilege('anon','public.coupons','SELECT') then 'MISSING' else 'OK' end,
+  'anon must validate coupons through RPC, not read the table'
+where to_regclass('public.coupons') is not null;
+
 -- Detailed results
 select item, status, details
 from alin_readiness_result
