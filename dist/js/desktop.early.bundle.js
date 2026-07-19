@@ -193,27 +193,24 @@ async function load(){
     db.accounts={teachers:accounts.filter(x=>x.role==='teacher'),libraries:accounts.filter(x=>x.role==='library')};
     db.booklets=booklets; db.products=products; db.categories=categories; db.banners=banners; db.orders=orders.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')); db.permits=permits; db.ledger=ledger; db.withdrawals=withdrawals; db.audit=auditRows.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')); db.settings={storeType:'booklet'};
     settingsRows.forEach(x=>db.settings[x.key]=x.value);
-    if(!db.accounts.teachers.length && !db.accounts.libraries.length) await seedData();
     renderAll();
   }catch(e){ console.error(e); if(current?.role==='admin') alert('تعذر تحميل بيانات النظام، تم تثبيت الواجهة بدون إيقاف.'); }
 }
 async function seedData(){
-  await insert('accounts',{id:'T1',role:'teacher',name:'ميسر صلاح الدين',username:'0770',password_hash:'1234',area:'كركوك',landmark:'',status:'active'});
-  await insert('accounts',{id:'L1',role:'library',name:'مكتبة آلين',username:'LIB1',password_hash:'1234',area:'كركوك',landmark:'قرب المركز',status:'active'});
-  await insert('booklets',{id:'B1',title:'ملزمة الفيزياء',teacher_id:'T1',subject:'الفيزياء',grade:'السادس الإعدادي',price:10000,status:'published'});
-  await insert('banners',{id:'AD1',title:'أهلاً بكم في منصة آلين',text:'تصاميم وملازم وقرطاسية بجودة عالية وأسعار مناسبة',active:1});
-  await audit('system','تهيئة بيانات أولية');
+  throw new Error('تم تعطيل إنشاء الحسابات التجريبية في إصدار الأمان 1.3.9');
 }
 
 function showLogin(role){ pendingRole=role; loginForm.classList.remove('hidden'); loginMsg.textContent=''; loginU.value=''; loginPass.value=''; }
 async function doLogin(){
   const u=loginU.value.trim(), p=loginPass.value.trim();
   if(pendingRole==='admin'){
-    if(u==='admin' && p==='1234'){ current={role:'admin',name:'منصة آلين'}; openPage('admin'); return; }
     loginMsg.textContent='بيانات الدخول غير صحيحة'; return;
   }
   const list = pendingRole==='teacher'?db.accounts.teachers:db.accounts.libraries;
-  const a=list.find(x=>x.username===u && x.password_hash===p && x.status==='active');
+  let a=null;
+  for(const account of list){
+    if(account.username===u && account.status==='active' && await accountPassOk(account,p)){a=account;break}
+  }
   if(!a){ loginMsg.textContent='بيانات الدخول غير صحيحة'; return; }
   current={role:pendingRole,id:a.id,name:a.name,username:a.username}; openPage(pendingRole);
 }
@@ -272,7 +269,7 @@ async function requestWithdraw(role){ try{ const amount=+(role==='teacher'?teach
 function adminStatsRender(){ if(!window.adminStats||!db.ledger)return; adminStats.innerHTML=`<div><b>الحسابات</b><span>${db.accounts.teachers.length+db.accounts.libraries.length}</span></div><div><b>الملازم</b><span>${db.booklets.length}</span></div><div><b>الطلبات</b><span>${db.orders.length}</span></div><div><b>دخل آلين</b><span>${money(db.ledger.reduce((a,x)=>a+(+x.alin||0),0))} د.ع</span></div>`; }
 function adminTab(t){ adminStatsRender(); if(t==='accounts')return renderAccountsAdmin(); if(t==='booklets')return renderBookletsAdmin(); if(t==='products')return renderProductsAdmin(); if(t==='categories')return renderCategoriesAdmin(); if(t==='orders')return renderOrdersAdmin(); if(t==='finance')return renderFinanceAdmin(); if(t==='ads')return renderAdsAdmin(); if(t==='settings')return renderSettingsAdmin(); if(t==='audit')adminContent.innerHTML='<h2>سجل العمليات</h2>'+db.audit.map(x=>`<div class="row"><div><b>${x.text}</b><small>${x.created_at||''}</small></div><span>${x.kind}</span></div>`).join(''); }
 function renderAccountsAdmin(){ adminContent.innerHTML=`<h2>الحسابات</h2><div class="form-grid"><select id="aRole"><option value="teacher">مدرس</option><option value="library">مكتبة</option></select><input id="aName" placeholder="الاسم"><input id="aUser" placeholder="اليوزر"><input id="aPass" placeholder="الرمز"><input id="aArea" placeholder="المنطقة"><input id="aLandmark" placeholder="أقرب نقطة"><button onclick="addAccount()">إضافة</button></div><h3>المدرسين</h3>${db.accounts.teachers.map(x=>`<div class="row"><div><b>${x.name}</b><small>${x.username} — ${x.area||''}</small></div><span>${x.status}</span></div>`).join('')}<h3>المكتبات</h3>${db.accounts.libraries.map(x=>`<div class="row"><div><b>${x.name}</b><small>${x.username} — ${x.area||''} — ${x.landmark||''}</small></div><span>${x.status}</span></div>`).join('')}`; }
-async function addAccount(){ try{ await insert('accounts',{id:uid(aRole.value==='teacher'?'T':'L'),role:aRole.value,name:aName.value,username:aUser.value,password_hash:aPass.value,area:aArea.value,landmark:aLandmark.value,status:'active'}); await audit('account','إضافة حساب '+aName.value); await load(); renderAccountsAdmin(); }catch(e){ alert(e.message); } }
+async function addAccount(){ try{ await insert('accounts',{id:uid(aRole.value==='teacher'?'T':'L'),role:aRole.value,name:aName.value,username:aUser.value,password_hash:await sha256Text(aPass.value),area:aArea.value,landmark:aLandmark.value,status:'active'}); await audit('account','إضافة حساب '+aName.value); await load(); renderAccountsAdmin(); }catch(e){ alert(e.message); } }
 
 function renderBookletsAdmin(){ adminContent.innerHTML=`<h2>الملازم</h2><form id="bookForm" class="form-grid"><input name="title" placeholder="اسم الملزمة"><select name="teacherId">${db.accounts.teachers.map(x=>`<option value="${x.id}">${x.name}</option>`).join('')}</select><input name="subject" placeholder="المادة"><input name="grade" placeholder="الصف"><input name="price" type="number" placeholder="السعر"><label>غلاف<input name="cover" type="file" accept="image/*"></label><label>صورة المدرس<input name="teacherImage" type="file" accept="image/*"></label><label>ملف PDF الحقيقي<input name="bookletFile" type="file" accept=".pdf" required></label><button type="button" onclick="uploadBooklet()">رفع ونشر</button></form>${db.booklets.map(x=>`<div class="row"><div><b>${esc(x.title)}</b><small>${teacherName(x.teacher_id)} — ${esc(x.file_name||'')} — ${esc(x.status||'')}</small></div><div class="row-actions"><button onclick="setBookStatus('${x.id}','${x.status==='published'?'hidden':'published'}')">${x.status==='published'?'إخفاء':'إظهار'}</button><button onclick="setBookStatus('${x.id}','archived')">أرشفة</button><button class="danger" onclick="deleteBooklet('${x.id}')">حذف</button></div></div>`).join('')||emptyState('لا توجد ملازم')}`; }
 async function uploadBooklet(){
@@ -354,7 +351,7 @@ renderAccountsAdmin = function(){
   const rows = list => list.length ? list.map(x=>`<div class="row"><div><b>${esc(x.name)}</b><small>${esc(x.username)} — ${esc(x.area||'')}${x.landmark?' — '+esc(x.landmark):''}</small></div><div class="row-actions"><button class="secondary" onclick="editAccount('${x.id}')">تعديل</button><button onclick="toggleAccount('${x.id}','${x.status==='active'?'disabled':'active'}')">${x.status==='active'?'إيقاف':'تفعيل'}</button><button class="danger" onclick="deleteAccount('${x.id}')">حذف</button></div></div>`).join('') : emptyState('لا توجد حسابات');
   adminContent.innerHTML=`<h2>الحسابات</h2><div class="form-grid"><select id="aRole"><option value="teacher">مدرس</option><option value="library">مكتبة</option></select><input id="aName" placeholder="الاسم"><input id="aUser" placeholder="اسم الدخول"><input id="aPass" placeholder="الرمز السري"><input id="aArea" placeholder="المنطقة"><input id="aLandmark" placeholder="أقرب نقطة"><button onclick="addAccount()">إضافة حساب</button></div><h3>المدرسون</h3>${rows(db.accounts.teachers)}<h3>المكتبات</h3>${rows(db.accounts.libraries)}`;
 }
-addAccount = async function(){ try{ if(!aName.value.trim()||!aUser.value.trim()||!aPass.value.trim())throw new Error('أكمل الاسم واسم الدخول والرمز'); await insert('accounts',{id:uid(aRole.value==='teacher'?'T':'L'),role:aRole.value,name:aName.value.trim(),username:aUser.value.trim(),password_hash:aPass.value,status:'active',area:aArea.value.trim(),landmark:aLandmark.value.trim()}); await audit('account','إضافة حساب '+aName.value); await load(); renderAccountsAdmin(); toast('تمت إضافة الحساب'); }catch(e){alert(e.message)} }
+addAccount = async function(){ try{ if(!aName.value.trim()||!aUser.value.trim()||!aPass.value.trim())throw new Error('أكمل الاسم واسم الدخول والرمز'); await insert('accounts',{id:uid(aRole.value==='teacher'?'T':'L'),role:aRole.value,name:aName.value.trim(),username:aUser.value.trim(),password_hash:await sha256Text(aPass.value),status:'active',area:aArea.value.trim(),landmark:aLandmark.value.trim()}); await audit('account','إضافة حساب '+aName.value); await load(); renderAccountsAdmin(); toast('تمت إضافة الحساب'); }catch(e){alert(e.message)} }
 async function editAccount(id){ const x=[...db.accounts.teachers,...db.accounts.libraries].find(a=>a.id===id); if(!x)return; const name=prompt('الاسم',x.name); if(name===null)return; const username=prompt('اسم الدخول',x.username); if(username===null)return; const area=prompt('المنطقة',x.area||''); if(area===null)return; const landmark=x.role==='library'?prompt('أقرب نقطة',x.landmark||''):x.landmark; await update('accounts',{name:name.trim(),username:username.trim(),area:area.trim(),landmark:landmark||''},{id}); await audit('account','تعديل حساب '+id); await load(); renderAccountsAdmin(); toast('تم تعديل الحساب'); }
 async function toggleAccount(id,status){ await update('accounts',{status},{id}); await load(); renderAccountsAdmin(); toast(status==='active'?'تم تفعيل الحساب':'تم إيقاف الحساب'); }
 async function deleteAccount(id){ if(!confirm('حذف الحساب نهائياً؟'))return; try{ await removeRow('accounts',{id}); await audit('account','حذف حساب '+id); await load(); renderAccountsAdmin(); toast('تم حذف الحساب'); }catch(e){alert('تعذر الحذف: '+e.message)} }
@@ -821,6 +818,17 @@ async function sha256Text(text){
   }
   return 'plain:'+text;
 }
+async function accountPassOk(account,pass){
+  const saved=String(account?.password_hash||'');
+  if(!saved) return false;
+  const digest=await sha256Text(pass);
+  if(saved===digest) return true;
+  if(saved===pass){
+    try{await update('accounts',{password_hash:digest},{id:account.id});account.password_hash=digest}catch(_){}
+    return true;
+  }
+  return false;
+}
 async function settingsSet(key,value){
   const exists=(await query('settings')).find(x=>x.key===key);
   if(exists) await update('settings',{value},{key}); else await insert('settings',{key,value});
@@ -828,7 +836,7 @@ async function settingsSet(key,value){
 function adminUser(){return db.settings.admin_username||'admin'}
 async function adminPassOk(pass){
   const saved=db.settings.admin_password_hash;
-  if(!saved) return pass==='1234';
+  if(!saved) return false;
   return (await sha256Text(pass))===saved;
 }
 const _doLoginV27=doLogin;
@@ -6924,30 +6932,8 @@ window.addEventListener('load',()=>{
     const open=libraryOpen(lib);
     box.innerHTML=`<div class="alin-library-status"><div><b>${escf(lib.name||'مكتبة')}</b><small>${escf([lib.area,lib.landmark].filter(Boolean).join(' — '))}</small></div><span class="${open?'is-open':'is-closed'}">${open?'مفتوح':'مغلق'}</span></div>`;
   };
-  function librarySection(){
-    return `<div class="form-grid"><input id="studentName" placeholder="اسم الطالب الكامل"><input id="studentPhone" placeholder="رقم الهاتف"></div>${compactFulfillmentHtml()}`;
-  }
-  function emptyCartHtml(){
-    return `<div class="alin-cart-main"><div class="alin-cart-empty"><div class="alin-empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.1a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L20.5 8H7"/><circle cx="10" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/></svg></div><h3>السلة فارغة حالياً</h3><p>أضف ملازمك أو قرطاسيتك المفضلة، وبعدها ارجع هنا لإتمام الطلب بسرعة.</p><button type="button" onclick="closeCheckout();document.getElementById('storeGrid')?.scrollIntoView({behavior:'smooth'})">تصفح المتجر</button></div></div><aside class="alin-cart-side"><h3>ملخص الطلب</h3><div class="alin-summary-card"><div class="alin-summary-rows"><div><span>عدد المواد</span><b>0</b></div><div><span>الإجمالي</span><b>0 د.ع</b></div></div><div class="alin-cart-note">عند إضافة أي مادة ستظهر هنا تفاصيل الطلب والكوبون وبيانات الاستلام.</div></div></aside>`;
-  }
-  function renderProfessionalCart(){
-    if(!window.checkoutBox || !window.checkoutModal) return;
-    const items = (typeof cart !== 'undefined' && Array.isArray(cart)) ? cart : [];
-    const total = cartTotal();
-    const count = items.reduce((a,x)=>a + Math.max(1,num(x.qty)),0);
-    const itemsHtml = items.map((line,i)=>{
-      const source = itemLookup(line), img = imageFor(source), qty = Math.max(1,num(line.qty)), lineTotal = num(line.price) * qty;
-      return `<article class="alin-cart-item"><div class="alin-cart-thumb" data-kind="${escf(line.kind)}">${img ? `<img src="${escf(img)}" alt="${escf(line.title)}">` : `${kindIcon(line.kind)}`}</div><div class="alin-cart-info"><h3 class="alin-cart-title">${escf(line.title)}</h3><div class="alin-cart-meta"><span class="alin-cart-chip">${kindLabel(line.kind)}</span><span class="alin-cart-chip">سعر القطعة: ${moneyf(line.price)} د.ع</span></div><div class="alin-cart-price">${moneyf(lineTotal)} د.ع</div></div><div class="alin-cart-controls"><div class="alin-qty-box"><button type="button" aria-label="تقليل الكمية" onclick="alinCartQty(${i},-1)">−</button><b>${qty}</b><button type="button" aria-label="زيادة الكمية" onclick="alinCartQty(${i},1)">+</button></div><button type="button" class="alin-remove-btn" onclick="alinCartRemove(${i})">حذف من السلة</button></div></article>`;
-    }).join('');
-    const html = `<div class="alin-cart-shell"><section class="alin-cart-main"><div class="alin-cart-head"><div><h2>سلة آلين</h2><p>راجع المواد والكميات قبل تأكيد الطلب.</p></div><span class="alin-cart-badge">${count}</span></div><div class="alin-cart-list">${itemsHtml}</div></section><aside class="alin-cart-side"><h3>ملخص الطلب</h3><div class="alin-summary-card"><div class="alin-summary-rows"><div><span>عدد المواد</span><b>${count}</b></div><div><span>المجموع الفرعي</span><b>${moneyf(total)} د.ع</b></div></div><div class="alin-summary-total"><div>الإجمالي النهائي</div><b>${moneyf(total)} د.ع</b></div><div class="coupon-box"><input id="couponInput" placeholder="أدخل كود الخصم"><button type="button" onclick="alinApplyCoupon()">تطبيق</button></div><div id="couponMsg"></div><div class="alin-cart-form"><h4>بيانات الطالب والاستلام</h4>${librarySection()}</div><button type="button" class="alin-cart-submit" onclick="${checkoutButtonName()}">تأكيد الطلب الآن</button></div></aside></div>`;
-    checkoutBox.innerHTML = items.length ? html : `<div class="alin-cart-shell">${emptyCartHtml()}</div>`;
-    checkoutModal.classList.remove('hidden');
-    const close = document.querySelector('#checkoutModal .x');
-    if(close){ close.textContent='إغلاق'; close.setAttribute('aria-label','إغلاق السلة'); }
-    setTimeout(()=>{ try{ alinSyncDeliveryCards(); alinShowLibraryStatus(); }catch(e){} },0);
-  }
-  window.alinCartQty = function(i,d){ if(typeof window.cartQty==='function'){ window.cartQty(i,d); } else { const items=(typeof cart !== 'undefined'&&Array.isArray(cart))?cart:[]; if(!items[i]) return; items[i].qty=Math.max(1,num(items[i].qty)+d); if(typeof cartSave==='function') cartSave(); updateCartCounters(); renderProfessionalCart(); } };
-  window.alinCartRemove = function(i){ if(typeof window.cartRemove==='function'){ window.cartRemove(i); } else { const items=(typeof cart !== 'undefined'&&Array.isArray(cart))?cart:[]; if(!items[i]) return; items.splice(i,1); if(typeof cartSave==='function') cartSave(); updateCartCounters(); renderProfessionalCart(); } };
+  window.alinCartQty = function(i,d){ if(typeof window.cartQty==='function'){ window.cartQty(i,d); } };
+  window.alinCartRemove = function(i){ if(typeof window.cartRemove==='function'){ window.cartRemove(i); } };
   window.alinApplyCoupon = function(){ if(typeof window.checkCoupon==='function') window.checkCoupon(); };
 
   function updateCartCounters(){
