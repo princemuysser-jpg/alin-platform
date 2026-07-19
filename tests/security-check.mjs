@@ -37,6 +37,10 @@ for (const required of [
 ]) {
   if (!sql.toLowerCase().includes(required.toLowerCase())) failures.push(`SQL hardening missing: ${required}`);
 }
+if (!sql.includes("view public.alin_public_accounts")) failures.push("Safe public account catalog view is missing");
+if (/alin_public_accounts[\s\S]{0,300}(username|auth_user_id|password_hash)/i.test(sql)) {
+  failures.push("Public account catalog exposes authentication fields");
+}
 
 const cloud = read("modules/core/cloud-status-ui.js");
 if (!cloud.includes("window.confirmCheckout=secureCheckout")) failures.push("Direct checkout does not use secure RPC");
@@ -47,5 +51,5 @@ if (/status==='processing'.{0,300}stock:Math\.max/.test(platform)) {
   failures.push("Order status transition still deducts stock a second time");
 }
 
-console.log(JSON.stringify({ checks: 18, failures }, null, 2));
+console.log(JSON.stringify({ checks: 20, failures }, null, 2));
 process.exit(failures.length ? 1 : 0);
