@@ -1,6 +1,7 @@
-/* ALIN 1.1.6 - standalone public storefront banner */
+/* Legacy storefront banner disabled: src/features/banners owns the single live banner. */
 (function(){
   'use strict';
+  return;
   const URL='https://jyavewwlgiaibtdqyzpd.supabase.co';
   const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5YXZld3dsZ2lhaWJ0ZHF5enBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0MTczMzcsImV4cCI6MjA5ODk5MzMzN30.fcjx4JrNdwd5Xrm_Nn1CaWWJoJLF6_DyYGakFPuGwGQ';
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -58,7 +59,7 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 
-/* ALIN 1.2.3 - storefront notification center, bundled with the proven banner bridge */
+/* ALIN 1.2.3 - storefront notification center */
 (function(){
   'use strict';
   const api='https://jyavewwlgiaibtdqyzpd.supabase.co';

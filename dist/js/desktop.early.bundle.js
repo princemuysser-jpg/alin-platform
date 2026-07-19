@@ -9,7 +9,7 @@ window.ALIN_CONFIG = Object.freeze({
   mobilePage: './store-mobile.html',
   currency: 'د.ع',
   locale: 'ar-IQ'
-  ,authEnabled: true
+  ,authEnabled: false
   ,authEmailDomain: 'users.alin.local'
 });
 

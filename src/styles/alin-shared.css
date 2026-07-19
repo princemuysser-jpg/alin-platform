@@ -41,7 +41,10 @@ html[data-alin-theme="dark"] body .book-card small{color:var(--ao-muted)!importa
 /* The storefront keeps synchronising, but does not expose its technical cloud badge. */
 body.store-mobile .alin-cloud-status,
 body.store-mobile .alin-cloud-rc53,
-body.store-mobile #alinCloudRc53{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+body.store-mobile #alinCloudRc53,
+body.store-desktop .alin-cloud-status,
+body.store-desktop .alin-cloud-rc53,
+body.store-desktop #alinCloudRc53{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
 
 .alin-options-backdrop{position:fixed;inset:0;background:rgba(3,15,28,.58);z-index:9998;animation:aoFade .18s ease}
 .alin-options-dialog,.alin-contact-dialog{position:fixed;z-index:9999;top:50%;left:50%;transform:translate(-50%,-50%);width:min(510px,calc(100vw - 32px));max-height:min(780px,calc(100dvh - 32px));overflow:auto;box-sizing:border-box;background:var(--ao-bg);color:var(--ao-ink);border:1px solid var(--ao-border);border-radius:22px;box-shadow:var(--ao-shadow);animation:aoEnter .22s cubic-bezier(.2,.8,.2,1)}
