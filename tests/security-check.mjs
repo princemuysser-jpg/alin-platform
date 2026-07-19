@@ -23,6 +23,10 @@ for (const name of ["create", "update", "delete", "reset-password"]) {
   if (!source.includes("isAllowedOrigin(req)")) failures.push(`${folder}: missing origin validation`);
 }
 
+const resetPassword = read("supabase/functions/admin-reset-password/index.ts");
+if (!resetPassword.includes("emailForUsername(username)")) failures.push("Legacy password reset does not create an Auth identity");
+if (!resetPassword.includes("auth_user_id: created.user.id")) failures.push("Legacy password reset does not link the Auth identity");
+
 const sql = read("RUN_ON_SUPABASE_v2_0_3_IDEMPOTENT.sql");
 for (const required of [
   "security definer",
@@ -43,5 +47,5 @@ if (/status==='processing'.{0,300}stock:Math\.max/.test(platform)) {
   failures.push("Order status transition still deducts stock a second time");
 }
 
-console.log(JSON.stringify({ checks: 16, failures }, null, 2));
+console.log(JSON.stringify({ checks: 18, failures }, null, 2));
 process.exit(failures.length ? 1 : 0);
