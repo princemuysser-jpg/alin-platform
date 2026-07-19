@@ -1,4 +1,4 @@
-/* ALIN 2.0.3 — storefront banner bridge */
+/* ALIN 2.0.4 — storefront banner bridge */
 (function(){
   'use strict';
   const state={rows:[],index:0,timer:null,installed:false};

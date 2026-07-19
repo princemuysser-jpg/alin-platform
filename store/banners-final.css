@@ -27,3 +27,19 @@
 #bannerBox,.legacy-banner-box{display:none!important}
 #alinStoreBanners{position:relative;z-index:2;margin-top:12px;margin-bottom:14px}
 #alinStoreBanners .alin-store-banner__image{display:block;background:#e2e8f0}
+
+/* ALIN 2.0.4: keep uploaded banner image above the card background. */
+.alin-store-banner__image{
+  z-index:0!important;
+}
+.alin-store-banner::after{
+  z-index:1!important;
+}
+.alin-store-banner__content{
+  position:relative;
+  z-index:2!important;
+}
+.alin-store-banner__dots{
+  position:relative;
+  z-index:3;
+}
