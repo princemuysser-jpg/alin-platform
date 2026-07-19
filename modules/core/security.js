@@ -1,4 +1,4 @@
-// Alin module: core/security.js | v2.0.1
+// Alin module: core/security.js | v2.0.3
 /* ===== core/js/auth-security-v167.js ===== */
 /* ALIN V167 — login throttling, session expiry, and role guards. */
 (function(){

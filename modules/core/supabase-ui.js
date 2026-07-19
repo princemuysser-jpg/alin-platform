@@ -1,4 +1,4 @@
-// Alin module: core/supabase-ui.js | v2.0.1
+// Alin module: core/supabase-ui.js | v2.0.3
 /* ===== core/js/supabase-ui-binding-rc5-3.js ===== */
 /* منصة آلين RC5.3 - ربط الواجهة النهائي مع Supabase
    هذه الطبقة تُحمّل بعد جميع وحدات المنصة حتى تكون آخر طبقة مسؤولة عن:

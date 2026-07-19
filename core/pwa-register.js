@@ -1,4 +1,4 @@
-/* ALIN 2.0.1 — safe PWA registration */
+/* ALIN 2.0.3 — safe PWA registration */
 (function(){
   'use strict';
 try{localStorage.removeItem('alin_v121_accountant_pass');localStorage.removeItem('alin_v121_accountant_user')}catch(_){}

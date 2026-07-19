@@ -1,4 +1,4 @@
-// Alin module: admin/products.js | v2.0.1
+// Alin module: admin/products.js | v2.0.3
 /* ===== admin/js/admin-products-v129.js ===== */
 (function(){
   const state={q:'',type:'',status:'',stock:'',price:'',sort:'newest'};

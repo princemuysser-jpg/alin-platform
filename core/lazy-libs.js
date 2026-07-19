@@ -1,4 +1,4 @@
-/* ALIN 2.0.1 - Load optional libraries only when a feature needs them. */
+/* ALIN 2.0.3 - Load optional libraries only when a feature needs them. */
 (function(){
   const MAMMOTH_URL='https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js';
   let mammothPromise=null;

@@ -1,4 +1,4 @@
-// Alin module: library/printing.js | v2.0.1
+// Alin module: library/printing.js | v2.0.3
 /* ===== library/js/print-canvas-v119.js ===== */
 /* V119: protected in-app PDF canvas preview. No native PDF viewer and no download toolbar. */
 (function(){

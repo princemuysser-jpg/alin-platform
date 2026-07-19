@@ -1,4 +1,4 @@
-// Alin module: admin/marketing.js | v2.0.1
+// Alin module: admin/marketing.js | v2.0.3
 /* ===== admin/js/admin-marketing-v140.js ===== */
 (function(){
   let editingBannerId=null, editingCouponId=null;

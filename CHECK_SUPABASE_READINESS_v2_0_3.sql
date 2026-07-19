@@ -1,4 +1,4 @@
--- ALIN v2.0.2 — corrected read-only readiness check
+-- ALIN v2.0.3 — corrected read-only readiness check
 -- Safe to run in Supabase SQL Editor. It does not modify any data.
 
 create temporary table if not exists alin_readiness_result (
@@ -41,7 +41,7 @@ order by case status when 'MISSING' then 0 else 1 end, item;
 select
   case
     when count(*) filter (where status = 'MISSING') = 0
-      then 'ALIN v2.0.2 readiness check passed'
+      then 'ALIN v2.0.3 readiness check passed'
     else 'ALIN readiness failed — missing items: ' ||
       string_agg(item, ', ' order by item) filter (where status = 'MISSING')
   end as result

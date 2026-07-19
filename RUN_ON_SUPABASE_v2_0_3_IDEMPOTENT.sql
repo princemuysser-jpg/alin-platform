@@ -1,4 +1,4 @@
--- منصة آلين v2.0.1 — إغلاق صلاحيات anon الخطرة
+-- منصة آلين v2.0.3 — إغلاق صلاحيات anon الخطرة وتقوية إنشاء الطلبات
 -- شغّل هذا الملف مرة واحدة من Supabase > SQL Editor بعد التأكد أن حساب المدير مربوط في accounts.auth_user_id.
 
 begin;
@@ -297,9 +297,14 @@ declare
   v_index integer := 0;
   v_customer_name text := btrim(coalesce(p_customer->>'name',''));
   v_customer_phone text := btrim(coalesce(p_customer->>'phone',''));
+  v_area jsonb;
+  v_requested_area text := btrim(coalesce(p_fulfillment->>'delivery_area',''));
 begin
   if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items)=0 then
     raise exception 'السلة فارغة';
+  end if;
+  if jsonb_array_length(p_items)>50 then
+    raise exception 'عدد عناصر السلة أكبر من الحد المسموح';
   end if;
   if v_customer_name='' or v_customer_phone='' then
     raise exception 'أكمل اسم الطالب ورقم الهاتف';
@@ -308,8 +313,32 @@ begin
     raise exception 'بيانات الزبون غير صحيحة';
   end if;
 
-  -- لا نثق برسوم مرسلة من المتصفح. نسمح بقيمة موجبة محدودة فقط لحين ربط جدول المناطق.
-  v_delivery_fee := least(greatest(coalesce((p_fulfillment->>'delivery_fee')::numeric,0),0),100000);
+  -- لا نثق بأي رسوم يرسلها المتصفح. الرسوم تؤخذ من جدول المناطق حصراً.
+  v_delivery_fee := 0;
+  if coalesce(p_fulfillment->>'fulfillment_type','')='home_delivery' then
+    if v_requested_area='' then
+      raise exception 'اختر منطقة التوصيل';
+    end if;
+    execute $q$
+      select to_jsonb(a)
+      from public.delivery_areas a
+      where a.id::text=$1
+         or lower(coalesce(to_jsonb(a)->>'name',to_jsonb(a)->>'area',''))=lower($1)
+      limit 1
+    $q$ into v_area using v_requested_area;
+    if v_area is null then
+      raise exception 'منطقة التوصيل غير معتمدة';
+    end if;
+    if coalesce(v_area->>'status','active') not in ('active','available','published') then
+      raise exception 'منطقة التوصيل غير متاحة حالياً';
+    end if;
+    v_delivery_fee := least(greatest(coalesce(
+      nullif(v_area->>'delivery_fee','')::numeric,
+      nullif(v_area->>'fee','')::numeric,
+      nullif(v_area->>'price','')::numeric,
+      0
+    ),0),100000);
+  end if;
 
   for v_item in select value from jsonb_array_elements(p_items)
   loop

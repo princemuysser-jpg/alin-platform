@@ -1,4 +1,4 @@
-// Alin module: courier/dashboard.js | v2.0.1
+// Alin module: courier/dashboard.js | v2.0.3
 /* ===== courier/js/courier.js ===== */
 /* V111: actual courier code moved from core/js/platform-legacy.js */
 window.AlinCourierModules=window.AlinCourierModules||{};

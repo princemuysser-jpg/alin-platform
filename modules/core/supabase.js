@@ -1,4 +1,4 @@
-// Alin module: core/supabase.js | v2.0.1
+// Alin module: core/supabase.js | v2.0.3
 /* ===== core/js/supabase-final-integration-rc5.js ===== */
 /* منصة آلين RC5 - طبقة الربط النهائي مع Supabase
    - تحافظ على التوافق مع الواجهة الحالية.

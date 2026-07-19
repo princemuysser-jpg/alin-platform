@@ -1,4 +1,4 @@
-// Alin module: teacher/shell.js | v2.0.1
+// Alin module: teacher/shell.js | v2.0.3
 /* ===== teacher/js/teacher-shell.js ===== */
 /* V111: actual teacher code moved from core/js/platform-legacy.js */
 window.AlinTeacherModules=window.AlinTeacherModules||{};

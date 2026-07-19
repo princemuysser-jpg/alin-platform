@@ -1,4 +1,4 @@
-// Alin module: admin/booklets.js | v2.0.1
+// Alin module: admin/booklets.js | v2.0.3
 /* ===== admin/js/admin-booklets-v127.js ===== */
 
 (function(){

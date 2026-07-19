@@ -1,8 +1,8 @@
-// Alin module: core/config.js | v2.0.1
+// Alin module: core/config.js | v2.0.3
 /* ===== core/js/config.js ===== */
-/* ALIN 2.0.1 central configuration. Keep secrets outside the repository. */
+/* ALIN 2.0.3 central configuration. Keep secrets outside the repository. */
 window.ALIN_CONFIG = Object.freeze({
-  version: '2.0.1',
+  version: '2.0.3',
   desktopPage: './store-desktop.html',
   mobilePage: './store-mobile.html',
   currency: 'د.ع',
@@ -23,4 +23,3 @@ window.Alin.helpers = {
 
 
 ;
-

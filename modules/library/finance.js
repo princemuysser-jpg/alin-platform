@@ -1,4 +1,4 @@
-// Alin module: library/finance.js | v2.0.1
+// Alin module: library/finance.js | v2.0.3
 /* ===== library/js/finance.js ===== */
 /* V111: actual library code moved from core/js/platform-legacy.js */
 window.AlinLibraryModules=window.AlinLibraryModules||{};

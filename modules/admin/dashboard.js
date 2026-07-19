@@ -1,4 +1,4 @@
-// Alin module: admin/dashboard.js | v2.0.1
+// Alin module: admin/dashboard.js | v2.0.3
 /* ===== admin/js/admin-dashboard-v122.js ===== */
 
 (function(){

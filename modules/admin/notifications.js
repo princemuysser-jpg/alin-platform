@@ -1,4 +1,4 @@
-// Alin module: admin/notifications.js | v2.0.1
+// Alin module: admin/notifications.js | v2.0.3
 /* ===== admin/js/admin-notifications-v146.js ===== */
 (function(){
   'use strict';

@@ -1,4 +1,4 @@
-// Alin module: admin/accounts.js | v2.0.1
+// Alin module: admin/accounts.js | v2.0.3
 /* ===== admin/js/accounts.js ===== */
 
 (function(){AlinAdminModules.register('accounts',root=>{if(!root)return;root.classList.add('admin-accounts-module');const h=root.querySelector('h2');if(h&&!root.querySelector('.admin-module-note'))h.insertAdjacentHTML('afterend','<div class="admin-module-note">إدارة المدرسين والمكتبات وحالات الحسابات من هذا القسم.</div>')})})();

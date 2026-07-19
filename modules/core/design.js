@@ -1,4 +1,4 @@
-// Alin module: core/design.js | v2.0.1
+// Alin module: core/design.js | v2.0.3
 /* ===== core/design/design-system.js ===== */
 (function(){
   document.documentElement.classList.add('alin-design-v175');

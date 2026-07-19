@@ -1,4 +1,4 @@
-// Alin module: core/cloud-status-ui.js | v2.0.1
+// Alin module: core/cloud-status-ui.js | v2.0.3
 /* ===== core/js/cloud-status-ui-rc5-3.js ===== */
 (function(){
   function mount(){
@@ -14,7 +14,7 @@
 
 ;
 
-/* ALIN 2.0.1 - hardened Supabase Auth and admin account adapter. */
+/* ALIN 2.0.3 - hardened Supabase Auth and admin account adapter. */
 (function(){
   'use strict';
   const ATTEMPT_KEY='alin_auth_attempts_v139',MAX_ATTEMPTS=5,LOCK_MS=10*60*1000;
@@ -81,19 +81,25 @@
       checkoutPending=true;
       if(button){button.disabled=true;button.setAttribute('aria-busy','true');button.dataset.originalText=button.textContent;button.textContent='جارٍ إرسال الطلب...'}
       const c=client();if(!c?.rpc)throw new Error('تعذر الاتصال بالخدمة. تحقق من الإنترنت وحاول مجدداً');
-      if(typeof cart==='undefined'||!Array.isArray(cart)||!cart.length)throw new Error('السلة فارغة');
+      const cartItems=(typeof cart!=='undefined'&&Array.isArray(cart))?cart:[];
+      const directItem=(typeof checkoutItem!=='undefined'&&checkoutItem)
+        ? {kind:String(checkoutItem.kind||''),id:String(checkoutItem.itemId||checkoutItem.id||''),qty:Math.max(1,Math.min(100,Number(document.getElementById('qty')?.value)||1))}
+        : null;
+      if(!cartItems.length&&!directItem)throw new Error('السلة فارغة');
       const name=(document.getElementById('studentName')?.value||'').trim();
       const phone=(document.getElementById('studentPhone')?.value||'').trim().replace(/\s+/g,'');
       if(name.length<2)throw new Error('اكتب اسم الطالب بصورة صحيحة');
       if(!/^\+?[0-9٠-٩]{7,15}$/.test(phone))throw new Error('اكتب رقم هاتف صحيح');
       const fulfillment=typeof alinOrderExtra==='function'?alinOrderExtra():{};
       const coupon=(document.getElementById('couponInput')?.value||'').trim();
-      const items=cart.map(x=>({kind:String(x.kind||''),id:String(x.id||''),qty:Math.max(1,Math.min(100,Number(x.qty)||1))}));
+      const items=cartItems.length
+        ? cartItems.map(x=>({kind:String(x.kind||''),id:String(x.id||''),qty:Math.max(1,Math.min(100,Number(x.qty)||1))}))
+        : [directItem];
       const {data,error}=await c.rpc('alin_create_store_orders',{p_items:items,p_customer:{name,phone},p_fulfillment:fulfillment,p_coupon_code:coupon||null});
       if(error)throw error;
       const numbers=Array.isArray(data)?data.map(x=>String(x.order_number||'')).filter(Boolean):[];
       if(!numbers.length)throw new Error('لم يرجع الخادم رقم تتبع للطلب');
-      cart=[];if(typeof cartSave==='function')cartSave();
+      if(cartItems.length){cart=[];if(typeof cartSave==='function')cartSave();}
       if(typeof load==='function')await load();
       const box=window.checkoutBox||document.getElementById('checkoutBox');
       if(box){box.replaceChildren();const h=document.createElement('h2');h.textContent='تم استلام طلبك';const p=document.createElement('p');p.textContent='أرقام التتبع: '+numbers.join(' — ');const close=document.createElement('button');close.type='button';close.textContent='إغلاق';close.addEventListener('click',()=>window.closeCheckout?.());box.append(h,p,close)}
@@ -150,6 +156,7 @@
     window.ALIN_AUTH_MODE='supabase';
     window.doLogin=async function(){try{msg('جارٍ التحقق...');await login();msg('')}catch(e){msg(e.message||'تعذر تسجيل الدخول')}};
     window.confirmCartCheckout=secureCheckout;
+    window.confirmCheckout=secureCheckout;
     window.addAccount=createAccountFromAdmin;
     const oldLogout=window.logout;
     window.logout=async function(){try{await client()?.auth?.signOut()}catch(_){};window.current=null;return typeof oldLogout==='function'?oldLogout.apply(this,arguments):location.reload()};
@@ -160,7 +167,7 @@
 })();
 
 
-/* ALIN 2.0.1 — backend readiness diagnostics */
+/* ALIN 2.0.3 — backend readiness diagnostics */
 (function(){
   'use strict';
   async function checkBackendReadiness(){

@@ -1,4 +1,4 @@
-// Alin module: store/cart.js | v2.0.1
+// Alin module: store/cart.js | v2.0.3
 /* ===== store/js/cart-icons-ui.js ===== */
 
 (function(){

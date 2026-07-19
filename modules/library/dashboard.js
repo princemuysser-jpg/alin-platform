@@ -1,4 +1,4 @@
-// Alin module: library/dashboard.js | v2.0.1
+// Alin module: library/dashboard.js | v2.0.3
 /* ===== library/js/library-shell.js ===== */
 /* V113: stable library dashboard rendering */
 (function(){

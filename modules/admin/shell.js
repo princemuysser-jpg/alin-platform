@@ -1,4 +1,4 @@
-// Alin module: admin/shell.js | v2.0.1
+// Alin module: admin/shell.js | v2.0.3
 /* ===== admin/js/admin-shell.js ===== */
 
 (function(){

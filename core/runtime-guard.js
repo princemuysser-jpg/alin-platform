@@ -1,4 +1,4 @@
-/* ALIN v2.0.1 — runtime stability and path guard */
+/* ALIN v2.0.3 — runtime stability and path guard */
 (function(){
   'use strict';
   const report=(kind,error)=>{
@@ -18,5 +18,5 @@
   addEventListener('online',()=>document.documentElement.classList.remove('alin-offline'));
   addEventListener('offline',()=>document.documentElement.classList.add('alin-offline'));
   if(!navigator.onLine)document.documentElement.classList.add('alin-offline');
-  window.AlinRuntime=Object.freeze({version:'2.0.1',errors:()=>[...(window.__ALIN_RUNTIME_ERRORS__||[])]});
+  window.AlinRuntime=Object.freeze({version:'2.0.3',errors:()=>[...(window.__ALIN_RUNTIME_ERRORS__||[])]});
 })();

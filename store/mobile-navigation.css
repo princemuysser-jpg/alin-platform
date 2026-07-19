@@ -1,5 +1,5 @@
 
-/* ALIN 2.0.1 - mobile navigation */
+/* ALIN 2.0.3 - mobile navigation */
 body.store-mobile .alin-mobile-premium-header{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"brand search actions";align-items:center;gap:10px;padding:14px 16px!important;margin:0!important;background:rgba(255,255,255,.96)!important;border-bottom:1px solid #e7ecf3;box-shadow:0 8px 24px rgba(7,26,55,.06);position:sticky;top:0;z-index:9000;backdrop-filter:blur(15px)}
 body.store-mobile .alin-mobile-brand{grid-area:brand;min-width:max-content}
 body.store-mobile .alin-mobile-brand .alin98-logo{width:52px!important;height:52px!important;border-radius:17px!important}

@@ -1,4 +1,4 @@
-// Alin module: teacher/profile.js | v2.0.1
+// Alin module: teacher/profile.js | v2.0.3
 /* ===== teacher/js/teacher-profile-v156.js ===== */
 (function(){
   const escx=v=>typeof esc==='function'?esc(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));

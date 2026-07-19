@@ -1,4 +1,4 @@
-// Alin module: admin/finance.js | v2.0.1
+// Alin module: admin/finance.js | v2.0.3
 /* ===== admin/js/admin-finance-v137.js ===== */
 
 (function(){

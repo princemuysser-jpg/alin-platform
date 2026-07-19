@@ -1,4 +1,4 @@
-// Alin module: core/features.js | v2.0.1
+// Alin module: core/features.js | v2.0.3
 /* ===== core/js/platform-features.js ===== */
 
 (function(){

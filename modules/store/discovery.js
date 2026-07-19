@@ -1,4 +1,4 @@
-// Alin module: store/discovery.js | v2.0.1
+// Alin module: store/discovery.js | v2.0.3
 /* ===== store/js/discovery.js ===== */
 /* ALIN V99 — focused storefront growth layer. No data bootstrap, observer, or competing poll loop. */
 (()=>{
