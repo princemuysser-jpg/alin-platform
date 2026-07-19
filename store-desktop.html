@@ -75,7 +75,7 @@
 
 
 
-  <link rel="stylesheet" href="./store/banners-final.css?v=2.0.1">
+  <link rel="stylesheet" href="./store/banners-final.css?v=2.0.3">
 <script src="./core/runtime-guard.js?v=2.0.1" defer></script>
 <script src="./core/app-health.js?v=2.0.1" defer></script>
 </head>
@@ -127,6 +127,7 @@
 <span aria-live="polite" class="desktop-account-status" id="studentAuthStatus">التسجيل اختياري</span>
 </div>
 </header>
+<div id="bannerTopAnchor" class="banner-top-anchor" aria-hidden="true"></div>
 <section class="alin98-cats">
 <button aria-pressed="false" data-v99-category="booklet" type="button"><span class="cat-icon cat-book"></span><span class="cat-copy"><strong>ملازم</strong><small>جميع المواد والمراحل</small></span></button>
 <button aria-pressed="false" data-v99-category="stationery" type="button"><span class="cat-icon cat-pen"></span><span class="cat-copy"><strong>قرطاسية</strong><small>أدوات الدراسة والكتب</small></span></button>
@@ -136,7 +137,7 @@
 <section class="v99-rail-root" id="v99NewArrivals"></section>
 <section aria-live="polite" class="v99-personalized" id="v99Personalized"></section>
 <div class="store-shell">
-<div class="banners store-admin-banners" id="bannerBox"></div>
+<div class="banners store-admin-banners legacy-banner-box" id="bannerBox" hidden></div>
 <section aria-live="polite" class="v99-rail-root" id="v99DailyDeals"></section>
 <button aria-label="إغلاق لوحة الفلاتر" class="desktop-filter-backdrop" data-v99-action="closeDesktopFilters" hidden="" type="button"></button>
 <section aria-label="فرز وتصفية المنتجات" class="v99-discovery-tools" id="v99DiscoveryTools"></section>
@@ -313,7 +314,7 @@
 
 
 
-  <script src="./store/banners-final.js?v=2.0.1" defer></script>
+  <script src="./store/banners-final.js?v=2.0.3" defer></script>
   <script src="./core/pwa-register.js?v=2.0.1" defer></script>
 
 <script src="core/v2-runtime.js?v=2.0.1" defer></script>

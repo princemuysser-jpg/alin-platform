@@ -1,4 +1,4 @@
-/* ALIN 2.0.1 — storefront banner bridge */
+/* ALIN 2.0.3 — storefront banner bridge */
 (function(){
   'use strict';
   const state={rows:[],index:0,timer:null,installed:false};
@@ -22,12 +22,15 @@
     const noBanner=clean.replace(/^banners\//i,'');
     const c=client(); if(!c?.storage)return [];
     const urls=[];
-    const push=(bucket,path)=>{try{const u=c.storage.from(bucket).getPublicUrl(path).data?.publicUrl;if(u&&!urls.includes(u))urls.push(u)}catch(_){}};
-    // New final storage first, then legacy alin-files layouts.
-    push('banners',noBanner);
-    push('banners',clean);
+    const add=url=>{if(url&&!urls.includes(url))urls.push(url)};
+    const push=(bucket,path)=>{try{add(c.storage.from(bucket).getPublicUrl(path).data?.publicUrl)}catch(_){}};
+    // Admin uploadFile stores banner images in alin-files/banners/... .
+    // Try that canonical path first, then older bucket layouts as fallbacks.
+    try{if(typeof window.mediaUrl==='function')add(window.mediaUrl(clean))}catch(_){}
     push('alin-files',clean);
     push('alin-files','banners/'+noBanner);
+    push('banners',noBanner);
+    push('banners',clean);
     return urls;
   }
   function imageHtml(b){
@@ -43,7 +46,7 @@
     let host=document.getElementById('alinStoreBanners');
     if(host)return host;
     host=document.createElement('section');host.id='alinStoreBanners';host.className='alin-store-banners';host.hidden=true;
-    const anchor=document.querySelector('.alin98-hero,.alin-hero,.hero,#bannerBox,.store-hero');
+    const anchor=document.querySelector('#bannerTopAnchor,.alin98-hero,.alin-hero,.hero,.store-hero,#bannerBox');
     if(anchor?.parentNode)anchor.parentNode.insertBefore(host,anchor);
     else (document.querySelector('#storePage main,main,#storePage')||document.body).prepend(host);
     return host;
