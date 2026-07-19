@@ -1,0 +1,201 @@
+html[data-alin-theme="dark"] body.store-mobile .alin-mobile-premium-header,
+html[data-alin-theme="dark"] body.store-mobile .alin98-bottom,
+html[data-alin-theme="dark"] body.store-mobile .alin-mobile-sheet{background:var(--ao-surface)!important;color:var(--ao-ink)!important;border-color:var(--ao-border)!important}
+html[data-alin-theme="dark"] body.store-mobile .mobile-search-premium label{background:#102a44!important;border-color:var(--ao-border)!important}
+html[data-alin-theme="dark"] body.store-mobile .alin-sheet-backdrop{background:rgba(1,8,16,.72)!important}
+
+/* The compiled mobile header declares these dimensions as important; this is its sole override owner. */
+body.store-mobile .mobile-header-actions{display:flex!important;align-items:center!important;gap:6px!important;margin:0!important;min-width:0!important}
+body.store-mobile .mobile-header-actions .mobile-header-icon-btn{display:grid!important;visibility:visible!important;opacity:1!important;place-items:center!important}
+/* Stable structural selectors replace the former mojibake aria-label selectors. */
+body.store-mobile .mobile-header-actions>.mobile-header-icon-btn:first-child{order:1!important;width:44px!important;min-width:44px!important;height:44px!important;padding:0!important;border-radius:14px!important;background:#fff8e7!important;border:1px solid #d7ad54!important;color:#0b3158!important}
+body.store-mobile .mobile-header-actions>.mobile-header-icon-btn:first-child small{display:none!important}
+body.store-mobile .mobile-header-actions>.mobile-header-icon-btn:first-child .mobile-bell-icon{display:block!important;width:23px!important;height:23px!important}
+body.store-mobile .mobile-header-actions>.mobile-header-icon-btn:first-child .mobile-bell-icon::before,
+body.store-mobile .mobile-header-actions>.mobile-header-icon-btn:first-child .mobile-bell-icon::after{content:none!important}
+body.store-mobile .mobile-header-actions>.mobile-header-icon-btn:first-child .mobile-bell-icon svg{display:block;width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body.store-mobile .mobile-header-actions>[data-notification-trigger].has-unread{box-shadow:0 0 0 3px rgba(215,173,84,.25)!important}
+body.store-mobile .mobile-header-actions>.mobile-header-icon-btn:last-child{order:2!important;width:52px!important;min-width:52px!important}
+
+/* The injected mobile sheet carries inline geometry; keep its proven v1.3.6 bounds authoritative. */
+body.store-mobile .alin-mobile-sheet{right:max(8px,env(safe-area-inset-right))!important;left:max(8px,env(safe-area-inset-left))!important;bottom:max(8px,env(safe-area-inset-bottom))!important;width:auto!important;max-width:none!important;max-height:calc(100dvh - max(16px,env(safe-area-inset-top)) - max(8px,env(safe-area-inset-bottom)))!important;padding:10px 0 0!important;overflow:hidden!important;overscroll-behavior:contain;box-sizing:border-box!important;background:var(--ao-bg)!important;color:var(--ao-ink)!important;border-radius:22px 22px 12px 12px!important;display:flex;flex-direction:column}
+body.store-mobile .alin-mobile-sheet[hidden]{display:none!important}
+body.store-mobile .alin-mobile-sheet .alin-sheet-handle{flex:0 0 auto}
+body.store-mobile .alin-mobile-sheet .alin-sheet-head{position:relative;flex:0 0 auto;z-index:3;background:var(--ao-bg)!important;padding:13px 16px 12px;align-items:center}
+body.store-mobile .alin-mobile-sheet .alin-sheet-head h2{font-size:20px;line-height:1.25}
+body.store-mobile .alin-mobile-sheet .alin-sheet-head p{line-height:1.45}
+body.store-mobile .alin-mobile-sheet .alin-sheet-head [data-alin-close]{flex:0 0 40px;width:40px;height:40px}
+body.store-mobile .alin-mobile-sheet .alin-options-sections{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:12px 14px max(20px,env(safe-area-inset-bottom))}
+body.store-mobile .alin-mobile-sheet .alin-option-icon,
+body.store-mobile .alin-mobile-sheet .alin-option-icon svg{max-width:100%;max-height:100%}
+body.store-mobile .alin-mobile-sheet .alin-setting-row>div{min-width:0}
+body.store-mobile .alin-mobile-sheet .alin-segment{width:100%;box-sizing:border-box}
+body.store-mobile .alin-mobile-sheet .alin-help-row,
+body.store-mobile .alin-mobile-sheet .alin-account-card{min-height:54px}
+
+/* This button is injected dynamically with legacy inline presentation. */
+body.store-mobile .alin-v94-notification-button,
+body.store-mobile .alin-v78-notify-btn{display:none!important}
+body.store-mobile .alin-v94-notification-button small{display:none!important}
+body.store-mobile .alin-v94-notification-button .alin-v94-bell{display:block!important;position:relative!important;width:24px!important;height:24px!important;overflow:visible!important;font-size:0!important;color:transparent!important}
+body.store-mobile .alin-v94-notification-button .alin-v94-bell svg{display:block;width:23px;height:23px;fill:none;stroke:#0b3158;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body.store-mobile .alin-store-banners-v115{margin-inline:20px}
+
+@media(max-width:680px){
+  body.store-mobile .alin-store-banner-v115__strip{right:10px;left:10px;bottom:9px;min-height:34px;padding:7px 12px;border-radius:10px;font-size:13px}
+  body.store-mobile .alin-notifications-v120__panel{top:auto;right:10px;left:10px;bottom:10px;width:auto;max-height:72dvh;border-radius:22px 22px 13px 13px}
+  body.store-mobile .alin-notifications-v120__panel>header{padding:15px}
+  body.store-mobile .alin-notifications-v120__list{padding-bottom:max(10px,env(safe-area-inset-bottom))}
+}
+@media(max-width:360px){
+  body.store-mobile .alin-mobile-premium-header{padding-inline:10px!important}
+  body.store-mobile .mobile-header-actions{gap:4px!important}
+  body.store-mobile .mobile-header-actions>.mobile-header-icon-btn:last-child{width:48px!important;min-width:48px!important}
+  body.store-mobile .alin-mobile-sheet .alin-setting-row{align-items:flex-start;gap:9px}
+  body.store-mobile .alin-mobile-sheet .alin-option-icon{width:34px;height:34px;flex-basis:34px}
+  body.store-mobile .alin-mobile-sheet .alin-segment button{padding-inline:3px;font-size:11px}
+}
+
+/* Final mobile storefront bounds. This page layer loads after navigation. */
+@media(max-width:599px){
+  html,body.store-mobile{max-width:100%;overflow-x:hidden}
+  body.store-mobile main,
+  body.store-mobile .alin-storefront{max-width:100vw;overflow-x:clip}
+  body.store-mobile .alin-mobile-premium-header{
+    min-height:0!important;height:auto!important;max-height:116px!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    grid-template-areas:"brand actions" "search search"!important;
+    align-content:center!important;align-items:center!important;
+    gap:6px 8px!important;padding:8px 12px!important;
+    overflow:hidden!important;background:#fff!important;
+  }
+  body.store-mobile .alin-mobile-brand{
+    min-width:0!important;max-width:100%;justify-self:stretch!important;
+    display:flex!important;align-items:center!important;gap:9px!important;
+  }
+  body.store-mobile .alin-mobile-brand .alin98-logo{
+    width:46px!important;height:46px!important;min-width:46px!important;
+    border-radius:15px!important;font-size:25px!important;
+  }
+  body.store-mobile .alin-mobile-brand span{min-width:0}
+  body.store-mobile .alin-mobile-brand strong{
+    display:block;overflow:hidden;font-size:17px!important;line-height:1.25!important;
+    white-space:nowrap;text-overflow:ellipsis;color:#0b2b50!important;
+  }
+  body.store-mobile .alin-mobile-brand small{
+    display:block;overflow:hidden;font-size:9px!important;line-height:1.4!important;
+    white-space:nowrap;text-overflow:ellipsis;color:#9a711e!important;
+  }
+  body.store-mobile .mobile-header-actions{
+    justify-self:start!important;align-self:center!important;
+    direction:rtl!important;gap:5px!important;
+  }
+  body.store-mobile .mobile-header-actions>.mobile-header-icon-btn{
+    width:44px!important;min-width:44px!important;height:44px!important;min-height:44px!important;
+    padding:0!important;border-radius:13px!important;background:#fff!important;color:#0b3158!important;
+    border:1px solid #dbe3ec!important;box-shadow:0 5px 14px rgba(7,38,71,.08)!important;
+  }
+  body.store-mobile .mobile-header-actions>.mobile-header-icon-btn:last-child{
+    width:48px!important;min-width:48px!important;
+  }
+  body.store-mobile .mobile-header-actions>.mobile-header-icon-btn small{display:none!important}
+  body.store-mobile .mobile-header-actions .mobile-bell-icon,
+  body.store-mobile .mobile-header-actions .mobile-bell-icon svg{
+    display:block!important;width:22px!important;height:22px!important;
+  }
+  body.store-mobile .mobile-header-actions .mobile-bell-icon svg{
+    fill:none!important;stroke:currentColor!important;stroke-width:2!important;
+    stroke-linecap:round!important;stroke-linejoin:round!important;
+  }
+  body.store-mobile .mobile-search-premium{
+    width:100%!important;min-width:0!important;margin:0!important;overflow:hidden!important;
+  }
+  body.store-mobile .mobile-search-premium label{
+    width:100%!important;min-width:0!important;height:40px!important;padding:0 12px!important;
+    border-radius:13px!important;box-shadow:none!important;
+  }
+  body.store-mobile .mobile-search-premium input{
+    min-width:0!important;height:38px!important;padding-block:0!important;font-size:12px!important;
+  }
+  body.store-mobile .alin98-cats{
+    width:auto!important;max-width:100%!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:8px!important;margin:10px 12px 18px!important;
+  }
+  body.store-mobile .alin98-cats button{
+    min-width:0!important;min-height:78px!important;
+    grid-template-columns:42px minmax(0,1fr)!important;justify-items:start!important;
+    gap:9px!important;padding:10px!important;overflow:hidden!important;text-align:start!important;
+    background:#fff!important;color:#0d2b49!important;border:1px solid #e0e6ec!important;
+    box-shadow:0 7px 20px rgba(7,38,71,.06)!important;
+  }
+  body.store-mobile .alin98-cats .cat-icon{
+    width:42px!important;height:42px!important;min-width:42px!important;
+    background:#fbf5e7!important;color:#8d6418!important;
+  }
+  body.store-mobile .alin98-cats .cat-copy{min-width:0!important}
+  body.store-mobile .alin98-cats .cat-copy strong{color:#0d2b49!important;font-size:14px!important}
+  body.store-mobile .alin98-cats .cat-copy small{
+    overflow:hidden;color:#596a7b!important;font-size:9px!important;line-height:1.45!important;
+  }
+  body.store-mobile .store-shell,
+  body.store-mobile .store-product-grid,
+  body.store-mobile #storeGrid{
+    width:100%!important;max-width:100%!important;min-width:0!important;
+  }
+  body.store-mobile .store-product-grid,
+  body.store-mobile #storeGrid{
+    grid-template-columns:minmax(0,1fr)!important;gap:12px!important;margin-inline:0!important;
+  }
+  body.store-mobile #storeGrid>*,
+  body.store-mobile .store-product-grid>*,
+  body.store-mobile #storeGrid .card,
+  body.store-mobile #storeGrid .alin-v76-card{
+    width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important;
+  }
+  body.store-mobile #storeGrid img{max-width:100%;height:auto}
+  body.store-mobile #storeGrid h2,
+  body.store-mobile #storeGrid h3,
+  body.store-mobile #storeGrid p,
+  body.store-mobile #storeGrid small{max-width:100%;overflow-wrap:anywhere}
+  body.store-mobile #storeGrid .product-actions{
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;width:100%!important;
+  }
+  body.store-mobile #checkoutModal{
+    position:fixed!important;inset:0!important;z-index:10020!important;
+    display:flex!important;align-items:flex-end!important;justify-content:center!important;
+    padding:max(8px,env(safe-area-inset-top)) 0 0!important;overflow:hidden!important;
+    background:rgba(3,16,31,.62)!important;
+  }
+  body.store-mobile #checkoutModal.hidden{display:none!important}
+  body.store-mobile #checkoutModal .modal-card{
+    position:relative!important;width:100%!important;max-width:100%!important;height:auto!important;
+    max-height:calc(100dvh - max(8px,env(safe-area-inset-top)))!important;margin:0!important;
+    padding:12px 12px max(24px,env(safe-area-inset-bottom))!important;
+    overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;border-radius:22px 22px 0 0!important;background:#fff!important;
+  }
+  body.store-mobile #checkoutModal .modal-card>*,
+  body.store-mobile #checkoutModal #checkoutBox,
+  body.store-mobile #checkoutModal .alin-cart-shell,
+  body.store-mobile #checkoutModal .alin-cart-main,
+  body.store-mobile #checkoutModal .alin-cart-side{
+    width:100%!important;max-width:100%!important;min-width:0!important;
+  }
+  body.store-mobile #checkoutModal .alin-cart-shell{
+    display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:14px!important;
+  }
+  body.store-mobile #checkoutModal .form-grid,
+  body.store-mobile #checkoutModal .coupon-box{
+    grid-template-columns:minmax(0,1fr)!important;min-width:0!important;
+  }
+  body.store-mobile #checkoutModal input,
+  body.store-mobile #checkoutModal select,
+  body.store-mobile #checkoutModal button{max-width:100%}
+  body.store-mobile .alin-mobile-bottom-v103{z-index:9500!important}
+}
+
+@media(min-width:600px) and (max-width:899px){
+  body.store-mobile .store-product-grid,
+  body.store-mobile #storeGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}

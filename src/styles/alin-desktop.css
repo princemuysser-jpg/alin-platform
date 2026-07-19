@@ -1,0 +1,40 @@
+html[data-alin-theme="dark"] body.store-desktop .desktop-partner-access,
+html[data-alin-theme="dark"] body.store-desktop .desktop-action,
+html[data-alin-theme="dark"] body.store-desktop .desktop-partner-access button,
+html[data-alin-theme="dark"] body.store-desktop .alin98-title button{
+  background:var(--ao-soft);
+  color:var(--ao-ink);
+  border-color:var(--ao-border);
+}
+html[data-alin-theme="dark"] body.store-desktop .desktop-header-search{background:#102a44;border-color:var(--ao-border)}
+html[data-alin-theme="dark"] body.store-desktop .desktop-filter-backdrop{background:rgba(1,8,16,.72)}
+
+.alin-desktop-options-icon{width:21px;height:18px;display:block;background:linear-gradient(var(--ao-ink),var(--ao-ink)) 0 2px/21px 2px no-repeat,linear-gradient(var(--ao-ink),var(--ao-ink)) 0 8px/21px 2px no-repeat,linear-gradient(var(--ao-ink),var(--ao-ink)) 0 14px/21px 2px no-repeat;position:relative}
+.alin-desktop-options-icon::after{content:"";position:absolute;inset:0;background:radial-gradient(circle,var(--ao-gold) 0 2px,transparent 2.5px) 5px 0/12px 6px repeat-y}
+
+/* Compiled CSS draws a basket with borders; the live desktop control is an SVG. */
+body.store-desktop .desktop-cart-icon{
+  display:block;width:26px;height:26px;box-sizing:border-box;
+  position:relative;border:0;border-radius:0;background:transparent;
+  color:#0b5fa5;opacity:1;transform:none;overflow:visible;
+  fill:none;stroke:#0b5fa5;stroke-width:2.15;
+  stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;
+}
+body.store-desktop .desktop-cart-icon::before,
+body.store-desktop .desktop-cart-icon::after{content:none;display:none}
+
+/* Compiled account icon uses clipping; reset it before drawing the stable outline. */
+body.store-desktop .desktop-account-icon{display:block;width:22px;height:22px;box-sizing:border-box;position:relative;border:0;border-radius:0;background:transparent;color:#0b2b55;opacity:1;clip-path:none}
+body.store-desktop .desktop-account-icon::before{content:"";position:absolute;width:8px;height:8px;top:0;right:5px;box-sizing:border-box;border:2px solid #0b2b55;border-radius:50%;background:#fff}
+body.store-desktop .desktop-account-icon::after{content:"";position:absolute;width:18px;height:10px;right:0;top:11px;box-sizing:border-box;border:2px solid #0b2b55;border-bottom:0;border-radius:10px 10px 2px 2px;background:transparent}
+
+/* Desktop-only brand cards override immutable light/pressed rules in the bundle. */
+body.store-desktop .alin98-cats>button[data-v99-category],
+html[data-alin-theme="dark"] body.store-desktop .alin98-cats>button[data-v99-category]{background:#082d57;color:#fff;border-color:rgba(205,163,70,.38);box-shadow:0 8px 24px rgba(7,26,55,.16)}
+body.store-desktop .alin98-cats>button[data-v99-category]:hover,
+body.store-desktop .alin98-cats>button[data-v99-category]:focus-visible{background:#0b3a6d;border-color:#d1a33c;box-shadow:0 11px 28px rgba(7,26,55,.23)}
+body.store-desktop .alin98-cats>button[data-v99-category]:focus-visible{outline:3px solid rgba(209,163,60,.38);outline-offset:3px}
+body.store-desktop .alin98-cats>button[data-v99-category][aria-pressed="true"],
+html[data-alin-theme="dark"] body.store-desktop .alin98-cats>button[data-v99-category][aria-pressed="true"]{background:#0d3f73;color:#fff;border-color:#e0b34f;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 0 0 3px rgba(214,166,51,.18)}
+body.store-desktop .alin98-cats>button[data-v99-category] .cat-copy strong{color:#fff;font-weight:800;text-shadow:0 1px 1px rgba(0,0,0,.16)}
+body.store-desktop .alin98-cats>button[data-v99-category] .cat-copy small{color:rgba(255,255,255,.86);font-weight:600}
