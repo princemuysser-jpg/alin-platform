@@ -43,9 +43,11 @@
     let host=document.getElementById('alinStoreBanners');
     if(host)return host;
     host=document.createElement('section');host.id='alinStoreBanners';host.className='alin-store-banners';host.hidden=true;
-    const anchor=document.querySelector('.alin98-hero,.alin-hero,.hero,#bannerBox,.store-hero');
-    if(anchor?.parentNode)anchor.parentNode.insertBefore(host,anchor);
-    else (document.querySelector('#storePage main,main,#storePage')||document.body).prepend(host);
+    const storefront=document.querySelector('#storePage');
+    const header=storefront?.querySelector('.alin98-header');
+    if(header?.parentNode)header.insertAdjacentElement('afterend',host);
+    else if(storefront)storefront.prepend(host);
+    else (document.querySelector('main')||document.body).prepend(host);
     return host;
   }
   function render(){
