@@ -1,7 +1,7 @@
 import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
 import {
   cleanText,
-  emailForUsername,
+  ensureAuthUserForAccount,
   insertCompat,
   makeAccountId,
   normalizeUsername,
@@ -37,16 +37,11 @@ Deno.serve(async (req: Request) => {
     if (duplicateError) throw duplicateError;
     if (duplicate) throw new Error('اسم الدخول مستخدم مسبقاً');
 
-    const email = emailForUsername(username);
-    const { data: created, error: createError } = await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { name, username, role },
-    });
-    if (createError || !created.user) throw createError || new Error('تعذر إنشاء مستخدم الدخول');
-    createdUserId = created.user.id;
     accountId = makeAccountId(role);
+    const resolved = await ensureAuthUserForAccount(admin, {
+      accountId, authUserId: null, username, password, name, role,
+    });
+    if (resolved.created) createdUserId = resolved.id;
 
     const account = await insertCompat(admin, 'accounts', {
       id: accountId,
@@ -54,7 +49,7 @@ Deno.serve(async (req: Request) => {
       name,
       username,
       status,
-      auth_user_id: created.user.id,
+      auth_user_id: resolved.id,
       area: cleanText(body.area, 120),
       landmark: cleanText(body.landmark, 180),
       phone: cleanText(body.phone, 40),
@@ -80,7 +75,7 @@ Deno.serve(async (req: Request) => {
         });
       } catch (courierError) {
         await admin.from('accounts').delete().eq('id', accountId);
-        await admin.auth.admin.deleteUser(created.user.id);
+        if (resolved.created) await admin.auth.admin.deleteUser(resolved.id);
         throw courierError;
       }
     }

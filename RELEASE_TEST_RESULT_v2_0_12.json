@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "version": "2.0.12-stable-auth-link-trigger-fix",
+  "tests": {
+    "javascript_syntax_files": 50,
+    "ordered_modules": 41,
+    "release_checks": 74,
+    "accounts_auth_checks": 5,
+    "session_restore_checks": 9,
+    "single_transition_checks": 7,
+    "finance_checks": 18,
+    "auth_relink_checks": 15,
+    "password_flow_checks": 6,
+    "auth_link_trigger_check": "passed"
+  },
+  "generated_at": "2026-07-20T13:28:05.077601+00:00"
+}

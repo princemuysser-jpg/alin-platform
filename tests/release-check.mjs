@@ -6,7 +6,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const failures=[];
 const required=[
   'index.html','store-desktop.html','store-mobile.html','service-worker.js','VERSION',
-  'RUN_ON_SUPABASE_v2_0_9_COMPLETE.sql','CHECK_SUPABASE_READINESS_v2_0_9.sql',
+  'RUN_ON_SUPABASE_v2_0_12_COMPLETE.sql','CHECK_SUPABASE_READINESS_v2_0_12.sql',
   'modules/module-order.json','modules/core/config.js','modules/core/platform.js','modules/admin/orders.js',
   'store/banners.js','store/notifications.js','core/finance-runtime.js'
 ];
@@ -24,17 +24,17 @@ for(const stale of ['RUN_ON_SUPABASE_v2_0_1_COMPLETE.sql','CHECK_SUPABASE_READIN
   if(combined.includes(stale))failures.push(`stale:${stale}`);
 }
 
-const run=fs.readFileSync(path.join(root,'RUN_ON_SUPABASE_v2_0_9_COMPLETE.sql'),'utf8');
-const check=fs.readFileSync(path.join(root,'CHECK_SUPABASE_READINESS_v2_0_9.sql'),'utf8');
+const run=fs.readFileSync(path.join(root,'RUN_ON_SUPABASE_v2_0_12_COMPLETE.sql'),'utf8');
+const check=fs.readFileSync(path.join(root,'CHECK_SUPABASE_READINESS_v2_0_12.sql'),'utf8');
 if((run.match(/\bbegin\s*;/gi)||[]).length!==(run.match(/\bcommit\s*;/gi)||[]).length)failures.push('sql:transaction-count');
-for(const name of ['alin_current_account_id','alin_current_role','alin_is_admin','alin_create_store_orders','alin_validate_coupon','alin_track_order','alin_notification_visible','alin_order_visible','alin_protect_order_update']){
+for(const name of ['alin_current_account_id','alin_current_role','alin_is_admin','alin_create_store_orders','alin_validate_coupon','alin_track_order','alin_repair_auth_links','alin_notification_visible','alin_order_visible','alin_protect_order_update']){
   if(!run.includes(name))failures.push(`sql:function:${name}`);
   if(!check.includes(name))failures.push(`check:function:${name}`);
 }
 for(const name of ['alin-files','banners_public_read','alin_files_public_read']){
   if(!run.includes(name)||!check.includes(name))failures.push(`sql:readiness:${name}`);
 }
-if(!check.includes('ALIN v2.0.9 readiness check passed.'))failures.push('check:success-message');
+if(!check.includes('ALIN v2.0.12 readiness check passed.'))failures.push('check:success-message');
 
 
 if(!run.includes('alin_v204_notifications_user_read'))failures.push('security:notifications-rls');
@@ -51,20 +51,23 @@ if(!appBundle.includes('alin-copy-tracking')||!appBundle.includes('navigator.cli
 
 if(!appBundle.includes('headers:{Authorization:`Bearer ${session.access_token}`}'))failures.push('accounts:explicit-session-token');
 if(!appBundle.includes('async function adminSession(forceRefresh=false)'))failures.push('accounts:session-refresh');
+if(!appBundle.includes("c.rpc('alin_repair_auth_links'")||!appBundle.includes('await repairAuthLink(accountId)'))failures.push('accounts:auth-link-repair-rpc');
 if(!appBundle.includes("const canonical=arr(window.db?.accounts?.all)"))failures.push('accounts:canonical-list');
 const updateFn=fs.readFileSync(path.join(root,'supabase/functions/admin-update-account/index.ts'),'utf8');
 const resetFn=fs.readFileSync(path.join(root,'supabase/functions/admin-reset-password/index.ts'),'utf8');
 if(updateFn.includes('الحساب غير مربوط بخدمة الدخول. اكتب كلمة مرور جديدة لإكمال الربط'))failures.push('accounts:legacy-status-blocked');
-if(!resetFn.includes("createUser({")||!resetFn.includes("auth_user_id: authUserId"))failures.push('accounts:legacy-password-link');
+if(!resetFn.includes('ensureAuthUserForAccount')||resetFn.includes('admin.auth.admin.createUser'))failures.push('accounts:legacy-password-relink');
+const sharedAdmin=fs.readFileSync(path.join(root,'supabase/functions/_shared/admin.ts'),'utf8');
+if(!sharedAdmin.includes('findAuthUserByEmail')||!sharedAdmin.includes('listUsers({ page, perPage })'))failures.push('accounts:orphan-auth-lookup');
 
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  if(!html.includes('version-badge">v2.0.9'))failures.push(`version-badge:${htmlName}`);
+  if(!html.includes('version-badge">v2.0.12'))failures.push(`version-badge:${htmlName}`);
 }
 for(const obsolete of ['dist/js/shared.early.bundle.js','dist/js/shared.app.bundle.js','options.css']){if(fs.existsSync(path.join(root,obsolete)))failures.push(`obsolete:${obsolete}`)}
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  const positions=moduleFiles.map(rel=>html.indexOf(`./${rel}?v=2.0.9`));
+  const positions=moduleFiles.map(rel=>html.indexOf(`./${rel}?v=2.0.12`));
   if(positions.some(pos=>pos<0))failures.push(`modules:not-loaded:${htmlName}`);
   if(positions.some((pos,index)=>index>0&&pos<positions[index-1]))failures.push(`modules:wrong-order:${htmlName}`);
 }
@@ -75,7 +78,7 @@ for(const token of ['canonicalLedger','librarySummary','teacherSummary',"settlem
 }
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  if(!html.includes('core/finance-runtime.js?v=2.0.9'))failures.push(`finance-script:${htmlName}`);
+  if(!html.includes('core/finance-runtime.js?v=2.0.12'))failures.push(`finance-script:${htmlName}`);
 }
 
 for(const htmlName of ['index.html','store-desktop.html','store-mobile.html']){

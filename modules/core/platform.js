@@ -77,11 +77,11 @@ async function ensureStorageReady(){
     const {error}=await sb.storage.from('alin-files').list('', {limit:1});
     if(error){
       const m=String(error.message||'').toLowerCase();
-      if(m.includes('bucket') || m.includes('not found')) throw new Error('مجلد التخزين alin-files غير موجود. نفّذ ملف RUN_ON_SUPABASE_v2_0_9_COMPLETE.sql مرة واحدة.');
-      if(m.includes('policy') || m.includes('permission') || m.includes('row-level')) throw new Error('صلاحيات التخزين ناقصة. نفّذ ملف RUN_ON_SUPABASE_v2_0_9_COMPLETE.sql مرة واحدة.');
+      if(m.includes('bucket') || m.includes('not found')) throw new Error('مجلد التخزين alin-files غير موجود. نفّذ ملف RUN_ON_SUPABASE_v2_0_12_COMPLETE.sql مرة واحدة.');
+      if(m.includes('policy') || m.includes('permission') || m.includes('row-level')) throw new Error('صلاحيات التخزين ناقصة. نفّذ ملف RUN_ON_SUPABASE_v2_0_12_COMPLETE.sql مرة واحدة.');
     }
   }catch(e){
-    if(String(e.message||'').includes('RUN_ON_SUPABASE_v2_0_9_COMPLETE.sql')) throw e;
+    if(String(e.message||'').includes('RUN_ON_SUPABASE_v2_0_12_COMPLETE.sql')) throw e;
   }
 }
 function safeFileName(name){
@@ -109,17 +109,17 @@ async function uploadFile(bucketPath, file, opts={}){
   const {data,error}=await sb.storage.from('alin-files').upload(path,cleanFile,{upsert:true, contentType, cacheControl:'3600'});
   if(error){
     const m=String(error.message||'').toLowerCase();
-    if(m.includes('bucket') || m.includes('not found')) throw new Error('مجلد التخزين alin-files غير موجود. نفّذ ملف RUN_ON_SUPABASE_v2_0_9_COMPLETE.sql مرة واحدة.');
-    if(m.includes('policy') || m.includes('permission') || m.includes('row-level')) throw new Error('صلاحيات الرفع ناقصة. نفّذ ملف RUN_ON_SUPABASE_v2_0_9_COMPLETE.sql مرة واحدة.');
+    if(m.includes('bucket') || m.includes('not found')) throw new Error('مجلد التخزين alin-files غير موجود. نفّذ ملف RUN_ON_SUPABASE_v2_0_12_COMPLETE.sql مرة واحدة.');
+    if(m.includes('policy') || m.includes('permission') || m.includes('row-level')) throw new Error('صلاحيات الرفع ناقصة. نفّذ ملف RUN_ON_SUPABASE_v2_0_12_COMPLETE.sql مرة واحدة.');
     if(m.includes('invalid key')) throw new Error('تعذر إنشاء اسم آمن للملف. تم إصلاح هذا الخلل في V51؛ حدّث ملفات الموقع وحاول الرفع من جديد.');
     throw new Error('فشل رفع الملف: '+(error.message||'خطأ غير معروف'));
   }
   const publicUrl=mediaUrl(data?.path||path);
   try{
     const ok=await checkPublicFile(publicUrl);
-    if(!ok) throw new Error('الملف رُفع لكن الرابط غير عام. نفّذ ملف RUN_ON_SUPABASE_v2_0_9_COMPLETE.sql.');
+    if(!ok) throw new Error('الملف رُفع لكن الرابط غير عام. نفّذ ملف RUN_ON_SUPABASE_v2_0_12_COMPLETE.sql.');
   }catch(e){
-    if(String(e.message||'').includes('RUN_ON_SUPABASE_v2_0_9_COMPLETE.sql')) throw e;
+    if(String(e.message||'').includes('RUN_ON_SUPABASE_v2_0_12_COMPLETE.sql')) throw e;
   }
   return data?.path||path;
 }
@@ -179,7 +179,7 @@ async function doLogin(){
     ? 'جارٍ تشغيل تسجيل الدخول الآمن...'
     : 'تم تعطيل تسجيل الدخول القديم في هذا الإصدار';
 }
-function openPage(page){ login.classList.add('hidden'); app.classList.remove('hidden'); app.classList.toggle('store-mode', page==='store'); document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden')); const el=document.getElementById(page+'Page'); if(el)el.classList.remove('hidden'); activeNav.innerHTML=`<button>${{store:'المتجر',teacher:'المدرس',library:'المكتبة',admin:'الإدارة'}[page]||page}</button>`; renderAll(); }
+function openPage(page,options){ login.classList.add('hidden'); app.classList.remove('hidden'); app.classList.toggle('store-mode', page==='store'); document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden')); const el=document.getElementById(page+'Page'); if(el)el.classList.remove('hidden'); activeNav.innerHTML=`<button>${{store:'المتجر',teacher:'المدرس',library:'المكتبة',admin:'الإدارة'}[page]||page}</button>`; if(options?.render!==false)renderAll(); }
 function logout(){ current=null; app.classList.remove('store-mode'); app.classList.add('hidden'); login.classList.remove('hidden'); loginForm.classList.add('hidden'); }
 async function setStoreType(type,btn){ db.settings.storeType=type; document.querySelectorAll('.store-nav button').forEach(x=>x.classList.remove('active')); if(btn)btn.classList.add('active'); else { const map={booklet:2,stationery:3,gift:4}; const b=document.querySelector(`.store-nav button:nth-child(${map[type]||2})`); if(b)b.classList.add('active'); } renderStore(); }
 
@@ -1240,7 +1240,7 @@ openCheckout = function(kind,id,title,price){
   };
 
   const oldOpenPage=window.openPage;
-  window.openPage=function(page){oldOpenPage(page);setTimeout(()=>{document.title='منصة آلين';document.querySelectorAll('.version-badge').forEach(x=>x.textContent='منصة آلين');},50)};
+  window.openPage=function(page){const result=oldOpenPage.apply(this,arguments);setTimeout(()=>{document.title='منصة آلين';document.querySelectorAll('.version-badge').forEach(x=>x.textContent='منصة آلين');},50);return result};
 })();
 
 /* ================= ALIN V32 CLEAN STORE HEADER + EDITABLE FOOTER SECTIONS ================= */
@@ -1279,7 +1279,7 @@ openCheckout = function(kind,id,title,price){
     toast('تم حفظ فقرات نهاية المتجر');
   };
   const oldOpenPage=window.openPage;
-  window.openPage=function(page){oldOpenPage(page);setTimeout(()=>{renderBottomInfo();document.title='منصة آلين';document.querySelectorAll('.version-badge').forEach(x=>x.textContent='منصة آلين');},80)};
+  window.openPage=function(page){const result=oldOpenPage.apply(this,arguments);setTimeout(()=>{renderBottomInfo();document.title='منصة آلين';document.querySelectorAll('.version-badge').forEach(x=>x.textContent='منصة آلين');},80);return result};
 })();
 
 /* ================= ALIN V37 ADMIN SETTINGS RESTORE ================= */
@@ -5805,13 +5805,6 @@ window.renderLibrary=renderLibrary=function(){
 })();
 
 
-/* ALIN V97 RESCUE: observer-free stabilization */
-window.addEventListener('load',()=>{
-  try{
-    if(typeof alinV90RefreshStoreStats==='function') alinV90RefreshStoreStats();
-    if(typeof renderStore==='function') setTimeout(()=>renderStore(),300);
-  }catch(e){ console.error('ALIN rescue startup',e); }
-});
 
 
 ;

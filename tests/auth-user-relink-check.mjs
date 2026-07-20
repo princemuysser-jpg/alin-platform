@@ -1,0 +1,30 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+
+const shared=fs.readFileSync(new URL('../supabase/functions/_shared/admin.ts',import.meta.url),'utf8');
+const reset=fs.readFileSync(new URL('../supabase/functions/admin-reset-password/index.ts',import.meta.url),'utf8');
+const update=fs.readFileSync(new URL('../supabase/functions/admin-update-account/index.ts',import.meta.url),'utf8');
+const create=fs.readFileSync(new URL('../supabase/functions/admin-create-account/index.ts',import.meta.url),'utf8');
+const ui=fs.readFileSync(new URL('../modules/admin/accounts-advanced.js',import.meta.url),'utf8');
+const client=fs.readFileSync(new URL('../modules/core/cloud-status-ui.js',import.meta.url),'utf8');
+const sql=fs.readFileSync(new URL('../RUN_ON_SUPABASE_v2_0_12_COMPLETE.sql',import.meta.url),'utf8');
+
+assert.match(shared,/findAuthUserByEmail/);
+assert.match(shared,/listUsers\(\{ page, perPage \}\)/);
+assert.match(shared,/already \(\?:been \)\?registered/);
+assert.match(shared,/ensureAuthUserForAccount/);
+assert.match(shared,/assertAuthUserAvailable/);
+assert.match(reset,/ensureAuthUserForAccount/);
+assert.doesNotMatch(reset,/admin\.auth\.admin\.createUser/);
+assert.match(update,/ensureAuthUserForAccount/);
+assert.match(create,/ensureAuthUserForAccount/);
+assert.match(ui,/await window\.ALINAuth\.resetPasswordFromAdmin\(x\.id,pass\)/);
+const resetStart=ui.indexOf('window.v132ResetPassword=');
+const resetEnd=ui.indexOf('window.v132ToggleAccount=',resetStart);
+const resetUi=ui.slice(resetStart,resetEnd);
+assert.doesNotMatch(resetUi,/updateAccountFromAdmin/);
+assert.match(client,/alin_repair_auth_links/);
+assert.match(client,/await repairAuthLink\(accountId\)/);
+assert.match(sql,/create or replace function public\.alin_repair_auth_links/);
+assert.match(sql,/from auth\.users/);
+console.log(JSON.stringify({ok:true,checks:15}));

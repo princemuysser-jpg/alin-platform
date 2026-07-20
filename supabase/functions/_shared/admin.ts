@@ -34,6 +34,110 @@ export function emailForUsername(username: string): string {
   return normalized.includes('@') ? normalized : `${usernameEmailKey(normalized)}@users.alin.local`;
 }
 
+
+export type AuthUserResolution = { id: string; created: boolean };
+
+function duplicateAuthEmail(error: { message?: string } | null): boolean {
+  return /already (?:been )?registered|already exists|email.*registered|user.*exists/i.test(String(error?.message || ''));
+}
+
+function missingAuthUser(error: { message?: string; status?: number } | null): boolean {
+  return Number(error?.status || 0) === 404 || /user.*not found|not found|does not exist/i.test(String(error?.message || ''));
+}
+
+export async function findAuthUserByEmail(
+  admin: SupabaseClient,
+  email: string,
+): Promise<{ id: string; email?: string } | null> {
+  const target = cleanText(email, 200).toLocaleLowerCase('en-US');
+  if (!target) return null;
+  const perPage = 1000;
+  for (let page = 1; page <= 100; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    const users = data?.users || [];
+    const found = users.find((user) => String(user.email || '').toLocaleLowerCase('en-US') === target);
+    if (found) return { id: found.id, email: found.email };
+    if (users.length < perPage) break;
+  }
+  return null;
+}
+
+async function assertAuthUserAvailable(
+  admin: SupabaseClient,
+  authUserId: string,
+  accountId: string,
+): Promise<void> {
+  const { data, error } = await admin
+    .from('accounts')
+    .select('id')
+    .eq('auth_user_id', authUserId)
+    .neq('id', accountId)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (data) throw new Error('اسم الدخول مرتبط بحساب آخر');
+}
+
+export async function ensureAuthUserForAccount(
+  admin: SupabaseClient,
+  input: {
+    accountId: string;
+    authUserId?: string | null;
+    username: string;
+    password: string;
+    name: string;
+    role: string;
+  },
+): Promise<AuthUserResolution> {
+  const accountId = cleanText(input.accountId, 80);
+  const username = normalizeUsername(input.username);
+  const password = String(input.password || '');
+  const name = cleanText(input.name, 120);
+  const role = cleanText(input.role, 30);
+  if (!accountId || !username || !name) throw new Error('بيانات الحساب غير مكتملة');
+  if (password.length < 8) throw new Error('كلمة المرور يجب أن تكون 8 أحرف أو أرقام على الأقل');
+
+  const email = emailForUsername(username);
+  const updatePayload = {
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { name, username, role },
+  };
+
+  let authUserId = cleanText(input.authUserId, 100);
+  if (authUserId) {
+    const { error } = await admin.auth.admin.updateUserById(authUserId, updatePayload);
+    if (!error) return { id: authUserId, created: false };
+    if (!missingAuthUser(error)) throw error;
+    authUserId = '';
+  }
+
+  const existing = await findAuthUserByEmail(admin, email);
+  if (existing?.id) {
+    await assertAuthUserAvailable(admin, existing.id, accountId);
+    const { error } = await admin.auth.admin.updateUserById(existing.id, updatePayload);
+    if (error) throw error;
+    return { id: existing.id, created: false };
+  }
+
+  const { data: created, error: createError } = await admin.auth.admin.createUser(updatePayload);
+  if (!createError && created.user) return { id: created.user.id, created: true };
+
+  // Handles old orphaned Auth users and a concurrent request that created the same email.
+  if (duplicateAuthEmail(createError)) {
+    const raced = await findAuthUserByEmail(admin, email);
+    if (raced?.id) {
+      await assertAuthUserAvailable(admin, raced.id, accountId);
+      const { error } = await admin.auth.admin.updateUserById(raced.id, updatePayload);
+      if (error) throw error;
+      return { id: raced.id, created: false };
+    }
+  }
+  throw createError || new Error('تعذر إنشاء مستخدم الدخول');
+}
+
 export function makeAccountId(role: string): string {
   const prefix: Record<string, string> = { admin: 'A', teacher: 'T', library: 'L', courier: 'C', accountant: 'AC' };
   return `${prefix[role] || 'U'}${crypto.randomUUID().replaceAll('-', '').slice(0, 22)}`;

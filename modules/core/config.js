@@ -2,7 +2,7 @@
 /* ===== core/js/config.js ===== */
 /* ALIN 2.0.1 central configuration. Keep secrets outside the repository. */
 window.ALIN_CONFIG = Object.freeze({
-  version: '2.0.9',
+  version: '2.0.12',
   desktopPage: './store-desktop.html',
   mobilePage: './store-mobile.html',
   currency: 'د.ع',

@@ -1,4 +1,4 @@
--- منصة آلين v2.0.9 — تحديث Supabase المعتمد والقابل لإعادة التشغيل
+-- منصة آلين v2.0.11 — تحديث Supabase المعتمد والقابل لإعادة التشغيل
 -- شغّل هذا الملف من Supabase > SQL Editor بعد التأكد أن حساب المدير مربوط في accounts.auth_user_id. الملف قابل لإعادة التشغيل بأمان.
 
 begin;
@@ -244,10 +244,12 @@ using (
   public.alin_is_admin()
 );
 
+
+
 notify pgrst, 'reload schema';
 commit;
 
--- ملاحظة: الأوامر التالية مضافة في v2.0.9 لتنظيف كلمات المرور القديمة وتأمين المندوبين.
+-- ملاحظة: الأوامر التالية مضافة في v2.0.11 لتنظيف كلمات المرور القديمة وتأمين المندوبين.
 -- إذا شُغّل الملف سابقاً، هذه الأوامر قابلة لإعادة التشغيل.
 
 -- يفضل وضعها قبل COMMIT، لذلك ننفذها في معاملة مستقلة آمنة.
@@ -318,12 +320,14 @@ begin
   end if;
 end $$;
 
+
+
 notify pgrst, 'reload schema';
 commit;
 
 
 -- ============================================================
--- v2.0.9: إنشاء الطلبات من الخادم بدلاً من الكتابة المباشرة
+-- v2.0.11: إنشاء الطلبات من الخادم بدلاً من الكتابة المباشرة
 -- ============================================================
 begin;
 create extension if not exists pgcrypto;
@@ -487,11 +491,13 @@ begin
 end $$;
 revoke all on function public.alin_validate_coupon(text) from public;
 grant execute on function public.alin_validate_coupon(text) to anon, authenticated;
+
+
 notify pgrst, 'reload schema';
 commit;
 
 -- ============================================================
--- v2.0.9: حماية الجداول الحساسة وسياسات RLS الموحدة
+-- v2.0.11: حماية الجداول الحساسة وسياسات RLS الموحدة
 -- ============================================================
 begin;
 
@@ -931,6 +937,122 @@ with check (
   bucket_id='alin-files' and public.alin_current_role()='teacher' and
   (storage.foldername(name))[1] in ('teacher-requests','teachers')
 );
+
+
+
+notify pgrst, 'reload schema';
+commit;
+
+-- ============================================================
+-- v2.0.12: إصلاح نهائي لربط accounts مع Supabase Auth
+-- السبب: مشغل حماية الحساب كان يعيد auth_user_id إلى قيمته القديمة
+-- عند التحديث من SQL Editor أو Service Role.
+-- ============================================================
+begin;
+
+create or replace function public.alin_protect_account_identity()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_jwt_role text := coalesce(current_setting('request.jwt.claim.role', true), '');
+begin
+  -- يسمح للمدير الحقيقي، SQL Editor، وعمليات الخادم الموثوقة.
+  if public.alin_is_admin()
+     or current_user in ('postgres','supabase_admin','service_role')
+     or v_jwt_role = 'service_role' then
+    return new;
+  end if;
+
+  new.id := old.id;
+  new.role := old.role;
+  new.username := old.username;
+  new.auth_user_id := old.auth_user_id;
+  new.status := old.status;
+  new.password_hash := old.password_hash;
+  return new;
+end
+$$;
+
+create or replace function public.alin_repair_auth_links(p_account_id text default null)
+returns integer
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  r record;
+  v_auth_user_id uuid;
+  v_repaired integer := 0;
+  v_jwt_role text := coalesce(current_setting('request.jwt.claim.role', true), '');
+begin
+  if not (
+    public.alin_is_admin()
+    or current_user in ('postgres','supabase_admin','service_role')
+    or v_jwt_role = 'service_role'
+  ) then
+    raise exception 'هذه العملية مسموحة للمدير فقط';
+  end if;
+
+  for r in
+    select a.id::text as id, a.username::text as username, a.role::text as role
+    from public.accounts a
+    where a.auth_user_id is null
+      and (p_account_id is null or a.id::text = p_account_id)
+  loop
+    v_auth_user_id := null;
+
+    select u.id
+      into v_auth_user_id
+    from auth.users u
+    where (
+      regexp_replace(lower(trim(coalesce(u.raw_user_meta_data->>'username',''))), '\s+', '-', 'g')
+        = regexp_replace(lower(trim(coalesce(r.username,''))), '\s+', '-', 'g')
+      or (
+        position('@' in coalesce(r.username,'')) > 0
+        and lower(trim(coalesce(u.email,''))) = lower(trim(r.username))
+      )
+    )
+      and (
+        coalesce(trim(u.raw_user_meta_data->>'role'),'') = ''
+        or lower(trim(u.raw_user_meta_data->>'role')) = lower(trim(coalesce(r.role,'')))
+      )
+      and not exists (
+        select 1 from public.accounts linked
+        where linked.auth_user_id = u.id and linked.id::text <> r.id
+      )
+    order by
+      case when regexp_replace(lower(trim(coalesce(u.raw_user_meta_data->>'username',''))), '\s+', '-', 'g')
+              = regexp_replace(lower(trim(coalesce(r.username,''))), '\s+', '-', 'g') then 0 else 1 end,
+      u.created_at desc
+    limit 1;
+
+    if v_auth_user_id is not null then
+      update public.accounts
+      set auth_user_id = v_auth_user_id,
+          updated_at = now()
+      where id::text = r.id and auth_user_id is null;
+      if found then v_repaired := v_repaired + 1; end if;
+    end if;
+  end loop;
+
+  return v_repaired;
+end
+$$;
+
+revoke all on function public.alin_repair_auth_links(text) from public;
+grant execute on function public.alin_repair_auth_links(text) to authenticated;
+
+do $$
+declare
+  v_repaired integer;
+begin
+  v_repaired := public.alin_repair_auth_links(null);
+  raise notice 'ALIN v2.0.12 repaired auth links: %', v_repaired;
+end
+$$;
 
 notify pgrst, 'reload schema';
 commit;

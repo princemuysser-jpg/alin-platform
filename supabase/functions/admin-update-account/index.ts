@@ -2,6 +2,7 @@ import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
 import {
   cleanText,
   emailForUsername,
+  ensureAuthUserForAccount,
   insertCompat,
   normalizeUsername,
   publicAccount,
@@ -41,14 +42,9 @@ Deno.serve(async (req: Request) => {
       if (!username || !name || password.length < 8) {
         throw new Error('هذا مندوب قديم غير مربوط. اكتب اسمه واسم الدخول وكلمة مرور جديدة من 8 أحرف لترحيله');
       }
-      const email = emailForUsername(username);
-      const { data: created, error: createError } = await admin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: { name, username, role: 'courier' },
+      const resolved = await ensureAuthUserForAccount(admin, {
+        accountId, authUserId: null, username, password, name, role: 'courier',
       });
-      if (createError || !created.user) throw createError || new Error('تعذر إنشاء مستخدم الدخول');
       try {
         account = await insertCompat(admin, 'accounts', {
           id: accountId,
@@ -56,7 +52,7 @@ Deno.serve(async (req: Request) => {
           name,
           username,
           status: body.status || 'active',
-          auth_user_id: created.user.id,
+          auth_user_id: resolved.id,
           area: cleanText(body.area, 120),
           landmark: cleanText(body.landmark, 180),
           phone: cleanText(body.phone, 40),
@@ -64,7 +60,7 @@ Deno.serve(async (req: Request) => {
           updated_at: new Date().toISOString(),
         }) as typeof account;
       } catch (error) {
-        await admin.auth.admin.deleteUser(created.user.id);
+        if (resolved.created) await admin.auth.admin.deleteUser(resolved.id);
         throw error;
       }
     } else {
@@ -72,29 +68,26 @@ Deno.serve(async (req: Request) => {
       const nextName = name || cleanText(account.name, 120);
       if (!nextUsername || !nextName) throw new Error('الاسم واسم الدخول مطلوبان');
 
-      const authChanges: Record<string, unknown> = {
-        user_metadata: { name: nextName, username: nextUsername, role: requestedRole },
-      };
-      if (nextUsername !== normalizeUsername(account.username)) authChanges.email = emailForUsername(nextUsername);
+      let nextAuthUserId = account.auth_user_id ? String(account.auth_user_id) : '';
       if (password) {
-        if (password.length < 8) throw new Error('كلمة المرور يجب أن تكون 8 أحرف أو أرقام على الأقل');
-        authChanges.password = password;
-      }
-      if (account.auth_user_id) {
-        const { error: authUpdateError } = await admin.auth.admin.updateUserById(String(account.auth_user_id), authChanges);
-        if (authUpdateError) throw authUpdateError;
-      } else if (password.length >= 8) {
-        const { data: created, error: createError } = await admin.auth.admin.createUser({
-          email: emailForUsername(nextUsername), password, email_confirm: true,
-          user_metadata: { name: nextName, username: nextUsername, role: requestedRole },
+        const resolved = await ensureAuthUserForAccount(admin, {
+          accountId,
+          authUserId: nextAuthUserId || null,
+          username: nextUsername,
+          password,
+          name: nextName,
+          role: requestedRole,
         });
-        if (createError || !created.user) throw createError || new Error('تعذر ربط الحساب بخدمة الدخول');
-        account.auth_user_id = created.user.id;
-      } else {
-        // Legacy account: allow the admin to update status and profile first.
-        // The first password assignment will create and attach the Auth user automatically.
-        account.auth_user_id = null;
+        nextAuthUserId = resolved.id;
+      } else if (nextAuthUserId) {
+        const authChanges: Record<string, unknown> = {
+          user_metadata: { name: nextName, username: nextUsername, role: requestedRole },
+        };
+        if (nextUsername !== normalizeUsername(account.username)) authChanges.email = emailForUsername(nextUsername);
+        const { error: authUpdateError } = await admin.auth.admin.updateUserById(nextAuthUserId, authChanges);
+        if (authUpdateError) throw authUpdateError;
       }
+      account.auth_user_id = nextAuthUserId || null;
 
       account = await updateCompat(admin, 'accounts', {
         role: requestedRole,

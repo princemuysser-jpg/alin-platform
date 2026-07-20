@@ -1,5 +1,5 @@
--- ALIN v2.0.9 — فحص حماية Supabase للقراءة فقط
--- شغّله بعد RUN_ON_SUPABASE_v2_0_9_COMPLETE.sql. لا يغيّر أي بيانات.
+-- ALIN v2.0.12 — فحص حماية Supabase للقراءة فقط
+-- شغّله بعد RUN_ON_SUPABASE_v2_0_12_COMPLETE.sql. لا يغيّر أي بيانات.
 do $$
 declare
   missing text[] := '{}';
@@ -53,6 +53,10 @@ begin
     ) then missing:=array_append(missing,'policy:public.'||p.table_name||'.'||p.policy_name); end if;
   end loop;
 
+
+  if to_regprocedure('public.alin_repair_auth_links(text)') is null then
+    missing:=array_append(missing,'function:public.alin_repair_auth_links(text)');
+  end if;
   foreach item in array array[
     'alin_files_public_read','alin_files_admin_insert','alin_files_admin_update','alin_files_admin_delete','alin_files_teacher_insert'
   ] loop
@@ -65,8 +69,23 @@ begin
     missing:=array_append(missing,'storage_bucket:alin-files(public)');
   end if;
 
-  if cardinality(missing)>0 then
-    raise exception 'ALIN v2.0.9 readiness failed. Missing: %',array_to_string(missing,', ');
+
+  if exists (
+    select 1
+    from public.accounts a
+    join auth.users u
+      on regexp_replace(lower(trim(coalesce(u.raw_user_meta_data->>'username',''))), '\s+', '-', 'g')
+         = regexp_replace(lower(trim(coalesce(a.username::text,''))), '\s+', '-', 'g')
+    where a.auth_user_id is null
+      and not exists (select 1 from public.accounts x where x.auth_user_id=u.id and x.id<>a.id)
+  ) then
+    missing:=array_append(missing,'auth_links:repair_required');
   end if;
-  raise notice 'ALIN v2.0.9 readiness check passed.';
+
+  if cardinality(missing)>0 then
+    raise exception 'ALIN v2.0.12 readiness failed. Missing: %',array_to_string(missing,', ');
+  end if;
+  raise notice 'ALIN v2.0.12 readiness check passed.';
 end $$;
+
+select 'ALIN v2.0.12 readiness check passed.' as result;

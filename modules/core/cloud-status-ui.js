@@ -14,7 +14,7 @@
 
 ;
 
-/* ALIN 2.0.1 - hardened Supabase Auth and admin account adapter. */
+/* ALIN 2.0.12 - hardened Supabase Auth and admin account adapter. */
 (function(){
   'use strict';
   const ATTEMPT_KEY='alin_auth_attempts_v139',MAX_ATTEMPTS=5,LOCK_MS=10*60*1000;
@@ -37,6 +37,7 @@
   function failAttempt(role,user){const all=readAttempts(),k=attemptId(role,user),now=Date.now(),x=all[k]||{count:0,first:now,lockedUntil:0};if(now-x.first>LOCK_MS){x.count=0;x.first=now}x.count++;if(x.count>=MAX_ATTEMPTS)x.lockedUntil=now+LOCK_MS;all[k]=x;writeAttempts(all);return x}
   function clearAttempts(role,user){const all=readAttempts();delete all[attemptId(role,user)];writeAttempts(all)}
   const invokeError=async(error,fallback)=>{let message=error?.message||fallback;try{message=(await error?.context?.json())?.error||message}catch(_){}return new Error(message||fallback)};
+  const friendlyAdminMessage=value=>{const text=String(value||'');if(/already (?:been )?registered|already exists|email.*registered/i.test(text))return 'الحساب موجود مسبقاً وسيتم ربطه بدلاً من إنشائه من جديد';if(/duplicate key.*username|اسم الدخول مستخدم/i.test(text))return 'اسم الدخول مستخدم مسبقاً';return text};
   const invalidSessionMessage=value=>/جلسة الدخول غير صالحة|انتهت جلسة|invalid(?:\s+)?jwt|jwt(?:\s+)?expired|session|user from sub claim/i.test(String(value||''));
   async function adminSession(forceRefresh=false){
     const c=client();if(!c?.auth)throw new Error('خدمة تسجيل الدخول غير متاحة');
@@ -57,8 +58,8 @@
     for(let attempt=0;attempt<2;attempt++){
       const session=await adminSession(attempt===1);
       const {data,error}=await c.functions.invoke(name,{body,headers:{Authorization:`Bearer ${session.access_token}`}});
-      if(error){lastError=await invokeError(error,'تعذر تنفيذ العملية');if(attempt===0&&invalidSessionMessage(lastError.message))continue;throw lastError}
-      if(!data?.ok){lastError=new Error(data?.error||'تعذر تنفيذ العملية');if(attempt===0&&invalidSessionMessage(lastError.message))continue;throw lastError}
+      if(error){lastError=await invokeError(error,'تعذر تنفيذ العملية');lastError=new Error(friendlyAdminMessage(lastError.message));if(attempt===0&&invalidSessionMessage(lastError.message))continue;throw lastError}
+      if(!data?.ok){lastError=new Error(friendlyAdminMessage(data?.error||'تعذر تنفيذ العملية'));if(attempt===0&&invalidSessionMessage(lastError.message))continue;throw lastError}
       return data;
     }
     throw lastError||new Error('تعذر تنفيذ العملية');
@@ -92,14 +93,14 @@
     window.current={role:account.role,id:account.id,name:account.name,username:account.username,auth_user_id:data.user.id};
     if(typeof window.load==='function')await window.load();
     const targetPage=account.role==='accountant'?'admin':account.role;
-    if(typeof window.openPage==='function')window.openPage(targetPage);
+    if(typeof window.openPage==='function')window.openPage(targetPage,{render:false});
     if(account.role==='accountant')setTimeout(()=>{try{window.adminTab?.('finance');document.querySelectorAll('.admin-tabs button').forEach(b=>b.style.display=(b.textContent||'').includes('الأرباح')?'':'none')}catch(_){}},80);
     const passEl=window.loginPass||document.getElementById('loginPass');if(passEl)passEl.value='';
     return account;
   }
 
 
-  let restorePromise=null;
+  let restorePromise=null,logoutPromise=null,explicitSignOut=false;
   function finishAuthBoot(){
     try{document.documentElement?.removeAttribute?.('data-alin-auth-boot')}catch(_){}
   }
@@ -111,37 +112,43 @@
   function accountState(account,user){
     return {role:account.role,id:account.id,name:account.name,username:account.username,auth_user_id:user.id};
   }
+  async function openPublicStore(){
+    try{window.AlinCloud?.loadCachedSnapshot?.()}catch(_){}
+    try{if(typeof window.load==='function')await window.load()}catch(error){console.warn('[ALIN public data refresh]',error)}
+    if(typeof window.openPage==='function')window.openPage('store',{render:false});
+    finishAuthBoot();
+    return false;
+  }
   async function restoreSession(){
-    if(!enabled()){finishAuthBoot();return false}
+    if(!enabled()){if(typeof window.openPage==='function')window.openPage('store');finishAuthBoot();return false}
     if(restorePromise)return restorePromise;
     restorePromise=(async()=>{
       const c=client();
-      if(!c?.auth){showSignedOut();return false}
+      if(!c?.auth)return openPublicStore();
       const response=await c.auth.getSession();
       const session=response?.data?.session||null;
-      if(response?.error||!session?.user){showSignedOut();return false}
+      if(response?.error||!session?.user)return openPublicStore();
       const account=await accountForUser(session.user);
       if(!account||account.status!=='active'){
+        explicitSignOut=true;
         try{await c.auth.signOut()}catch(_){}
-        window.current=null;showSignedOut();return false;
+        explicitSignOut=false;
+        window.current=null;showSignedOut();finishAuthBoot();return false;
       }
       window.current=accountState(account,session.user);
       try{window.AlinCloud?.loadCachedSnapshot?.()}catch(_){}
-      const target=account.role==='accountant'?'admin':account.role;
-      if(typeof window.openPage==='function')window.openPage(target);
-      if(account.role==='library')window.AlinLibraryModules?.showLibraryPage?.();
-      finishAuthBoot();
       try{if(typeof window.load==='function')await window.load()}catch(error){console.warn('[ALIN session data refresh]',error)}
+      const target=account.role==='accountant'?'admin':account.role;
+      if(typeof window.openPage==='function')window.openPage(target,{render:false});
       if(account.role==='library')window.AlinLibraryModules?.showLibraryPage?.();
       if(account.role==='accountant')setTimeout(()=>{try{window.adminTab?.('finance')}catch(_){}},50);
+      finishAuthBoot();
       window.dispatchEvent(new CustomEvent('alin:auth-restored',{detail:{account}}));
       return true;
     })().catch(error=>{
       console.error('[ALIN auth restore]',error);
-      window.current=null;showSignedOut();return false;
-    }).finally(()=>{
-      finishAuthBoot();restorePromise=null;
-    });
+      window.current=null;showSignedOut();finishAuthBoot();return false;
+    }).finally(()=>{restorePromise=null});
     return restorePromise;
   }
 
@@ -244,13 +251,25 @@
     }catch(e){alert(e.message||'تعذر إنشاء الحساب');throw e}
   }
 
+  async function repairAuthLink(accountId){
+    const c=client();if(!c?.rpc||!accountId)return 0;
+    const {data,error}=await c.rpc('alin_repair_auth_links',{p_account_id:String(accountId)});
+    if(error){
+      const text=String(error.message||'');
+      if(/PGRST202|Could not find the function|schema cache/i.test(text))throw new Error('تحديث ربط الحسابات غير منفذ. شغّل ملف RUN_ON_SUPABASE_v2_0_12_COMPLETE.sql مرة واحدة');
+      throw error;
+    }
+    return Number(data||0);
+  }
   async function updateAccountFromAdmin(payload){
+    if(payload?.password&&payload?.account_id)await repairAuthLink(payload.account_id);
     const data=await invokeAdmin('admin-update-account',payload);
     if(typeof load==='function')await load();
     return data.account;
   }
   async function resetPasswordFromAdmin(accountId,password){
     if(String(password||'').length<8)throw new Error('كلمة المرور يجب أن تكون 8 أحرف أو أرقام على الأقل');
+    await repairAuthLink(accountId);
     return invokeAdmin('admin-reset-password',{account_id:accountId,password});
   }
   async function deleteAccountFromAdmin(accountId){return invokeAdmin('admin-delete-account',{account_id:accountId})}
@@ -262,12 +281,24 @@
     window.confirmCartCheckout=secureCheckout;
     window.addAccount=createAccountFromAdmin;
     const oldLogout=window.logout;
-    window.logout=async function(){try{await client()?.auth?.signOut()}catch(_){};window.current=null;finishAuthBoot();return typeof oldLogout==='function'?oldLogout.apply(this,arguments):location.reload()};
-    client()?.auth?.onAuthStateChange?.((event)=>{if(event==='SIGNED_OUT'){window.current=null;showSignedOut();finishAuthBoot()}});
+    window.logout=function(){
+      if(logoutPromise)return logoutPromise;
+      const args=arguments,ctx=this;
+      logoutPromise=(async()=>{
+        explicitSignOut=true;
+        try{await client()?.auth?.signOut()}catch(_){}
+        window.current=null;
+        const result=typeof oldLogout==='function'?oldLogout.apply(ctx,args):showSignedOut();
+        finishAuthBoot();
+        return result;
+      })().finally(()=>{explicitSignOut=false;logoutPromise=null});
+      return logoutPromise;
+    };
+    client()?.auth?.onAuthStateChange?.((event)=>{if(event==='SIGNED_OUT'&&!explicitSignOut){window.current=null;showSignedOut();finishAuthBoot()}});
     restoreSession();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
-  window.ALINAuth=Object.freeze({enabled,emailFor,login,restoreSession,accountForUser,secureCheckout,createAccount,createAccountFromAdmin,updateAccountFromAdmin,resetPasswordFromAdmin,deleteAccountFromAdmin,ensureAdminSession:()=>adminSession(false)});
+  window.ALINAuth=Object.freeze({enabled,emailFor,login,restoreSession,accountForUser,secureCheckout,createAccount,createAccountFromAdmin,updateAccountFromAdmin,resetPasswordFromAdmin,repairAuthLink,deleteAccountFromAdmin,ensureAdminSession:()=>adminSession(false)});
 })();
 
 
