@@ -68,14 +68,20 @@
     const image=imageUrl(banner);
     const link=safeLink(banner.link_url);
     box.hidden=false;
+    const hasText=Boolean(String(banner.title||'').trim()||String(banner.text||'').trim());
     box.innerHTML=`
-      <article class="alin-store-banner${link?' is-clickable':''}" ${link?'role="link" tabindex="0"':''}>
-        ${image?`<img class="alin-store-banner__image" src="${esc(image)}" alt="${esc(banner.title||'إعلان منصة آلين')}" loading="eager" decoding="async">`:''}
-        <div class="alin-store-banner__content">
-          <span class="alin-store-banner__label">إعلان منصة آلين</span>
-          <h2>${esc(banner.title||'')}</h2>
-          ${banner.text?`<p>${esc(banner.text)}</p>`:''}
+      <article class="alin-store-banner${link?' is-clickable':''}${hasText?' has-copy':' no-copy'}" ${link?'role="link" tabindex="0"':''}>
+        <div class="alin-store-banner__media">
+          ${image?`<img class="alin-store-banner__image" src="${esc(image)}" alt="${esc(banner.title||'إعلان منصة آلين')}" loading="eager" decoding="async">`:`<span class="alin-store-banner__placeholder" aria-hidden="true">آ</span>`}
         </div>
+        ${hasText?`<div class="alin-store-banner__content">
+          <div class="alin-store-banner__copy">
+            <span class="alin-store-banner__label">إعلان منصة آلين</span>
+            ${banner.title?`<h2>${esc(banner.title)}</h2>`:''}
+            ${banner.text?`<p>${esc(banner.text)}</p>`:''}
+          </div>
+          ${link?`<span class="alin-store-banner__cta" aria-hidden="true">عرض الإعلان <b>←</b></span>`:''}
+        </div>`:''}
       </article>
       ${visible.length>1?`<div class="alin-store-banner__dots" aria-label="اختيار الإعلان">${visible.map((_,index)=>`<button type="button" class="${index===state.index?'active':''}" data-banner-index="${index}" aria-label="الإعلان ${index+1}"></button>`).join('')}</div>`:''}`;
 
@@ -89,7 +95,9 @@
     }
     q('.alin-store-banner__image',box)?.addEventListener('error',event=>{
       console.warn('[ALIN banners] image failed',event.currentTarget.src);
+      const media=event.currentTarget.closest('.alin-store-banner__media');
       event.currentTarget.remove();
+      if(media)media.innerHTML='<span class="alin-store-banner__placeholder" aria-hidden="true">آ</span>';
       article?.classList.add('without-image');
     },{once:true});
     box.querySelectorAll('[data-banner-index]').forEach(button=>button.addEventListener('click',()=>{
@@ -256,7 +264,7 @@
           <label><span>عنوان البنر</span><input id="alinBannerTitle" maxlength="120" placeholder="مثال: عروض العودة إلى المدارس"></label>
           <label><span>نص الإعلان</span><textarea id="alinBannerText" maxlength="500" placeholder="وصف مختصر وواضح"></textarea></label>
           <label><span>رابط عند الضغط — اختياري</span><input id="alinBannerLink" inputmode="url" placeholder="https://..."></label>
-          <label class="alin-banner-file"><span>صورة البنر</span><input id="alinBannerFile" type="file" accept="image/png,image/jpeg,image/webp"><small>المقاس المقترح 1600 × 500، والحد الأقصى يعتمد على إعدادات Supabase.</small></label>
+          <label class="alin-banner-file"><span>صورة البنر</span><input id="alinBannerFile" type="file" accept="image/png,image/jpeg,image/webp"><small>المقاس المقترح للكمبيوتر 1600 × 500. النص يظهر تلقائيًا أسفل الصورة، وعلى الموبايل تتكيف القطعة دون تشويه الصورة.</small></label>
           <label><span>تاريخ البداية</span><input id="alinBannerStart" type="date"></label>
           <label><span>تاريخ النهاية</span><input id="alinBannerEnd" type="date"></label>
           <label><span>ترتيب الظهور</span><input id="alinBannerSort" type="number" min="0" value="0"></label>
