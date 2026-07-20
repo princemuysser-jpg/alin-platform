@@ -86,17 +86,6 @@ revoke all on function public.alin_protect_account_identity() from public;
 revoke all on public.accounts from anon;
 grant select, insert, update, delete on public.accounts to authenticated;
 
--- دليل عام آمن للمدرسين والمكتبات الفعالة فقط.
--- لا يكشف اسم الدخول أو auth_user_id أو أي بيانات مصادقة.
-create or replace view public.alin_public_accounts
-with (security_barrier = true)
-as
-select id, role, name, status, area, landmark
-from public.accounts
-where role in ('teacher','library') and status = 'active';
-revoke all on public.alin_public_accounts from public;
-grant select on public.alin_public_accounts to anon, authenticated;
-
 -- الملازم: العرض العام للمنشور فقط، والإدارة أو المدرس صاحب الملزمة يكتب.
 alter table public.booklets enable row level security;
 drop policy if exists alin_legacy_admin_booklets_insert on public.booklets;

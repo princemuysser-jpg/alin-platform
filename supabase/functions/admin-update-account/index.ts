@@ -1,4 +1,4 @@
-import { corsHeaders, isAllowedOrigin, jsonResponse } from '../_shared/cors.ts';
+import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
 import {
   cleanText,
   emailForUsername,
@@ -13,9 +13,8 @@ import {
 const ALLOWED_ROLES = new Set(['admin', 'teacher', 'library', 'courier', 'accountant']);
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response(isAllowedOrigin(req) ? 'ok' : 'origin not allowed', { status: isAllowedOrigin(req) ? 200 : 403, headers: corsHeaders(req) });
-  if (!isAllowedOrigin(req)) return jsonResponse(req, { ok: false, error: 'المصدر غير مسموح' }, 403);
-  if (req.method !== 'POST') return jsonResponse(req, { ok: false, error: 'الطريقة غير مسموحة' }, 405);
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method !== 'POST') return jsonResponse({ ok: false, error: 'الطريقة غير مسموحة' }, 405);
 
   try {
     const { admin } = await requireAdmin(req);
@@ -131,8 +130,8 @@ Deno.serve(async (req: Request) => {
     }
     await removeLegacyPassword(admin, 'accounts', accountId);
 
-    return jsonResponse(req, { ok: true, account: publicAccount(account as Record<string, unknown>) });
+    return jsonResponse({ ok: true, account: publicAccount(account as Record<string, unknown>) });
   } catch (error) {
-    return jsonResponse(req, { ok: false, error: error instanceof Error ? error.message : 'تعذر تحديث الحساب' }, 400);
+    return jsonResponse({ ok: false, error: error instanceof Error ? error.message : 'تعذر تحديث الحساب' }, 400);
   }
 });

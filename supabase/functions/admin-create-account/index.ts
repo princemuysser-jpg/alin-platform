@@ -1,4 +1,4 @@
-import { corsHeaders, isAllowedOrigin, jsonResponse } from '../_shared/cors.ts';
+import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
 import {
   cleanText,
   emailForUsername,
@@ -12,9 +12,8 @@ import {
 const ALLOWED_ROLES = new Set(['teacher', 'library', 'courier', 'accountant']);
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response(isAllowedOrigin(req) ? 'ok' : 'origin not allowed', { status: isAllowedOrigin(req) ? 200 : 403, headers: corsHeaders(req) });
-  if (!isAllowedOrigin(req)) return jsonResponse(req, { ok: false, error: 'المصدر غير مسموح' }, 403);
-  if (req.method !== 'POST') return jsonResponse(req, { ok: false, error: 'الطريقة غير مسموحة' }, 405);
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method !== 'POST') return jsonResponse({ ok: false, error: 'الطريقة غير مسموحة' }, 405);
 
   let createdUserId = '';
   let accountId = '';
@@ -86,7 +85,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    return jsonResponse(req, { ok: true, account: publicAccount(account) });
+    return jsonResponse({ ok: true, account: publicAccount(account) });
   } catch (error) {
     if (createdUserId) {
       try {
@@ -98,6 +97,6 @@ Deno.serve(async (req: Request) => {
         await cleanup.auth.admin.deleteUser(createdUserId);
       } catch (_) { /* best effort rollback */ }
     }
-    return jsonResponse(req, { ok: false, error: error instanceof Error ? error.message : 'تعذر إنشاء الحساب' }, 400);
+    return jsonResponse({ ok: false, error: error instanceof Error ? error.message : 'تعذر إنشاء الحساب' }, 400);
   }
 });

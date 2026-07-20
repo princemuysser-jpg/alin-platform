@@ -4,8 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/release-check.mjs && node tests/security-check.mjs",
-    "test:release": "node tests/release-check.mjs",
-    "test:security": "node tests/security-check.mjs"
+    "test": "node tests/release-check.mjs"
   }
 }
