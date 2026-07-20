@@ -1,6 +1,6 @@
 {
   "name": "alin-platform",
-  "version": "2.0.1-step1.3",
+  "version": "2.0.1-step1.5",
   "private": true,
   "type": "module",
   "scripts": {

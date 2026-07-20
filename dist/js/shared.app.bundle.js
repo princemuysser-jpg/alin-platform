@@ -1,4 +1,4 @@
-// Alin shared app bundle v2.0.0
+// Alin shared app bundle v2.0.1
 
 // === teacher/booklets.js ===
 /* ===== teacher/js/booklets.js ===== */
@@ -2427,7 +2427,7 @@ window.AlinLibraryModules['alinV67LibrarySettlementRows']=typeof alinV67LibraryS
   function render(root){
     if(!root)return;root.className='panel admin-settings-v144';
     root.innerHTML=`
-      <div class="as144-head"><div><h2>إعدادات المنصة</h2><p>إدارة الهوية والأرباح والتوصيل والطلبات وحساب المدير من مكان واحد.</p></div><span class="as144-version">v2.0.0</span></div>
+      <div class="as144-head"><div><h2>إعدادات المنصة</h2><p>إدارة الهوية والأرباح والتوصيل والطلبات وحساب المدير من مكان واحد.</p></div><span class="as144-version">v2.0.1</span></div>
       <div class="as144-tabs" role="tablist">
         <button class="active" data-as144-tab="general">عام</button><button data-as144-tab="profits">الأرباح</button><button data-as144-tab="orders">الطلبات والتوصيل</button><button data-as144-tab="brand">الهوية والتواصل</button><button data-as144-tab="security">أمان المدير</button>
       </div>
@@ -3482,7 +3482,7 @@ window.AlinCourierModules['recordCourierSettlementForOrder']=typeof recordCourie
   async function saveOne(k,v){if(typeof settingsSet==='function')return settingsSet(k,String(v));if(typeof alinV57SaveSetting==='function')return alinV57SaveSetting(k,String(v));if(typeof sb!=='undefined'&&sb?.from){const {error}=await sb.from('settings').upsert({key:k,value:String(v)});if(error)throw error;return}try{if(db?.settings)db.settings[k]=String(v);localStorage.setItem('alin_db',JSON.stringify(db))}catch(e){}}
   function previewImage(box,file){if(!file)return;const u=URL.createObjectURL(file);box.innerHTML=`<img src="${u}" alt="معاينة">`}
   function render(root){const v=current();root.className='admin-brand-v176';root.innerHTML=`
-    <div class="ab176-head"><div><h2>الهوية البصرية</h2><p>تحكم بألوان وشعار وخط وتصميم منصة آلين من مكان واحد.</p></div><span class="ab176-badge">v2.0.0</span></div>
+    <div class="ab176-head"><div><h2>الهوية البصرية</h2><p>تحكم بألوان وشعار وخط وتصميم منصة آلين من مكان واحد.</p></div><span class="ab176-badge">v2.0.1</span></div>
     <div class="ab176-layout"><div class="ab176-stack">
       <section class="ab176-card"><h3>القوالب الجاهزة</h3><p>اختر قالباً ثم عدّل التفاصيل حسب رغبتك.</p><div class="ab176-templates">
         <button class="ab176-template ${v.theme==='classic'?'active':''}" data-theme="classic"><span class="ab176-swatches"><i style="background:#1d4ed8"></i><i style="background:#f59e0b"></i><i style="background:#f8fafc"></i></span><b>Alin Classic</b><small>أزرق وأبيض</small></button>
@@ -3881,7 +3881,7 @@ window.AlinCourierModules['recordCourierSettlementForOrder']=typeof recordCourie
 
 ;
 
-/* ALIN 2.0.0 - hardened Supabase Auth and admin account adapter. */
+/* ALIN 2.0.1 - hardened Supabase Auth and admin account adapter. */
 (function(){
   'use strict';
   const ATTEMPT_KEY='alin_auth_attempts_v139',MAX_ATTEMPTS=5,LOCK_MS=10*60*1000;
@@ -4027,7 +4027,7 @@ window.AlinCourierModules['recordCourierSettlementForOrder']=typeof recordCourie
 })();
 
 
-/* ALIN 2.0.0 — backend readiness diagnostics */
+/* ALIN 2.0.1 — backend readiness diagnostics */
 (function(){
   'use strict';
   async function checkBackendReadiness(){

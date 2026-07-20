@@ -1,10 +1,10 @@
-// Alin shared early bundle v2.0.0
+// Alin shared early bundle v2.0.1
 
 // === core/config.js ===
 /* ===== core/js/config.js ===== */
-/* ALIN 2.0.0 central configuration. Keep secrets outside the repository. */
+/* ALIN 2.0.1 central configuration. Keep secrets outside the repository. */
 window.ALIN_CONFIG = Object.freeze({
-  version: '2.0.0',
+  version: '2.0.1',
   desktopPage: './store-desktop.html',
   mobilePage: './store-mobile.html',
   currency: 'د.ع',

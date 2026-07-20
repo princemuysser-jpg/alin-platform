@@ -1,4 +1,4 @@
-/* ALIN 2.0.0 - mobile navigation controller */
+/* ALIN 2.0.1 - mobile navigation controller */
 
 (function(){
   const byId=id=>document.getElementById(id);
