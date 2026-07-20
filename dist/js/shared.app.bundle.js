@@ -1,4 +1,4 @@
-// Alin shared app bundle v2.0.1
+// Alin shared app bundle v2.0.4
 
 // === teacher/booklets.js ===
 /* ===== teacher/js/booklets.js ===== */
@@ -423,229 +423,237 @@ window.AlinTeacherModules['alinV67SumTeacherBalances']=typeof alinV67SumTeacherB
 ;
 
 // === teacher/notifications.js ===
-/* ===== teacher/js/teacher-notifications-v155.js ===== */
-
-/* V155 — إشعارات المدرس */
+/* ALIN v2.0.2 — مركز إشعارات المدرس الموحد */
 (function(){
-  const escx=v=>typeof esc==='function'?esc(v):String(v??'');
-  const arr=v=>Array.isArray(v)?v:[];
-  const currentTeacher=()=>window.current?.role==='teacher'?window.current:null;
-  const key=()=>`alin_teacher_seen_notifications_${currentTeacher()?.id||'guest'}`;
-  const seen=()=>{try{return new Set(JSON.parse(localStorage.getItem(key())||'[]').map(String))}catch(_){return new Set()}};
-  const saveSeen=s=>localStorage.setItem(key(),JSON.stringify([...s]));
-  function all(){
-    const t=currentTeacher(); if(!t)return[];
-    const rows=[...arr(window.v19Notifications),...arr(window.db?.notifications)];
-    const map=new Map(); rows.forEach(n=>{if(n?.id!=null)map.set(String(n.id),n)});
-    return [...map.values()].filter(n=>{
-      if(n.status==='deleted'||n.status==='inactive')return false;
-      const role=n.target_role||n.audience||'all';
-      const target=String(n.target_id||n.account_id||n.teacher_id||'');
-      return ['all','teacher','teachers'].includes(role)||target===String(t.id);
-    }).sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
-  }
-  const icon=n=>{const x=String(n.type||n.priority||n.category||'').toLowerCase();if(x.includes('sale')||x.includes('order'))return'🛍️';if(x.includes('settle')||x.includes('pay')||x.includes('finance'))return'💰';if(x.includes('reject'))return'❌';if(x.includes('approve')||x.includes('publish'))return'✅';if(x.includes('edit')||x.includes('review'))return'✏️';return'🔔'};
-  function isRead(n,s){return !!n.read_at||s.has(String(n.id))}
-  function updateBadge(){
-    const s=seen(),unread=all().filter(n=>!isRead(n,s)).length;
-    document.querySelectorAll('#teacherV155Badge').forEach(b=>{b.textContent=unread;b.hidden=!unread});
-  }
-  function render(){
-    if(!currentTeacher()||!window.teacherContent)return;
-    const rows=all(),s=seen(),unread=rows.filter(n=>!isRead(n,s)).length,today=new Date().toISOString().slice(0,10),todayCount=rows.filter(n=>String(n.created_at||'').slice(0,10)===today).length;
-    teacherContent.innerHTML=`<section class="teacher-v155-notifications"><div class="teacher-v155-head"><div><h2>إشعاراتي</h2><p>تابع الموافقات والمبيعات والتسويات ورسائل الإدارة.</p></div><div class="teacher-v155-actions"><button type="button" onclick="TeacherV155.markAll()">تحديد الكل كمقروء</button><button type="button" class="secondary" onclick="TeacherV155.refresh()">تحديث</button></div></div><div class="teacher-v155-stats"><div class="teacher-v155-stat"><small>كل الإشعارات</small><b>${rows.length}</b></div><div class="teacher-v155-stat"><small>غير المقروء</small><b>${unread}</b></div><div class="teacher-v155-stat"><small>اليوم</small><b>${todayCount}</b></div></div><div class="teacher-v155-toolbar"><input id="teacherV155Search" placeholder="ابحث بعنوان الإشعار أو محتواه" oninput="TeacherV155.filter()"><select id="teacherV155Filter" onchange="TeacherV155.filter()"><option value="all">الكل</option><option value="unread">غير المقروء</option><option value="read">المقروء</option></select></div><div id="teacherV155List" class="teacher-v155-list">${rows.map(n=>`<article class="teacher-v155-card ${isRead(n,s)?'':'unread'}" data-text="${escx(((n.title||'')+' '+(n.message||n.text||'')).toLowerCase())}" data-read="${isRead(n,s)?'1':'0'}"><div class="teacher-v155-icon">${icon(n)}</div><div><h3>${escx(n.title||'إشعار')}</h3><p>${escx(n.message||n.text||'')}</p><small>${escx(n.created_at||'')}</small></div><div class="teacher-v155-card-actions">${isRead(n,s)?'':`<button type="button" onclick="TeacherV155.mark('${escx(n.id)}')">مقروء</button>`}<button type="button" class="secondary" onclick="TeacherV155.copy('${escx(n.id)}')">نسخ</button></div></article>`).join('')||'<div class="teacher-v155-empty">لا توجد إشعارات حالياً.</div>'}</div></section>`;
-    document.querySelectorAll('#teacherPage .teacher-tabs button').forEach(b=>b.classList.toggle('active-teacher-tab',(b.getAttribute('onclick')||'').includes("'notifications'")));
-    updateBadge();
-  }
-  async function mark(id){
-    const s=seen();s.add(String(id));saveSeen(s);
-    const n=all().find(x=>String(x.id)===String(id));if(n)n.read_at=n.read_at||new Date().toISOString();
-    try{if(typeof update==='function')await update('notifications',{read_at:new Date().toISOString()},{id})}catch(_){ }
-    render();
-  }
-  async function markAll(){
-    const s=seen();all().forEach(n=>s.add(String(n.id)));saveSeen(s);
-    const now=new Date().toISOString();all().forEach(n=>n.read_at=n.read_at||now);
-    render();
-  }
-  function filter(){const q=(document.getElementById('teacherV155Search')?.value||'').trim().toLowerCase(),f=document.getElementById('teacherV155Filter')?.value||'all';document.querySelectorAll('#teacherV155List .teacher-v155-card').forEach(c=>{c.hidden=!!((q&&!c.dataset.text.includes(q))||(f==='unread'&&c.dataset.read==='1')||(f==='read'&&c.dataset.read==='0'))})}
-  function copy(id){const n=all().find(x=>String(x.id)===String(id));if(!n)return;const text=`${n.title||'إشعار'}\n${n.message||n.text||''}`;navigator.clipboard?.writeText(text).then(()=>typeof toast==='function'&&toast('تم نسخ الإشعار')).catch(()=>{});}
-  function refresh(){render();typeof toast==='function'&&toast('تم تحديث الإشعارات')}
-  window.TeacherV155={render,mark,markAll,filter,copy,refresh,updateBadge};
-  const previousTab=window.teacherTab;
-  window.teacherTab=function(tab){if(tab==='notifications'){render();return}return typeof previousTab==='function'?previousTab(tab):undefined};
-  window.AlinTeacherModules=window.AlinTeacherModules||{};window.AlinTeacherModules.teacherTab=window.teacherTab;
-  document.addEventListener('DOMContentLoaded',updateBadge);
-})();
+  'use strict';
 
-/* ===== teacher/js/teacher-notifications-visible-v158.js ===== */
-/* V158 — تثبيت ظهور تبويب إشعارات المدرس وربطه كآخر متحكم */
-(function(){
-  const previousTeacherTab = window.teacherTab;
+  const BUTTON_ID='teacherNotificationsTabV160';
+  const BADGE_ID='teacherNotificationsBadgeV160';
 
-  function ensureNotificationTab(){
-    const tabs = document.querySelector('#teacherPage .teacher-tabs');
-    if(!tabs) return null;
-    let button = [...tabs.querySelectorAll('button')].find(b => (b.getAttribute('onclick')||'').includes("'notifications'") || b.dataset.teacherTab === 'notifications');
+  const array=value=>Array.isArray(value)?value:[];
+  const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[char]));
+
+  function teacher(){
+    try{
+      if(typeof current!=='undefined'&&current?.role==='teacher')return current;
+    }catch(_){ }
+    return window.current?.role==='teacher'?window.current:null;
+  }
+
+  function host(){return document.getElementById('teacherContent')}
+  function teacherId(){return String(teacher()?.id||'')}
+  function storageKey(){return `alin_teacher_seen_notifications_${teacherId()||'guest'}`}
+
+  function localSeen(){
+    try{return new Set(JSON.parse(localStorage.getItem(storageKey())||'[]').map(String))}
+    catch(_){return new Set()}
+  }
+
+  function saveLocalSeen(values){
+    try{localStorage.setItem(storageKey(),JSON.stringify([...values]))}
+    catch(error){console.warn('[ALIN teacher notifications] local state',error)}
+  }
+
+  function matchesTeacher(notification){
+    const id=teacherId();
+    if(!id||!notification)return false;
+    if(['deleted','inactive','hidden'].includes(String(notification.status||'').toLowerCase()))return false;
+
+    const role=String(notification.target_role||notification.audience||notification.role||'all').toLowerCase();
+    const target=String(notification.target_id||notification.account_id||notification.teacher_id||'').trim();
+
+    // إذا كان الإشعار موجهاً إلى حساب محدد فلا يظهر لبقية المدرسين.
+    if(target)return target===id;
+    return ['all','teacher','teachers'].includes(role);
+  }
+
+  function rows(){
+    const merged=[...array(window.v19Notifications),...array(window.db?.notifications)];
+    const unique=new Map();
+    merged.forEach((notification,index)=>{
+      if(!notification)return;
+      const id=String(notification.id??`local-${index}`);
+      if(!unique.has(id))unique.set(id,notification);
+    });
+    return [...unique.values()]
+      .filter(matchesTeacher)
+      .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+  }
+
+  function isRead(notification,seen=localSeen()){
+    return Boolean(notification?.read_at)||seen.has(String(notification?.id));
+  }
+
+  function unreadCount(){
+    const seen=localSeen();
+    return rows().filter(notification=>!isRead(notification,seen)).length;
+  }
+
+  function icon(notification){
+    const type=String(notification?.type||notification?.priority||notification?.category||'').toLowerCase();
+    if(type.includes('sale')||type.includes('order'))return '🛍️';
+    if(type.includes('settle')||type.includes('pay')||type.includes('finance'))return '💰';
+    if(type.includes('reject'))return '❌';
+    if(type.includes('approve')||type.includes('publish'))return '✅';
+    if(type.includes('edit')||type.includes('review'))return '✏️';
+    return '🔔';
+  }
+
+  function formatDate(value){
+    if(!value)return 'بدون تاريخ';
+    try{return new Intl.DateTimeFormat('ar-IQ',{dateStyle:'medium',timeStyle:'short'}).format(new Date(value))}
+    catch(_){return String(value)}
+  }
+
+  function ensureTab(){
+    const tabs=document.querySelector('#teacherPage .teacher-tabs');
+    if(!tabs)return null;
+
+    const candidates=[...tabs.querySelectorAll('[data-teacher-tab="notifications"],.teacher-notifications-tab')];
+    let button=document.getElementById(BUTTON_ID)||candidates[0]||null;
+    candidates.forEach(candidate=>{if(candidate!==button)candidate.remove()});
+
     if(!button){
-      button = document.createElement('button');
-      button.type = 'button';
-      button.dataset.teacherTab = 'notifications';
-      button.innerHTML = 'الإشعارات <span id="teacherV155Badge" class="teacher-v155-badge" hidden>0</span>';
-      const profileButton = [...tabs.querySelectorAll('button')].find(b => (b.getAttribute('onclick')||'').includes("'profile'"));
-      tabs.insertBefore(button, profileButton || null);
+      button=document.createElement('button');
+      const before=[...tabs.querySelectorAll('button')].find(item=>(item.getAttribute('onclick')||'').includes("'requests'"));
+      tabs.insertBefore(button,before||null);
     }
-    button.setAttribute('onclick', "teacherTab('notifications')");
+
+    button.type='button';
+    button.id=BUTTON_ID;
+    button.dataset.teacherTab='notifications';
+    button.classList.add('teacher-notifications-tab');
+    button.setAttribute('onclick',"teacherTab('notifications')");
+    button.innerHTML=`<span aria-hidden="true">🔔</span><span>الإشعارات</span><span id="${BADGE_ID}" class="teacher-v160-badge" hidden>0</span>`;
+    button.hidden=false;
     return button;
   }
 
-  function setActive(tab){
-    document.querySelectorAll('#teacherPage .teacher-tabs button').forEach(b => {
-      const target = b.dataset.teacherTab || ((b.getAttribute('onclick')||'').match(/teacherTab\('([^']+)'\)/)||[])[1] || '';
-      b.classList.toggle('active-teacher-tab', target === tab);
+  function updateBadge(){
+    const button=ensureTab();
+    if(!button)return;
+    const badge=button.querySelector(`#${BADGE_ID}`);
+    const count=unreadCount();
+    if(badge){badge.textContent=String(count);badge.hidden=count===0}
+  }
+
+  function setActive(){
+    document.querySelectorAll('#teacherPage .teacher-tabs button').forEach(button=>{
+      const target=button.dataset.teacherTab||((button.getAttribute('onclick')||'').match(/teacherTab\('([^']+)'\)/)||[])[1]||'';
+      button.classList.toggle('active-teacher-tab',target==='notifications');
     });
   }
 
-  function openNotifications(){
-    ensureNotificationTab();
-    if(window.TeacherV155 && typeof window.TeacherV155.render === 'function'){
-      window.activeTeacherTab = 'notifications';
-      window.TeacherV155.render();
-      setActive('notifications');
-      return true;
-    }
-    const host = document.getElementById('teacherContent');
-    if(host){
-      host.innerHTML = '<section class="teacher-v155-notifications"><div class="teacher-v155-empty">تعذر تحميل مركز الإشعارات. حدّث الصفحة وحاول مرة أخرى.</div></section>';
-      setActive('notifications');
-    }
-    return false;
+  function card(notification,seen){
+    const read=isRead(notification,seen);
+    const id=escapeHtml(notification.id??'');
+    const title=escapeHtml(notification.title||'إشعار');
+    const message=escapeHtml(notification.message||notification.text||'');
+    const searchable=escapeHtml(`${notification.title||''} ${notification.message||notification.text||''}`.toLowerCase());
+    return `<article class="teacher-v155-card ${read?'':'unread'}" data-notification-id="${id}" data-text="${searchable}" data-read="${read?'1':'0'}"><div class="teacher-v155-icon">${icon(notification)}</div><div><h3>${title}</h3><p>${message}</p><small>${escapeHtml(formatDate(notification.created_at))}</small></div><div class="teacher-v155-card-actions">${read?'':`<button type="button" onclick="TeacherNotifications.mark('${id}')">مقروء</button>`}<button type="button" class="secondary" onclick="TeacherNotifications.copy('${id}')">نسخ</button></div></article>`;
   }
 
-  window.teacherTab = function(tab){
-    if(tab === 'notifications'){
-      openNotifications();
-      return;
+  function render(){
+    const container=host();
+    if(!container)return false;
+
+    const currentTeacher=teacher();
+    if(!currentTeacher){
+      container.innerHTML='<section class="teacher-v155-notifications"><div class="teacher-v155-empty">تعذر تحديد حساب المدرس.</div></section>';
+      return false;
     }
-    return typeof previousTeacherTab === 'function' ? previousTeacherTab(tab) : undefined;
-  };
 
-  window.AlinTeacherModules = window.AlinTeacherModules || {};
-  window.AlinTeacherModules.teacherTab = window.teacherTab;
-  window.openTeacherNotificationsV158 = openNotifications;
+    const notifications=rows();
+    const seen=localSeen();
+    const unread=notifications.filter(notification=>!isRead(notification,seen)).length;
+    const today=new Date().toISOString().slice(0,10);
+    const todayCount=notifications.filter(notification=>String(notification.created_at||'').slice(0,10)===today).length;
 
-  function init(){
-    ensureNotificationTab();
-    if(window.TeacherV155 && typeof window.TeacherV155.updateBadge === 'function') window.TeacherV155.updateBadge();
+    container.innerHTML=`<section class="teacher-v155-notifications"><div class="teacher-v155-head"><div><h2>إشعاراتي</h2><p>تابع الموافقات والمبيعات والتسويات ورسائل الإدارة.</p></div><div class="teacher-v155-actions"><button type="button" onclick="TeacherNotifications.markAll()">تحديد الكل كمقروء</button><button type="button" class="secondary" onclick="TeacherNotifications.refresh()">تحديث</button></div></div><div class="teacher-v155-stats"><div class="teacher-v155-stat"><small>كل الإشعارات</small><b>${notifications.length}</b></div><div class="teacher-v155-stat"><small>غير المقروء</small><b>${unread}</b></div><div class="teacher-v155-stat"><small>اليوم</small><b>${todayCount}</b></div></div><div class="teacher-v155-toolbar"><input id="teacherNotificationSearch" placeholder="ابحث بعنوان الإشعار أو محتواه" oninput="TeacherNotifications.filter()"><select id="teacherNotificationFilter" onchange="TeacherNotifications.filter()"><option value="all">الكل</option><option value="unread">غير المقروء</option><option value="read">المقروء</option></select></div><div id="teacherNotificationList" class="teacher-v155-list">${notifications.map(notification=>card(notification,seen)).join('')||'<div class="teacher-v155-empty">لا توجد إشعارات حالياً.</div>'}</div></section>`;
+
+    window.activeTeacherTab='notifications';
+    setActive();
+    updateBadge();
+    return true;
   }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
-})();
 
-/* ===== teacher/js/teacher-notifications-v159.js ===== */
+  async function mark(id){
+    const notification=rows().find(item=>String(item.id)===String(id));
+    if(!notification)return;
 
-/* V159 — تثبيت مركز إشعارات المدرس نهائياً */
-(function(){
-  function teacherCurrent(){
-    try{ if(typeof current!=='undefined' && current && current.role==='teacher') return current; }catch(_){ }
-    return window.current && window.current.role==='teacher' ? window.current : null;
+    const seen=localSeen();
+    seen.add(String(id));
+    saveLocalSeen(seen);
+    notification.read_at=notification.read_at||new Date().toISOString();
+
+    const target=String(notification.target_id||notification.account_id||notification.teacher_id||'').trim();
+    if(target===teacherId()){
+      try{
+        if(typeof update==='function')await update('notifications',{read_at:notification.read_at},{id:notification.id});
+      }catch(error){console.warn('[ALIN teacher notifications] remote read state',error)}
+    }
+    render();
   }
-  function rows(){
-    const t=teacherCurrent(); if(!t) return [];
-    const all=[...(Array.isArray(window.v19Notifications)?window.v19Notifications:[]),...(Array.isArray(window.db?.notifications)?window.db.notifications:[])];
-    const map=new Map(); all.forEach(n=>{if(n&&n.id!=null)map.set(String(n.id),n)});
-    return [...map.values()].filter(n=>{
-      if(n.status==='deleted'||n.status==='inactive') return false;
-      const role=String(n.target_role||n.audience||'all').toLowerCase();
-      const target=String(n.target_id||n.account_id||n.teacher_id||'');
-      return ['all','teacher','teachers'].includes(role)||target===String(t.id);
+
+  function markAll(){
+    const seen=localSeen();
+    rows().forEach(notification=>seen.add(String(notification.id)));
+    saveLocalSeen(seen);
+    render();
+  }
+
+  function filter(){
+    const query=(document.getElementById('teacherNotificationSearch')?.value||'').trim().toLowerCase();
+    const mode=document.getElementById('teacherNotificationFilter')?.value||'all';
+    document.querySelectorAll('#teacherNotificationList .teacher-v155-card').forEach(card=>{
+      card.hidden=Boolean(
+        (query&&!String(card.dataset.text||'').includes(query))||
+        (mode==='unread'&&card.dataset.read==='1')||
+        (mode==='read'&&card.dataset.read==='0')
+      );
     });
   }
-  function seenSet(){
-    const t=teacherCurrent();
-    try{return new Set(JSON.parse(localStorage.getItem(`alin_teacher_seen_notifications_${t?.id||'guest'}`)||'[]').map(String))}catch(_){return new Set()}
-  }
-  function unreadCount(){const s=seenSet();return rows().filter(n=>!n.read_at&&!s.has(String(n.id))).length}
-  function updateBadges(){
-    const n=unreadCount();
-    document.querySelectorAll('#teacherV155Badge,#teacherV159MainBadge').forEach(b=>{b.textContent=n;b.hidden=!n});
-  }
-  function ensureVisible(){
-    const tabs=document.querySelector('#teacherPage .teacher-tabs');
-    if(!tabs)return;
-    let b=tabs.querySelector('[data-teacher-tab="notifications"]');
-    if(!b){
-      b=document.createElement('button');b.type='button';b.dataset.teacherTab='notifications';b.className='teacher-notifications-tab';b.setAttribute('onclick',"teacherTab('notifications')");b.innerHTML='🔔 الإشعارات <span id="teacherV155Badge" class="teacher-v155-badge" hidden>0</span>';
-      tabs.insertBefore(b,tabs.children[1]||null);
-    }
-  }
-  const previous=window.teacherTab;
-  window.teacherTab=function(tab){
-    if(tab==='notifications'){
-      ensureVisible();
-      if(window.TeacherV155&&typeof window.TeacherV155.render==='function'){
-        window.activeTeacherTab='notifications';window.TeacherV155.render();
-      }else{
-        const host=document.getElementById('teacherContent');if(host)host.innerHTML='<section class="teacher-v155-notifications"><div class="teacher-v155-empty">مركز الإشعارات غير محمّل. أعد تحديث الصفحة.</div></section>';
-      }
-      document.querySelectorAll('#teacherPage .teacher-tabs button').forEach(x=>x.classList.toggle('active-teacher-tab',x.dataset.teacherTab==='notifications'||(x.getAttribute('onclick')||'').includes("'notifications'")));
-      updateBadges();return;
-    }
-    return typeof previous==='function'?previous(tab):undefined;
-  };
-  window.AlinTeacherModules=window.AlinTeacherModules||{};window.AlinTeacherModules.teacherTab=window.teacherTab;
-  function init(){ensureVisible();updateBadges()}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
-  window.setInterval(updateBadges,5000);
-})();
 
-/* ===== teacher/js/teacher-notifications-v160.js ===== */
+  async function copy(id){
+    const notification=rows().find(item=>String(item.id)===String(id));
+    if(!notification)return;
+    const text=`${notification.title||'إشعار'}\n${notification.message||notification.text||''}`;
+    try{
+      await navigator.clipboard.writeText(text);
+      if(typeof toast==='function')toast('تم نسخ الإشعار');
+    }catch(_){ }
+  }
 
-/* V160 — تثبيت قسم إشعارات المدرس بشكل نهائي */
-(function(){
-  function targetTabs(){return document.querySelector('#teacherPage .teacher-tabs')}
-  function currentTeacher(){try{return (typeof current!=='undefined'&&current&&current.role==='teacher')?current:(window.current&&window.current.role==='teacher'?window.current:null)}catch(_){return null}}
-  function notifications(){
-    const t=currentTeacher(); if(!t)return [];
-    const all=[...(Array.isArray(window.v19Notifications)?window.v19Notifications:[]),...(Array.isArray(window.db&&window.db.notifications)?window.db.notifications:[])];
-    const seen=new Set(), out=[];
-    all.forEach(n=>{if(!n||n.status==='deleted'||n.status==='inactive')return;const id=String(n.id||Math.random());if(seen.has(id))return;seen.add(id);const role=String(n.target_role||n.audience||'all').toLowerCase();const target=String(n.target_id||n.account_id||n.teacher_id||'');if(['all','teacher','teachers'].includes(role)||target===String(t.id))out.push(n)});
-    return out;
+  function refresh(){
+    render();
+    if(typeof toast==='function')toast('تم تحديث الإشعارات');
   }
-  function unread(){
-    const t=currentTeacher();let local=new Set();try{local=new Set(JSON.parse(localStorage.getItem(`alin_teacher_seen_notifications_${t&&t.id||'guest'}`)||'[]').map(String))}catch(_){}
-    return notifications().filter(n=>!n.read_at&&!local.has(String(n.id))).length;
-  }
-  function ensureTab(){
-    const tabs=targetTabs();if(!tabs)return null;
-    // Remove stale duplicates, preserve one final button.
-    [...tabs.querySelectorAll('[data-teacher-tab="notifications"],.teacher-notifications-tab')].forEach(x=>{if(x.id!=='teacherNotificationsTabV160')x.remove()});
-    let btn=document.getElementById('teacherNotificationsTabV160');
-    if(!btn){
-      btn=document.createElement('button');btn.type='button';btn.id='teacherNotificationsTabV160';btn.dataset.teacherTab='notifications';btn.innerHTML='<span aria-hidden="true">🔔</span><span>الإشعارات</span><span id="teacherNotificationsBadgeV160" class="teacher-v160-badge" hidden>0</span>';
-      const raise=[...tabs.querySelectorAll('button')].find(b=>(b.getAttribute('onclick')||'').includes("'requests'"));
-      tabs.insertBefore(btn,raise||null);
-    }
-    btn.onclick=function(){window.teacherTab('notifications')};
-    btn.style.display='inline-flex';btn.hidden=false;
-    const badge=btn.querySelector('#teacherNotificationsBadgeV160');const n=unread();if(badge){badge.textContent=n;badge.hidden=!n}
-    return btn;
-  }
-  function setActive(){document.querySelectorAll('#teacherPage .teacher-tabs button').forEach(b=>b.classList.toggle('active-teacher-tab',b.id==='teacherNotificationsTabV160'))}
-  const previous=window.teacherTab;
+
+  window.TeacherNotifications={render,mark,markAll,filter,copy,refresh,updateBadge,rows};
+  // إبقاء الاسم السابق فقط للتوافق مع أي استدعاء قائم، بدون نظام إشعارات ثانٍ.
+  window.TeacherV155=window.TeacherNotifications;
+
+  const previousTeacherTab=window.teacherTab;
   window.teacherTab=function(tab){
     ensureTab();
     if(tab==='notifications'){
-      window.activeTeacherTab='notifications';
-      if(window.TeacherV155&&typeof window.TeacherV155.render==='function')window.TeacherV155.render();
-      else{const host=document.getElementById('teacherContent');if(host)host.innerHTML='<section class="teacher-v155-notifications"><div class="teacher-v155-empty">لا توجد إشعارات حالياً.</div></section>'}
-      setActive();return;
+      render();
+      return;
     }
-    return typeof previous==='function'?previous(tab):undefined;
+    return typeof previousTeacherTab==='function'?previousTeacherTab(tab):undefined;
   };
-  window.AlinTeacherModules=window.AlinTeacherModules||{};window.AlinTeacherModules.teacherTab=window.teacherTab;
-  function init(){ensureTab();let tries=0;const timer=setInterval(()=>{ensureTab();if(++tries>20)clearInterval(timer)},500)}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+
+  window.AlinTeacherModules=window.AlinTeacherModules||{};
+  window.AlinTeacherModules.teacherTab=window.teacherTab;
+
+  function init(){
+    ensureTab();
+    updateBadge();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});
+  else init();
 })();
 
 
@@ -2427,7 +2435,7 @@ window.AlinLibraryModules['alinV67LibrarySettlementRows']=typeof alinV67LibraryS
   function render(root){
     if(!root)return;root.className='panel admin-settings-v144';
     root.innerHTML=`
-      <div class="as144-head"><div><h2>إعدادات المنصة</h2><p>إدارة الهوية والأرباح والتوصيل والطلبات وحساب المدير من مكان واحد.</p></div><span class="as144-version">v2.0.1</span></div>
+      <div class="as144-head"><div><h2>إعدادات المنصة</h2><p>إدارة الهوية والأرباح والتوصيل والطلبات وحساب المدير من مكان واحد.</p></div><span class="as144-version">v2.0.4</span></div>
       <div class="as144-tabs" role="tablist">
         <button class="active" data-as144-tab="general">عام</button><button data-as144-tab="profits">الأرباح</button><button data-as144-tab="orders">الطلبات والتوصيل</button><button data-as144-tab="brand">الهوية والتواصل</button><button data-as144-tab="security">أمان المدير</button>
       </div>
@@ -3482,7 +3490,7 @@ window.AlinCourierModules['recordCourierSettlementForOrder']=typeof recordCourie
   async function saveOne(k,v){if(typeof settingsSet==='function')return settingsSet(k,String(v));if(typeof alinV57SaveSetting==='function')return alinV57SaveSetting(k,String(v));if(typeof sb!=='undefined'&&sb?.from){const {error}=await sb.from('settings').upsert({key:k,value:String(v)});if(error)throw error;return}try{if(db?.settings)db.settings[k]=String(v);localStorage.setItem('alin_db',JSON.stringify(db))}catch(e){}}
   function previewImage(box,file){if(!file)return;const u=URL.createObjectURL(file);box.innerHTML=`<img src="${u}" alt="معاينة">`}
   function render(root){const v=current();root.className='admin-brand-v176';root.innerHTML=`
-    <div class="ab176-head"><div><h2>الهوية البصرية</h2><p>تحكم بألوان وشعار وخط وتصميم منصة آلين من مكان واحد.</p></div><span class="ab176-badge">v2.0.1</span></div>
+    <div class="ab176-head"><div><h2>الهوية البصرية</h2><p>تحكم بألوان وشعار وخط وتصميم منصة آلين من مكان واحد.</p></div><span class="ab176-badge">v2.0.4</span></div>
     <div class="ab176-layout"><div class="ab176-stack">
       <section class="ab176-card"><h3>القوالب الجاهزة</h3><p>اختر قالباً ثم عدّل التفاصيل حسب رغبتك.</p><div class="ab176-templates">
         <button class="ab176-template ${v.theme==='classic'?'active':''}" data-theme="classic"><span class="ab176-swatches"><i style="background:#1d4ed8"></i><i style="background:#f59e0b"></i><i style="background:#f8fafc"></i></span><b>Alin Classic</b><small>أزرق وأبيض</small></button>
@@ -4051,4 +4059,36 @@ window.AlinCourierModules['recordCourierSettlementForOrder']=typeof recordCourie
     return result;
   }
   window.AlinBackendCheck=checkBackendReadiness;
+})();
+
+
+/* ALIN v2.0.4 — secure public order tracking through RPC. */
+(function(){
+  'use strict';
+  const labels={pending:'تم استلام الطلب',new:'تم استلام الطلب',payment_pending:'بانتظار التأكيد',processing:'قيد التجهيز',ready:'جاهز بالمكتبة',out_delivery:'خرج للتوصيل',completed:'تم التسليم',delivered:'تم التسليم',cancelled:'ملغي'};
+  const steps=['pending','processing','ready','out_delivery','completed'];
+  const clean=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  window.trackOrder=async function(){
+    const input=document.getElementById('trackOrderInput');
+    const box=document.getElementById('trackOrderResult');
+    if(!box)return;
+    const code=String(input?.value||'').trim();
+    box.className='track-result show';
+    if(code.length<6){box.textContent='اكتب رقم الطلب الكامل أولاً';return}
+    box.textContent='جارٍ التحقق من حالة الطلب...';
+    try{
+      const c=window.sb||(window.AlinCloud&&window.AlinCloud.client?.());
+      if(!c?.rpc)throw new Error('خدمة التتبع غير متاحة');
+      const {data,error}=await c.rpc('alin_track_order',{p_order_number:code});
+      if(error)throw error;
+      if(!data?.found){box.textContent='لم يتم العثور على الطلب. تأكد من رقم التتبع.';return}
+      const status=String(data.status||'new');
+      const normalized=status==='delivered'?'completed':status;
+      const reached=steps.indexOf(normalized);
+      box.innerHTML=`<b>${clean(data.order_number)} — ${clean(data.title||'طلب منصة آلين')}</b>${data.ready_eta?`<br><small>الجاهزية المتوقعة: ${clean(data.ready_eta)}</small>`:''}<div class="timeline v31">${steps.map((step,index)=>`<span class="${index<=Math.max(0,reached)?'done':''}">${labels[step]}</span>`).join('')}</div>`;
+    }catch(error){
+      console.error('[ALIN tracking]',error);
+      box.textContent='تعذر التحقق الآن. أعد المحاولة بعد قليل.';
+    }
+  };
 })();

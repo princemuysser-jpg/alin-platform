@@ -1,4 +1,4 @@
--- منصة آلين v2.0.1 — إغلاق صلاحيات anon الخطرة
+-- منصة آلين v2.0.4 — تحديث Supabase المعتمد والقابل لإعادة التشغيل
 -- شغّل هذا الملف من Supabase > SQL Editor بعد التأكد أن حساب المدير مربوط في accounts.auth_user_id. الملف قابل لإعادة التشغيل بأمان.
 
 begin;
@@ -247,7 +247,7 @@ using (
 notify pgrst, 'reload schema';
 commit;
 
--- ملاحظة: الأوامر التالية مضافة في v2.0.1 لتنظيف كلمات المرور القديمة وتأمين المندوبين.
+-- ملاحظة: الأوامر التالية مضافة في v2.0.4 لتنظيف كلمات المرور القديمة وتأمين المندوبين.
 -- إذا شُغّل الملف سابقاً، هذه الأوامر قابلة لإعادة التشغيل.
 
 -- يفضل وضعها قبل COMMIT، لذلك ننفذها في معاملة مستقلة آمنة.
@@ -323,7 +323,7 @@ commit;
 
 
 -- ============================================================
--- v2.0.1: إنشاء الطلبات من الخادم بدلاً من الكتابة المباشرة
+-- v2.0.4: إنشاء الطلبات من الخادم بدلاً من الكتابة المباشرة
 -- ============================================================
 begin;
 create extension if not exists pgcrypto;
@@ -487,5 +487,450 @@ begin
 end $$;
 revoke all on function public.alin_validate_coupon(text) from public;
 grant execute on function public.alin_validate_coupon(text) to anon, authenticated;
+notify pgrst, 'reload schema';
+commit;
+
+-- ============================================================
+-- v2.0.4: حماية الجداول الحساسة وسياسات RLS الموحدة
+-- ============================================================
+begin;
+
+create or replace function public.alin_is_finance_staff()
+returns boolean
+language sql stable security definer
+set search_path = public
+as $$
+  select coalesce(public.alin_current_role() in ('admin','accountant'), false)
+$$;
+
+create or replace function public.alin_row_owner_match(p_row jsonb)
+returns boolean
+language plpgsql stable security definer
+set search_path = public
+as $$
+declare
+  v_id text := public.alin_current_account_id();
+  v_role text := public.alin_current_role();
+  v_party_role text := lower(coalesce(p_row->>'party_role',p_row->>'role',p_row->>'type',''));
+begin
+  if v_id is null then return false; end if;
+  if coalesce(p_row->>'account_id','')=v_id
+     or coalesce(p_row->>'user_id','')=v_id
+     or coalesce(p_row->>'owner_id','')=v_id
+     or coalesce(p_row->>'teacher_id','')=v_id
+     or coalesce(p_row->>'library_id','')=v_id
+     or coalesce(p_row->>'courier_id','')=v_id
+     or coalesce(p_row->>'delegate_id','')=v_id
+     or coalesce(p_row->>'party_id','')=v_id then
+    if v_party_role='' then return true; end if;
+    if v_party_role=v_role then return true; end if;
+    if v_role='courier' and v_party_role in ('courier','delegate') then return true; end if;
+    if v_role='library' and v_party_role='library' then return true; end if;
+    if v_role='teacher' and v_party_role='teacher' then return true; end if;
+  end if;
+  return false;
+end
+$$;
+
+create or replace function public.alin_notification_visible(p_row jsonb)
+returns boolean
+language plpgsql stable security definer
+set search_path = public
+as $$
+declare
+  v_role text := public.alin_current_role();
+  v_id text := public.alin_current_account_id();
+  v_target_role text := lower(coalesce(p_row->>'target_role',p_row->>'audience','all'));
+  v_target_id text := coalesce(p_row->>'target_id','');
+begin
+  if public.alin_is_admin() then return true; end if;
+  if v_role is null then return false; end if;
+  if v_target_role not in ('all',v_role,case when v_role='courier' then 'delegate' else v_role end) then return false; end if;
+  return v_target_id='' or v_target_id=v_id;
+end
+$$;
+
+create or replace function public.alin_order_visible(p_row jsonb)
+returns boolean
+language plpgsql stable security definer
+set search_path = public
+as $$
+declare
+  v_role text := public.alin_current_role();
+  v_id text := public.alin_current_account_id();
+  v_item_id text := coalesce(p_row->>'item_id',p_row->>'booklet_id','');
+begin
+  if public.alin_is_finance_staff() then return true; end if;
+  if v_id is null then return false; end if;
+  if v_role='library' and v_id in (coalesce(p_row->>'library_id',''),coalesce(p_row->>'pickup_library_id','')) then return true; end if;
+  if v_role='courier' and v_id in (coalesce(p_row->>'courier_id',''),coalesce(p_row->>'delegate_id','')) then return true; end if;
+  if v_role='teacher' then
+    if coalesce(p_row->>'teacher_id','')=v_id then return true; end if;
+    if v_item_id<>'' and exists(
+      select 1 from public.booklets b
+      where b.id::text=v_item_id and b.teacher_id::text=v_id
+    ) then return true; end if;
+  end if;
+  return false;
+end
+$$;
+
+create or replace function public.alin_order_manageable(p_row jsonb)
+returns boolean
+language plpgsql stable security definer
+set search_path = public
+as $$
+declare
+  v_role text := public.alin_current_role();
+  v_id text := public.alin_current_account_id();
+begin
+  if public.alin_is_admin() then return true; end if;
+  if v_id is null then return false; end if;
+  if v_role='library' and v_id in (coalesce(p_row->>'library_id',''),coalesce(p_row->>'pickup_library_id','')) then return true; end if;
+  if v_role='courier' and v_id in (coalesce(p_row->>'courier_id',''),coalesce(p_row->>'delegate_id','')) then return true; end if;
+  return false;
+end
+$$;
+
+revoke all on function public.alin_is_finance_staff() from public;
+revoke all on function public.alin_row_owner_match(jsonb) from public;
+revoke all on function public.alin_notification_visible(jsonb) from public;
+revoke all on function public.alin_order_visible(jsonb) from public;
+revoke all on function public.alin_order_manageable(jsonb) from public;
+grant execute on function public.alin_is_finance_staff() to authenticated;
+grant execute on function public.alin_row_owner_match(jsonb) to authenticated;
+grant execute on function public.alin_notification_visible(jsonb) to authenticated;
+grant execute on function public.alin_order_visible(jsonb) to authenticated;
+grant execute on function public.alin_order_manageable(jsonb) to authenticated;
+
+-- عرض عام آمن لأسماء المدرسين والمكتبات فقط.
+do $$
+declare
+  v_cols text;
+begin
+  select string_agg(quote_ident(column_name),', ' order by ordinal_position)
+  into v_cols
+  from information_schema.columns
+  where table_schema='public' and table_name='accounts'
+    and column_name = any(array['id','role','name','status','area','landmark','avatar_path','image_path','profile_image','created_at']);
+  if coalesce(v_cols,'')<>'' then
+    execute 'drop view if exists public.alin_public_accounts';
+    execute format(
+      'create view public.alin_public_accounts as select %s from public.accounts where status=''active'' and role in (''teacher'',''library'')',
+      v_cols
+    );
+    execute 'revoke all on public.alin_public_accounts from public';
+    execute 'grant select on public.alin_public_accounts to anon, authenticated';
+  end if;
+end $$;
+
+-- الإعدادات العامة فقط، بدون مفاتيح الربط وكلمات المرور.
+do $$
+declare
+  has_id boolean;
+  has_key boolean;
+  has_value boolean;
+  has_data boolean;
+  has_updated boolean;
+  v_select text := '';
+  v_where text := 'true';
+begin
+  select exists(select 1 from information_schema.columns where table_schema='public' and table_name='settings' and column_name='id') into has_id;
+  select exists(select 1 from information_schema.columns where table_schema='public' and table_name='settings' and column_name='key') into has_key;
+  select exists(select 1 from information_schema.columns where table_schema='public' and table_name='settings' and column_name='value') into has_value;
+  select exists(select 1 from information_schema.columns where table_schema='public' and table_name='settings' and column_name='data') into has_data;
+  select exists(select 1 from information_schema.columns where table_schema='public' and table_name='settings' and column_name='updated_at') into has_updated;
+  if has_id then v_select := v_select || 'id'; end if;
+  if has_key then v_select := v_select || case when v_select<>'' then ', ' else '' end || 'key'; end if;
+  if has_value then v_select := v_select || case when v_select<>'' then ', ' else '' end || 'value'; end if;
+  if has_data then
+    v_select := v_select || case when v_select<>'' then ', ' else '' end ||
+      '(coalesce(data,''{}''::jsonb) - array[''admin_password_hash'',''admin_password'',''password'',''supabase_url'',''supabase_anon_key'',''service_role_key'',''api_key'',''secret'',''token'']) as data';
+  end if;
+  if has_updated then v_select := v_select || case when v_select<>'' then ', ' else '' end || 'updated_at'; end if;
+  if has_key then
+    v_where := 'lower(coalesce(key::text,'''')) !~ ''(password|secret|token|service_role|anon_key|api_key|supabase_key)''';
+  end if;
+  if v_select<>'' then
+    execute 'drop view if exists public.alin_public_settings';
+    execute format('create view public.alin_public_settings as select %s from public.settings where %s',v_select,v_where);
+    execute 'revoke all on public.alin_public_settings from public';
+    execute 'grant select on public.alin_public_settings to anon, authenticated';
+  end if;
+end $$;
+
+-- الأقسام والإعدادات.
+do $$
+declare p record;
+begin
+  if to_regclass('public.categories') is not null then
+    alter table public.categories enable row level security;
+    for p in select policyname from pg_policies where schemaname='public' and tablename='categories' loop
+      execute format('drop policy if exists %I on public.categories',p.policyname);
+    end loop;
+    create policy alin_v204_categories_read on public.categories for select to anon, authenticated using (true);
+    create policy alin_v204_categories_insert on public.categories for insert to authenticated with check (public.alin_is_admin());
+    create policy alin_v204_categories_update on public.categories for update to authenticated using (public.alin_is_admin()) with check (public.alin_is_admin());
+    create policy alin_v204_categories_delete on public.categories for delete to authenticated using (public.alin_is_admin());
+    revoke insert,update,delete on public.categories from anon;
+    grant select on public.categories to anon;
+    grant select,insert,update,delete on public.categories to authenticated;
+  end if;
+  if to_regclass('public.settings') is not null then
+    alter table public.settings enable row level security;
+    for p in select policyname from pg_policies where schemaname='public' and tablename='settings' loop
+      execute format('drop policy if exists %I on public.settings',p.policyname);
+    end loop;
+    create policy alin_v204_settings_admin_select on public.settings for select to authenticated using (public.alin_is_admin());
+    create policy alin_v204_settings_admin_insert on public.settings for insert to authenticated with check (public.alin_is_admin());
+    create policy alin_v204_settings_admin_update on public.settings for update to authenticated using (public.alin_is_admin()) with check (public.alin_is_admin());
+    create policy alin_v204_settings_admin_delete on public.settings for delete to authenticated using (public.alin_is_admin());
+    revoke all on public.settings from anon;
+    grant select,insert,update,delete on public.settings to authenticated;
+  end if;
+end $$;
+
+-- الإشعارات.
+do $$
+declare p record;
+begin
+  if to_regclass('public.notifications') is not null then
+    alter table public.notifications add column if not exists target_role text default 'all';
+    alter table public.notifications add column if not exists target_id text;
+    alter table public.notifications add column if not exists read_at timestamptz;
+    alter table public.notifications add column if not exists updated_at timestamptz;
+    alter table public.notifications enable row level security;
+    for p in select policyname from pg_policies where schemaname='public' and tablename='notifications' loop
+      execute format('drop policy if exists %I on public.notifications',p.policyname);
+    end loop;
+    create policy alin_v204_notifications_public_read on public.notifications for select to anon
+      using (lower(coalesce(target_role,'all')) in ('all','store','student') and coalesce(target_id,'')='');
+    create policy alin_v204_notifications_user_read on public.notifications for select to authenticated
+      using (public.alin_notification_visible(to_jsonb(notifications)));
+    create policy alin_v204_notifications_admin_insert on public.notifications for insert to authenticated
+      with check (public.alin_is_admin());
+    create policy alin_v204_notifications_user_update on public.notifications for update to authenticated
+      using (public.alin_notification_visible(to_jsonb(notifications)))
+      with check (public.alin_notification_visible(to_jsonb(notifications)));
+    create policy alin_v204_notifications_admin_delete on public.notifications for delete to authenticated
+      using (public.alin_is_admin());
+    revoke insert,update,delete on public.notifications from anon;
+    grant select on public.notifications to anon;
+    grant select,insert,update,delete on public.notifications to authenticated;
+  end if;
+end $$;
+
+create or replace function public.alin_protect_notification_update()
+returns trigger
+language plpgsql security definer
+set search_path = public
+as $$
+begin
+  if public.alin_is_admin() then return new; end if;
+  if (to_jsonb(new) - array['read_at','updated_at']) <> (to_jsonb(old) - array['read_at','updated_at']) then
+    raise exception 'مسموح فقط بتحديد الإشعار كمقروء';
+  end if;
+  new.updated_at := now();
+  return new;
+end
+$$;
+revoke all on function public.alin_protect_notification_update() from public;
+do $$ begin
+  if to_regclass('public.notifications') is not null then
+    drop trigger if exists alin_notifications_protect_update on public.notifications;
+    create trigger alin_notifications_protect_update before update on public.notifications
+    for each row execute function public.alin_protect_notification_update();
+  end if;
+end $$;
+
+-- الطلبات والتتبع الآمن.
+do $$
+declare p record;
+begin
+  if to_regclass('public.orders') is not null then
+    alter table public.orders enable row level security;
+    for p in select policyname from pg_policies where schemaname='public' and tablename='orders' loop
+      execute format('drop policy if exists %I on public.orders',p.policyname);
+    end loop;
+    create policy alin_v204_orders_read on public.orders for select to authenticated
+      using (public.alin_order_visible(to_jsonb(orders)));
+    create policy alin_v204_orders_update on public.orders for update to authenticated
+      using (public.alin_order_manageable(to_jsonb(orders)))
+      with check (public.alin_order_manageable(to_jsonb(orders)));
+    create policy alin_v204_orders_delete on public.orders for delete to authenticated
+      using (public.alin_is_admin());
+    revoke all on public.orders from anon;
+    revoke insert on public.orders from authenticated;
+    grant select,update,delete on public.orders to authenticated;
+  end if;
+end $$;
+
+
+create or replace function public.alin_protect_order_update()
+returns trigger
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  v_role text := public.alin_current_role();
+  v_allowed text[];
+begin
+  if public.alin_is_admin() then return new; end if;
+  if v_role='library' then
+    v_allowed:=array['status','updated_at','processing_at','ready_at','completed_at','delivered_at','cancelled_at','cancellation_reason','notes','library_note'];
+  elsif v_role='courier' then
+    v_allowed:=array['status','updated_at','out_for_delivery_at','delivered_at','delivery_note','proof_path','handoff_token'];
+  else
+    raise exception 'غير مسموح بتعديل الطلب';
+  end if;
+  if (to_jsonb(new) - v_allowed) <> (to_jsonb(old) - v_allowed) then
+    raise exception 'تم منع تعديل بيانات حساسة في الطلب';
+  end if;
+  return new;
+end
+$$;
+revoke all on function public.alin_protect_order_update() from public;
+do $$ begin
+  if to_regclass('public.orders') is not null then
+    drop trigger if exists alin_orders_protect_update on public.orders;
+    create trigger alin_orders_protect_update before update on public.orders
+    for each row execute function public.alin_protect_order_update();
+  end if;
+end $$;
+
+create or replace function public.alin_track_order(p_order_number text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_code text := lower(btrim(coalesce(p_order_number,'')));
+  v_row jsonb;
+begin
+  if length(v_code)<6 or length(v_code)>100 then return jsonb_build_object('found',false); end if;
+  select to_jsonb(o) into v_row
+  from public.orders o
+  where lower(coalesce(to_jsonb(o)->>'order_number',to_jsonb(o)->>'tracking_code',to_jsonb(o)->>'id',''))=v_code
+  limit 1;
+  if v_row is null then return jsonb_build_object('found',false); end if;
+  return jsonb_build_object(
+    'found',true,
+    'order_number',coalesce(v_row->>'order_number',v_row->>'tracking_code',v_row->>'id'),
+    'title',coalesce(v_row->>'title','طلب منصة آلين'),
+    'status',coalesce(v_row->>'status','new'),
+    'ready_eta',v_row->>'ready_eta',
+    'updated_at',coalesce(v_row->>'updated_at',v_row->>'created_at')
+  );
+end
+$$;
+revoke all on function public.alin_track_order(text) from public;
+grant execute on function public.alin_track_order(text) to anon, authenticated;
+
+-- طلبات المدرسين وأذونات الطباعة.
+do $$
+declare
+  t text;
+  p record;
+  rowref text;
+begin
+  foreach t in array array['teacher_requests','permits'] loop
+    if to_regclass('public.'||t) is null then continue; end if;
+    execute format('alter table public.%I enable row level security',t);
+    for p in select policyname from pg_policies where schemaname='public' and tablename=t loop
+      execute format('drop policy if exists %I on public.%I',p.policyname,t);
+    end loop;
+    rowref:=format('to_jsonb(%I)',t);
+    execute format('create policy alin_v204_%I_read on public.%I for select to authenticated using (public.alin_is_admin() or public.alin_row_owner_match(%s))',t,t,rowref);
+    execute format('create policy alin_v204_%I_insert on public.%I for insert to authenticated with check (public.alin_is_admin() or public.alin_row_owner_match(%s))',t,t,rowref);
+    execute format('create policy alin_v204_%I_update on public.%I for update to authenticated using (public.alin_is_admin() or public.alin_row_owner_match(%s)) with check (public.alin_is_admin() or public.alin_row_owner_match(%s))',t,t,rowref,rowref);
+    execute format('create policy alin_v204_%I_delete on public.%I for delete to authenticated using (public.alin_is_admin())',t,t);
+    execute format('revoke all on public.%I from anon',t);
+    execute format('grant select,insert,update,delete on public.%I to authenticated',t);
+  end loop;
+end $$;
+
+-- السجلات المالية والتسويات.
+do $$
+declare
+  t text;
+  p record;
+  rowref text;
+  self_insert boolean;
+  operational_insert boolean;
+begin
+  foreach t in array array[
+    'ledger','financial_entries','financial_payouts','financial_returns','withdrawals',
+    'library_settlements','teacher_settlements','delegate_settlements','courier_settlements','admin_settlements'
+  ] loop
+    if to_regclass('public.'||t) is null then continue; end if;
+    execute format('alter table public.%I enable row level security',t);
+    for p in select policyname from pg_policies where schemaname='public' and tablename=t loop
+      execute format('drop policy if exists %I on public.%I',p.policyname,t);
+    end loop;
+    rowref:=format('to_jsonb(%I)',t);
+    execute format('create policy alin_v204_%I_read on public.%I for select to authenticated using (public.alin_is_finance_staff() or public.alin_row_owner_match(%s))',t,t,rowref);
+    self_insert := t in ('withdrawals','library_settlements','teacher_settlements','delegate_settlements','courier_settlements');
+    operational_insert := t in ('ledger','financial_entries');
+    if self_insert then
+      execute format('create policy alin_v204_%I_insert on public.%I for insert to authenticated with check (public.alin_is_finance_staff() or (public.alin_row_owner_match(%s) and lower(coalesce(%I.status::text,''pending''))=''pending''))',t,t,rowref,t);
+    elsif operational_insert then
+      execute format('create policy alin_v204_%I_insert on public.%I for insert to authenticated with check (public.alin_is_finance_staff() or (public.alin_current_role() in (''library'',''courier'') and public.alin_row_owner_match(%s)))',t,t,rowref);
+    else
+      execute format('create policy alin_v204_%I_insert on public.%I for insert to authenticated with check (public.alin_is_finance_staff())',t,t);
+    end if;
+    execute format('create policy alin_v204_%I_update on public.%I for update to authenticated using (public.alin_is_finance_staff()) with check (public.alin_is_finance_staff())',t,t);
+    execute format('create policy alin_v204_%I_delete on public.%I for delete to authenticated using (public.alin_is_admin())',t,t);
+    execute format('revoke all on public.%I from anon',t);
+    execute format('grant select,insert,update,delete on public.%I to authenticated',t);
+  end loop;
+end $$;
+
+-- سجل التدقيق والنسخ الاحتياطية.
+do $$
+declare t text; p record;
+begin
+  foreach t in array array['audit','audit_logs','backup_logs','system_health_logs'] loop
+    if to_regclass('public.'||t) is null then continue; end if;
+    execute format('alter table public.%I enable row level security',t);
+    for p in select policyname from pg_policies where schemaname='public' and tablename=t loop
+      execute format('drop policy if exists %I on public.%I',p.policyname,t);
+    end loop;
+    execute format('create policy alin_v204_%I_read on public.%I for select to authenticated using (public.alin_is_finance_staff())',t,t);
+    if t in ('audit','audit_logs') then
+      execute format('create policy alin_v204_%I_insert on public.%I for insert to authenticated with check (public.alin_current_account_id() is not null)',t,t);
+    else
+      execute format('create policy alin_v204_%I_insert on public.%I for insert to authenticated with check (public.alin_is_admin())',t,t);
+    end if;
+    execute format('create policy alin_v204_%I_update on public.%I for update to authenticated using (public.alin_is_admin()) with check (public.alin_is_admin())',t,t);
+    execute format('create policy alin_v204_%I_delete on public.%I for delete to authenticated using (public.alin_is_admin())',t,t);
+    execute format('revoke all on public.%I from anon',t);
+    execute format('grant select,insert,update,delete on public.%I to authenticated',t);
+  end loop;
+end $$;
+
+-- التخزين.
+do $$
+declare p record;
+begin
+  for p in select policyname from pg_policies where schemaname='storage' and tablename='objects' and lower(policyname) like 'alin%' loop
+    execute format('drop policy if exists %I on storage.objects',p.policyname);
+  end loop;
+end $$;
+create policy alin_files_public_read on storage.objects for select to anon,authenticated
+using (bucket_id='alin-files');
+create policy alin_files_admin_insert on storage.objects for insert to authenticated
+with check (bucket_id='alin-files' and public.alin_is_admin());
+create policy alin_files_admin_update on storage.objects for update to authenticated
+using (bucket_id='alin-files' and public.alin_is_admin())
+with check (bucket_id='alin-files' and public.alin_is_admin());
+create policy alin_files_admin_delete on storage.objects for delete to authenticated
+using (bucket_id='alin-files' and public.alin_is_admin());
+create policy alin_files_teacher_insert on storage.objects for insert to authenticated
+with check (
+  bucket_id='alin-files' and public.alin_current_role()='teacher' and
+  (storage.foldername(name))[1] in ('teacher-requests','teachers')
+);
+
 notify pgrst, 'reload schema';
 commit;

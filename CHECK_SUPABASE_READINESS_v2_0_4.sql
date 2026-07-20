@@ -1,0 +1,72 @@
+-- ALIN v2.0.4 — فحص حماية Supabase للقراءة فقط
+-- شغّله بعد RUN_ON_SUPABASE_v2_0_4_COMPLETE.sql. لا يغيّر أي بيانات.
+do $$
+declare
+  missing text[] := '{}';
+  item text;
+  p record;
+begin
+  foreach item in array array[
+    'accounts','settings','categories','booklets','products','orders','delivery_areas','coupons','banners',
+    'notifications','teacher_requests','permits','ledger','financial_entries','financial_payouts',
+    'library_settlements','audit'
+  ] loop
+    if to_regclass('public.'||item) is null then
+      missing:=array_append(missing,'table:public.'||item);
+    elsif not exists(
+      select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+      where n.nspname='public' and c.relname=item and c.relrowsecurity=true
+    ) then
+      missing:=array_append(missing,'rls:public.'||item);
+    end if;
+  end loop;
+
+  foreach item in array array[
+    'alin_current_account_id()','alin_current_role()','alin_is_admin()','alin_is_finance_staff()',
+    'alin_row_owner_match(jsonb)','alin_notification_visible(jsonb)','alin_order_visible(jsonb)',
+    'alin_order_manageable(jsonb)','alin_protect_order_update()','alin_create_store_orders(jsonb,jsonb,jsonb,text)',
+    'alin_validate_coupon(text)','alin_track_order(text)'
+  ] loop
+    if to_regprocedure('public.'||item) is null then missing:=array_append(missing,'function:'||item); end if;
+  end loop;
+
+  if to_regclass('public.alin_public_accounts') is null then missing:=array_append(missing,'view:alin_public_accounts'); end if;
+  if to_regclass('public.alin_public_settings') is null then missing:=array_append(missing,'view:alin_public_settings'); end if;
+
+  for p in select * from (values
+    ('banners','banners_public_read'),
+    ('categories','alin_v204_categories_read'),
+    ('settings','alin_v204_settings_admin_select'),
+    ('notifications','alin_v204_notifications_public_read'),
+    ('notifications','alin_v204_notifications_user_read'),
+    ('orders','alin_v204_orders_read'),
+    ('teacher_requests','alin_v204_teacher_requests_read'),
+    ('permits','alin_v204_permits_read'),
+    ('ledger','alin_v204_ledger_read'),
+    ('financial_entries','alin_v204_financial_entries_read'),
+    ('financial_payouts','alin_v204_financial_payouts_read'),
+    ('library_settlements','alin_v204_library_settlements_read'),
+    ('audit','alin_v204_audit_read')
+  ) as x(table_name,policy_name) loop
+    if to_regclass('public.'||p.table_name) is not null and not exists(
+      select 1 from pg_policies where schemaname='public' and tablename=p.table_name and policyname=p.policy_name
+    ) then missing:=array_append(missing,'policy:public.'||p.table_name||'.'||p.policy_name); end if;
+  end loop;
+
+  foreach item in array array[
+    'alin_files_public_read','alin_files_admin_insert','alin_files_admin_update','alin_files_admin_delete','alin_files_teacher_insert'
+  ] loop
+    if not exists(select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname=item) then
+      missing:=array_append(missing,'policy:storage.objects.'||item);
+    end if;
+  end loop;
+
+  if not exists(select 1 from storage.buckets where id='alin-files' and public=true) then
+    missing:=array_append(missing,'storage_bucket:alin-files(public)');
+  end if;
+
+  if cardinality(missing)>0 then
+    raise exception 'ALIN v2.0.4 readiness failed. Missing: %',array_to_string(missing,', ');
+  end if;
+  raise notice 'ALIN v2.0.4 readiness check passed.';
+end $$;
