@@ -91,7 +91,9 @@ Deno.serve(async (req: Request) => {
         if (createError || !created.user) throw createError || new Error('تعذر ربط الحساب بخدمة الدخول');
         account.auth_user_id = created.user.id;
       } else {
-        throw new Error('الحساب غير مربوط بخدمة الدخول. اكتب كلمة مرور جديدة لإكمال الربط');
+        // Legacy account: allow the admin to update status and profile first.
+        // The first password assignment will create and attach the Auth user automatically.
+        account.auth_user_id = null;
       }
 
       account = await updateCompat(admin, 'accounts', {

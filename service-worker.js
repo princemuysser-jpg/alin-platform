@@ -1,4 +1,4 @@
-const VERSION='alin-v2.0.4-step4';
+const VERSION='alin-v2.0.5-accounts';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[

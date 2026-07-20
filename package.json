@@ -1,9 +1,9 @@
 {
   "name": "alin-platform",
-  "version": "2.0.4-step4",
+  "version": "2.0.5-accounts",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/release-check.mjs"
+    "test": "node tests/release-check.mjs && node tests/accounts-auth-check.mjs"
   }
 }
