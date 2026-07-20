@@ -1,9 +1,10 @@
 {
   "name": "alin-platform",
-  "version": "2.0.5-accounts",
+  "version": "2.0.8-modular-runtime",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/release-check.mjs && node tests/accounts-auth-check.mjs"
+    "test": "npm run syntax && node tests/module-order-check.mjs && node tests/release-check.mjs && node tests/accounts-auth-check.mjs && node tests/finance-runtime-check.mjs",
+    "syntax": "node tests/syntax-check.mjs"
   }
 }

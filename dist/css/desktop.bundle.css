@@ -2207,3 +2207,30 @@ body.store-desktop #storeGrid{grid-template-columns:repeat(5,minmax(0,1fr))!impo
 body.store-desktop .alin98-title h2{font-size:34px}
 @media(max-width:1220px){body.store-desktop #storeGrid{grid-template-columns:repeat(4,minmax(0,1fr))!important}body.store-desktop .alin98-hero{grid-template-columns:1fr 380px}}
 
+
+
+/* ALIN v2.0.6 — order success tracking copy */
+#checkoutBox .alin-order-success{width:min(620px,100%);margin:4px auto;display:grid;justify-items:center;gap:12px;padding:26px 24px 22px;border:1px solid #e2e9f2;border-radius:24px;background:#fff;text-align:center;box-shadow:0 15px 42px rgba(8,35,72,.08);direction:rtl}
+#checkoutBox .alin-order-success__icon{width:58px;height:58px;display:grid;place-items:center;border-radius:50%;background:#eaf8ef;color:#12804a;font-size:31px;font-weight:900}
+#checkoutBox .alin-order-success h2{margin:0;color:#102a4d;font-size:28px}
+#checkoutBox .alin-order-success>p{margin:0;color:#667085;line-height:1.7}
+#checkoutBox .alin-order-success__codes{width:100%;display:grid;gap:10px;margin-top:4px}
+#checkoutBox .alin-tracking-code{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px;border:1px solid #dce5f0;border-radius:15px;background:#f7faff}
+#checkoutBox .alin-tracking-code b{min-width:0;padding:7px 10px;overflow-wrap:anywhere;color:#17385f;font-size:17px;letter-spacing:.35px;cursor:pointer;text-align:center;border-radius:10px}
+#checkoutBox .alin-tracking-code b:focus-visible{outline:2px solid #d9a62e;outline-offset:2px}
+#checkoutBox .alin-copy-tracking{height:42px;min-width:92px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 13px!important;border:1px solid #cad8e8!important;border-radius:12px!important;background:#fff!important;color:#123e73!important;box-shadow:0 5px 14px rgba(8,35,72,.07)!important;font-weight:900!important}
+#checkoutBox .alin-copy-tracking svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#checkoutBox .alin-copy-tracking:hover{border-color:#123e73!important;transform:translateY(-1px)}
+#checkoutBox .alin-copy-tracking.is-copied{background:#eaf8ef!important;border-color:#9bd2b5!important;color:#087443!important}
+#checkoutBox .alin-order-success__close{min-width:130px;margin-top:4px!important;border-radius:13px!important;background:#102a4d!important;color:#fff!important}
+@media(max-width:560px){
+ #checkoutBox .alin-order-success{padding:22px 14px 17px;border-radius:20px;gap:10px}
+ #checkoutBox .alin-order-success__icon{width:50px;height:50px;font-size:27px}
+ #checkoutBox .alin-order-success h2{font-size:24px}
+ #checkoutBox .alin-tracking-code{grid-template-columns:minmax(0,1fr) 48px;gap:7px;padding:8px}
+ #checkoutBox .alin-tracking-code b{font-size:14px;padding:7px 5px}
+ #checkoutBox .alin-copy-tracking{min-width:48px;width:48px;height:42px;padding:0!important}
+ #checkoutBox .alin-copy-tracking span{display:none}
+ #checkoutBox .alin-copy-tracking.is-copied span{display:none}
+ #checkoutBox .alin-order-success__close{width:100%}
+}
