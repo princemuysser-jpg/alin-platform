@@ -2345,3 +2345,6 @@ body.store-mobile .alin-cloud-rc53{left:12px!important;bottom:calc(var(--alin-mo
  #checkoutBox .alin-copy-tracking.is-copied span{display:none}
  #checkoutBox .alin-order-success__close{width:100%}
 }
+
+/* v2.1.3 courier account areas */
+.v163-area-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0 10px}.v163-area-toolbar h4{margin:0!important}.v163-area-toolbar small{display:block;margin-top:4px;color:#667085;line-height:1.6}.v163-area-toolbar>div:last-child{display:flex;gap:8px;flex-wrap:wrap}.v163-area-toolbar button{width:auto!important;padding:8px 12px!important}.v163-account-note{margin:10px 0 0;color:#4e6078}.v163-account-note b{color:#8a6110}.v132-courier-fields{grid-column:1/-1;padding:14px;border:1px solid #dfe7f0;border-radius:16px;background:#f8fbff}.v132-courier-fields[hidden]{display:none!important}.v132-courier-meta{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}.v132-courier-meta p{margin:0;padding:12px 14px;border-radius:12px;background:#fff8e7;color:#71500d;font-weight:800}.v163-area-toolbar{align-items:flex-start;flex-direction:column}.v163-area-toolbar>div:last-child{width:100%}

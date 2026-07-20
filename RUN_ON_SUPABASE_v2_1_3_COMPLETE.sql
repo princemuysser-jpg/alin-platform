@@ -1079,3 +1079,109 @@ $$;
 
 notify pgrst, 'reload schema';
 commit;
+
+-- ============================================================
+-- v2.1.3: مناطق عمل المندوبين المتعددة
+-- ============================================================
+begin;
+
+do $$
+declare
+  v_udt text;
+begin
+  if to_regclass('public.couriers') is null then
+    raise exception 'جدول public.couriers غير موجود';
+  end if;
+
+  select udt_name into v_udt
+  from information_schema.columns
+  where table_schema='public' and table_name='couriers' and column_name='areas';
+
+  if v_udt is null then
+    alter table public.couriers add column areas text[] not null default '{}'::text[];
+    v_udt := '_text';
+  end if;
+
+  if v_udt = '_text' then
+    update public.couriers
+       set areas = array[trim(area)]
+     where coalesce(cardinality(areas),0)=0
+       and nullif(trim(coalesce(area,'')),'') is not null;
+  elsif v_udt = 'jsonb' then
+    execute $q$
+      update public.couriers
+         set areas = to_jsonb(array[trim(area)])
+       where (areas is null or areas='[]'::jsonb or areas='{}'::jsonb)
+         and nullif(trim(coalesce(area,'')),'') is not null
+    $q$;
+  elsif v_udt in ('text','varchar') then
+    execute $q$
+      update public.couriers
+         set areas = area
+       where nullif(trim(coalesce(areas::text,'')),'') is null
+         and nullif(trim(coalesce(area,'')),'') is not null
+    $q$;
+  end if;
+end $$;
+
+create or replace function public.alin_protect_courier_self_update()
+returns trigger
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  allowed jsonb := '{}'::jsonb;
+  incoming jsonb := to_jsonb(new);
+  v_jwt_role text := coalesce(current_setting('request.jwt.claim.role', true), '');
+begin
+  -- SQL Editor وEdge Functions والـService Role تحتاج تعديل مناطق المندوب كاملة.
+  if public.alin_is_admin()
+     or current_user in ('postgres','supabase_admin','service_role')
+     or v_jwt_role='service_role' then
+    return new;
+  end if;
+
+  if public.alin_current_role() <> 'courier' or old.id::text <> public.alin_current_account_id() then
+    raise exception 'غير مسموح بتعديل بيانات هذا المندوب';
+  end if;
+
+  -- المندوب يغيّر حالة توفره فقط، ولا يغيّر مناطقه بنفسه.
+  if incoming ? 'availability' then allowed := allowed || jsonb_build_object('availability', incoming->'availability'); end if;
+  if incoming ? 'work_status' then allowed := allowed || jsonb_build_object('work_status', incoming->'work_status'); end if;
+  if incoming ? 'updated_at' then allowed := allowed || jsonb_build_object('updated_at', incoming->'updated_at'); end if;
+  return jsonb_populate_record(old, allowed);
+end
+$$;
+revoke all on function public.alin_protect_courier_self_update() from public;
+
+-- توحيد المنطقة الرئيسية في accounts مع أول منطقة للمندوب.
+do $$
+declare
+  v_udt text;
+begin
+  select udt_name into v_udt
+  from information_schema.columns
+  where table_schema='public' and table_name='couriers' and column_name='areas';
+
+  if v_udt='_text' then
+    update public.accounts a
+       set area=c.areas[1]
+      from public.couriers c
+     where a.id::text=c.id::text and a.role='courier'
+       and coalesce(cardinality(c.areas),0)>0
+       and coalesce(a.area,'') is distinct from coalesce(c.areas[1],'');
+  elsif v_udt='jsonb' then
+    execute $q$
+      update public.accounts a
+         set area=c.areas->>0
+        from public.couriers c
+       where a.id::text=c.id::text and a.role='courier'
+         and jsonb_typeof(c.areas)='array'
+         and jsonb_array_length(c.areas)>0
+         and coalesce(a.area,'') is distinct from coalesce(c.areas->>0,'')
+    $q$;
+  end if;
+end $$;
+
+notify pgrst, 'reload schema';
+commit;

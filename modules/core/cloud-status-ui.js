@@ -259,16 +259,17 @@
   async function createAccountFromAdmin(){
     try{
       const role=document.getElementById('aRole')?.value||'';
+      const selectedAreas=[...document.querySelectorAll('#v163CourierAreaPicker input:checked')].map(x=>String(x.value||'').trim()).filter(Boolean);
       const payload={
         role,
         name:document.getElementById('aName')?.value?.trim()||'',
         username:document.getElementById('aUser')?.value?.trim()||'',
         password:document.getElementById('aPass')?.value||'',
-        area:document.getElementById('aArea')?.value?.trim()||'',
-        landmark:document.getElementById('aLandmark')?.value?.trim()||'',
+        area:role==='courier'?(selectedAreas[0]||''):(document.getElementById('aArea')?.value?.trim()||''),
+        landmark:role==='courier'?'':(document.getElementById('aLandmark')?.value?.trim()||''),
         phone:document.getElementById('v163CourierPhone')?.value?.trim()||'',
         availability:document.getElementById('v163CourierAvailability')?.value||'available',
-        areas:[...document.querySelectorAll('#v163CourierAreaPicker input:checked')].map(x=>x.value),
+        areas:selectedAreas,
         status:'active'
       };
       if(role==='courier'&&!payload.areas.length)throw new Error('اختر منطقة عمل واحدة على الأقل');
@@ -286,7 +287,7 @@
     const {data,error}=await c.rpc('alin_repair_auth_links',{p_account_id:String(accountId)});
     if(error){
       const text=String(error.message||'');
-      if(/PGRST202|Could not find the function|schema cache/i.test(text))throw new Error('تحديث ربط الحسابات غير منفذ. شغّل ملف RUN_ON_SUPABASE_v2_0_15_COMPLETE.sql مرة واحدة');
+      if(/PGRST202|Could not find the function|schema cache/i.test(text))throw new Error('تحديث ربط الحسابات غير منفذ. شغّل ملف RUN_ON_SUPABASE_v2_1_3_COMPLETE.sql مرة واحدة');
       throw error;
     }
     return Number(data||0);

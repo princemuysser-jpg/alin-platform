@@ -1,4 +1,4 @@
-const VERSION='alin-v2.1.2-coupon-cart-total';
+const VERSION='alin-v2.1.3-courier-work-areas';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[

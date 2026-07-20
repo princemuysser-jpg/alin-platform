@@ -25,9 +25,17 @@ Deno.serve(async (req: Request) => {
     const username = normalizeUsername(body.username);
     const password = String(body.password || '');
     const status = ['active', 'inactive', 'pending'].includes(body.status) ? body.status : 'active';
+    const requestedAreas = role === 'courier' && Array.isArray(body.areas)
+      ? [...new Set(body.areas.map((x: unknown) => cleanText(x, 100)).filter(Boolean))]
+      : [];
+    const primaryArea = role === 'courier'
+      ? (requestedAreas[0] || cleanText(body.area, 120))
+      : cleanText(body.area, 120);
     if (!ALLOWED_ROLES.has(role)) throw new Error('نوع الحساب غير مدعوم');
     if (!name || !username || !password) throw new Error('أكمل الاسم واسم الدخول وكلمة المرور');
     if (password.length < 8) throw new Error('كلمة المرور يجب أن تكون 8 أحرف أو أرقام على الأقل');
+    if (role === 'courier' && !requestedAreas.length && !primaryArea) throw new Error('اختر منطقة عمل واحدة على الأقل للمندوب');
+    if (role === 'courier' && !cleanText(body.phone, 40)) throw new Error('أدخل رقم هاتف المندوب');
 
     const { data: duplicate, error: duplicateError } = await admin
       .from('accounts')
@@ -50,7 +58,7 @@ Deno.serve(async (req: Request) => {
       username,
       status,
       auth_user_id: resolved.id,
-      area: cleanText(body.area, 120),
+      area: primaryArea,
       landmark: cleanText(body.landmark, 180),
       phone: cleanText(body.phone, 40),
       notes: cleanText(body.notes, 500),
@@ -58,8 +66,7 @@ Deno.serve(async (req: Request) => {
     });
 
     if (role === 'courier') {
-      const areas = Array.isArray(body.areas) ? body.areas.map((x: unknown) => cleanText(x, 100)).filter(Boolean) : [];
-      if (!areas.length && cleanText(body.area, 120)) areas.push(cleanText(body.area, 120));
+      const areas = requestedAreas.length ? requestedAreas : [primaryArea].filter(Boolean);
       try {
         await insertCompat(admin, 'couriers', {
           id: accountId,

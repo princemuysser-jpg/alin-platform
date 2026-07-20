@@ -4,7 +4,7 @@ import {fileURLToPath} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const app=fs.readFileSync(path.join(root,'modules/core/cloud-status-ui.js'),'utf8');
-const sql=fs.readFileSync(path.join(root,'RUN_ON_SUPABASE_v2_1_1_COMPLETE.sql'),'utf8');
+const sql=fs.readFileSync(path.join(root,'RUN_ON_SUPABASE_v2_1_3_COMPLETE.sql'),'utf8');
 const failures=[];
 
 for(const token of [

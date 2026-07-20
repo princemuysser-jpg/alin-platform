@@ -1,5 +1,5 @@
 // === store/coupons.js ===
-/* ALIN v2.1.2: single storefront coupon service with live cart totals. */
+/* ALIN v2.1.3: single storefront coupon service with live cart totals. */
 (function(){
   'use strict';
 

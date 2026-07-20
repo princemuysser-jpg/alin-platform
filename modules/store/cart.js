@@ -1,5 +1,5 @@
 // === modules/store/cart.js ===
-/* ALIN v2.1.2 — authoritative cart module. No legacy wrappers. */
+/* ALIN v2.1.3 — authoritative cart module. No legacy wrappers. */
 (function(){
   'use strict';
 

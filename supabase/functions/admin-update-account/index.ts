@@ -32,6 +32,16 @@ Deno.serve(async (req: Request) => {
 
     const requestedRole = cleanText(body.role || account?.role || 'courier', 30).toLowerCase();
     if (!ALLOWED_ROLES.has(requestedRole)) throw new Error('نوع الحساب غير مدعوم');
+    const hasRequestedAreas = Array.isArray(body.areas);
+    const requestedAreas = hasRequestedAreas
+      ? [...new Set(body.areas.map((x: unknown) => cleanText(x, 100)).filter(Boolean))]
+      : undefined;
+    if (requestedRole === 'courier' && hasRequestedAreas && !requestedAreas?.length) {
+      throw new Error('اختر منطقة عمل واحدة على الأقل للمندوب');
+    }
+    const requestedPrimaryArea = requestedRole === 'courier'
+      ? (hasRequestedAreas ? (requestedAreas?.[0] || '') : (body.area === undefined ? undefined : cleanText(body.area, 120)))
+      : (body.area === undefined ? undefined : cleanText(body.area, 120));
     const username = body.username === undefined ? normalizeUsername(account?.username) : normalizeUsername(body.username);
     const name = body.name === undefined ? cleanText(account?.name, 120) : cleanText(body.name, 120);
     const password = String(body.password || '');
@@ -53,7 +63,7 @@ Deno.serve(async (req: Request) => {
           username,
           status: body.status || 'active',
           auth_user_id: resolved.id,
-          area: cleanText(body.area, 120),
+          area: requestedPrimaryArea || '',
           landmark: cleanText(body.landmark, 180),
           phone: cleanText(body.phone, 40),
           notes: cleanText(body.notes, 500),
@@ -95,7 +105,7 @@ Deno.serve(async (req: Request) => {
         username: nextUsername,
         status: ['active', 'inactive', 'pending'].includes(body.status) ? body.status : account.status,
         auth_user_id: account.auth_user_id,
-        area: body.area === undefined ? undefined : cleanText(body.area, 120),
+        area: requestedPrimaryArea,
         landmark: body.landmark === undefined ? undefined : cleanText(body.landmark, 180),
         phone: body.phone === undefined ? undefined : cleanText(body.phone, 40),
         notes: body.notes === undefined ? undefined : cleanText(body.notes, 500),
@@ -105,12 +115,12 @@ Deno.serve(async (req: Request) => {
 
     const finalRole = cleanText(account?.role || requestedRole, 30);
     if (finalRole === 'courier' || requestedRole === 'courier') {
-      const areas = Array.isArray(body.areas) ? body.areas.map((x: unknown) => cleanText(x, 100)).filter(Boolean) : undefined;
+      const areas = requestedAreas;
       const courierPayload: Record<string, unknown> = {
         name: cleanText(body.name ?? account?.name, 120),
         username: normalizeUsername(body.username ?? account?.username),
         phone: body.phone === undefined ? undefined : cleanText(body.phone, 40),
-        area: body.area === undefined ? (areas?.[0] || undefined) : cleanText(body.area, 120),
+        area: requestedPrimaryArea === undefined ? (areas?.[0] || undefined) : requestedPrimaryArea,
         areas,
         availability: ['available', 'busy', 'offline'].includes(body.availability) ? body.availability : undefined,
         status: ['active', 'inactive', 'pending'].includes(body.status) ? body.status : undefined,
