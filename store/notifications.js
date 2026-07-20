@@ -1,4 +1,4 @@
-/* ALIN 2.0.3 - storefront notification center */
+/* ALIN 2.0.0 - storefront notification center */
 (function(){
   'use strict';
   const api='https://jyavewwlgiaibtdqyzpd.supabase.co';

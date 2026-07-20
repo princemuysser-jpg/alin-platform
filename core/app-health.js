@@ -1,4 +1,4 @@
-/* ALIN v2.0.3 — visible startup and connection health */
+/* ALIN v2.0.0 — visible startup and connection health */
 (function(){
   'use strict';
   let bar;

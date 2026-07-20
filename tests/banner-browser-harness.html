@@ -1,0 +1,10 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="../store/banners.css"></head><body>
+<section id="storePage"><header class="alin98-header">رأس المتجر</header><section id="alinStoreBanners" class="alin-store-banners" hidden></section><section class="alin98-cats">الأقسام</section><div id="bannerBox" class="alin-legacy-banner-sink" hidden></div></section>
+<section id="adminContent"></section>
+<script>
+window.db={banners:[{id:'B1',title:'اختبار الإعلان',text:'الصورة والموقع يعملان',image_path:'data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%221600%22 height=%22500%22%3E%3Crect width=%221600%22 height=%22500%22 fill=%22%230b5fa5%22/%3E%3C/svg%3E',active:true,sort_order:0,created_at:new Date().toISOString()}]};
+window.query=async()=>window.db.banners;window.renderStore=()=>{};window.adminTab=()=>{};
+window.mediaUrl=p=>p;window.uid=p=>p+Date.now();window.toast=message=>window.__toast=message;
+window.insert=async(_t,row)=>{window.db.banners.push(row);return row};window.update=async(_t,p,m)=>Object.assign(window.db.banners.find(x=>x.id===m.id),p);window.removeRow=async(_t,m)=>window.db.banners=window.db.banners.filter(x=>x.id!==m.id);window.audit=async()=>{};
+window.uploadFile=async()=> 'banners/browser-test.webp';
+</script><script src="../store/banners.js"></script></body></html>

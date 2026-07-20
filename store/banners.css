@@ -1,0 +1,37 @@
+/* ALIN 2.0.1 — authoritative storefront and admin banners */
+.alin-legacy-banner-sink{display:none!important}
+.alin-store-banners{display:grid;gap:10px;width:100%;margin:14px auto 22px;padding-inline:3.2%}
+.alin-store-banners[hidden]{display:none!important}
+.alin-store-banner{position:relative;min-height:190px;border-radius:26px;overflow:hidden;background:linear-gradient(135deg,#071b39,#164a82);box-shadow:0 18px 48px rgba(7,27,57,.14);isolation:isolate;color:#fff}
+.alin-store-banner.is-clickable{cursor:pointer}
+.alin-store-banner:focus-visible{outline:3px solid #e7ad2e;outline-offset:3px}
+.alin-store-banner__image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2}
+.alin-store-banner::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(3,16,37,.12),rgba(3,16,37,.84));pointer-events:none}
+.alin-store-banner.without-image::after{background:linear-gradient(135deg,rgba(7,27,57,.3),rgba(3,16,37,.9))}
+.alin-store-banner__content{min-height:190px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:8px;padding:28px clamp(24px,5vw,72px);text-align:right}
+.alin-store-banner__label{display:inline-flex;padding:6px 11px;border:1px solid rgba(236,177,49,.75);border-radius:999px;color:#ffd36d;background:rgba(7,27,57,.45);font-size:12px;font-weight:900}
+.alin-store-banner h2{margin:0;font-size:clamp(25px,4vw,46px);line-height:1.35;color:#fff}
+.alin-store-banner p{margin:0;max-width:720px;font-size:clamp(14px,1.8vw,19px);line-height:1.8;color:rgba(255,255,255,.88)}
+.alin-store-banner__dots{display:flex;justify-content:center;gap:7px}
+.alin-store-banner__dots button{width:8px;height:8px;min-width:8px;padding:0;border-radius:50%;background:#cbd5e1;box-shadow:none}
+.alin-store-banner__dots button.active{width:24px;border-radius:999px;background:#e7ad2e}
+
+.alin-banner-admin{display:grid;gap:18px}
+.alin-banner-admin__heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.alin-banner-admin__heading h2{margin:0 0 6px}.alin-banner-admin__heading p{margin:0;color:#667085}.alin-banner-admin__heading strong{background:#eef4ff;color:#0b5fa5;border-radius:999px;padding:8px 14px;white-space:nowrap}
+.alin-banner-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:18px;border:1px solid #e5e9f2;border-radius:18px;background:#fff}
+.alin-banner-form label{display:grid;gap:7px}.alin-banner-form label>span{font-weight:800;color:#26354f}.alin-banner-form textarea{min-height:110px;resize:vertical}
+.alin-banner-file{grid-column:1/-1}.alin-banner-file small{color:#667085}
+.alin-banner-form__actions{display:flex;gap:10px;align-items:end}
+.alin-banner-list{display:grid;gap:12px}.alin-banner-row{display:grid;grid-template-columns:210px 1fr auto;gap:16px;align-items:center;padding:14px;border:1px solid #e5e9f2;border-radius:18px;background:#fff}
+.alin-banner-preview{height:100px;border-radius:13px;overflow:hidden;background:#eef2f7;display:grid;place-items:center;color:#667085}.alin-banner-preview img{width:100%;height:100%;object-fit:cover}
+.alin-banner-info>div{display:flex;align-items:center;gap:10px}.alin-banner-info h3{margin:0}.alin-banner-info p{margin:8px 0;color:#475467}.alin-banner-info small{color:#667085}.alin-banner-info em{font-style:normal;font-size:12px;font-weight:900;border-radius:999px;padding:5px 9px}.alin-banner-info em.active{background:#e8f7ef;color:#16794a}.alin-banner-info em.hidden{background:#fef0f0;color:#b42318}
+.alin-banner-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.alin-banner-empty{padding:25px;text-align:center;border:1px dashed #cbd5e1;border-radius:16px;color:#667085}
+
+@media(max-width:760px){
+ .alin-store-banners{margin:10px auto 16px;padding-inline:12px}
+ .alin-store-banner{min-height:150px;border-radius:20px}
+ .alin-store-banner__content{min-height:150px;padding:20px}
+ .alin-store-banner h2{font-size:25px}.alin-store-banner p{font-size:13px;line-height:1.65;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.alin-store-banner__label{font-size:10px;padding:5px 9px}
+ .alin-banner-admin__heading{align-items:flex-start}.alin-banner-form{grid-template-columns:1fr}.alin-banner-file{grid-column:auto}.alin-banner-row{grid-template-columns:1fr}.alin-banner-preview{height:145px}.alin-banner-actions{justify-content:stretch}.alin-banner-actions button{flex:1}
+}

@@ -1,4 +1,4 @@
-/* ALIN 2.0.3 - account, language, and appearance options */
+/* ALIN 2.0.0 - account, language, and appearance options */
 (function () {
   'use strict';
 

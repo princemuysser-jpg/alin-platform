@@ -1,4 +1,32 @@
-// Alin module: core/platform.js | v2.0.3
+// Alin shared early bundle v2.0.0
+
+// === core/config.js ===
+/* ===== core/js/config.js ===== */
+/* ALIN 2.0.0 central configuration. Keep secrets outside the repository. */
+window.ALIN_CONFIG = Object.freeze({
+  version: '2.0.0',
+  desktopPage: './store-desktop.html',
+  mobilePage: './store-mobile.html',
+  currency: 'د.ع',
+  locale: 'ar-IQ'
+  ,authEnabled: true
+  ,authEmailDomain: 'users.alin.local'
+});
+
+/* ===== core/js/helpers.js ===== */
+/* Shared helpers for new modular code. Legacy helpers remain in platform-legacy.js until phase 2. */
+window.Alin = window.Alin || {};
+window.Alin.helpers = {
+  byId(id){ return document.getElementById(id); },
+  one(selector, root=document){ return root.querySelector(selector); },
+  all(selector, root=document){ return [...root.querySelectorAll(selector)]; },
+  money(value){ return Number(value || 0).toLocaleString('ar-IQ') + ' د.ع'; }
+};
+
+
+;
+
+// === core/platform.js ===
 /* ===== core/js/platform-legacy.js ===== */
 
 async function uploadFileV52(folder,file,opts={}){
@@ -77,11 +105,11 @@ async function ensureStorageReady(){
     const {error}=await sb.storage.from('alin-files').list('', {limit:1});
     if(error){
       const m=String(error.message||'').toLowerCase();
-      if(m.includes('bucket') || m.includes('not found')) throw new Error('مجلد التخزين alin-files غير موجود. نفّذ ملف alin_v49_storage_fix.sql مرة واحدة.');
-      if(m.includes('policy') || m.includes('permission') || m.includes('row-level')) throw new Error('صلاحيات التخزين ناقصة. نفّذ ملف alin_v49_storage_fix.sql مرة واحدة.');
+      if(m.includes('bucket') || m.includes('not found')) throw new Error('مجلد التخزين alin-files غير موجود. نفّذ ملف RUN_ON_SUPABASE_v2_0_1_COMPLETE.sql مرة واحدة.');
+      if(m.includes('policy') || m.includes('permission') || m.includes('row-level')) throw new Error('صلاحيات التخزين ناقصة. نفّذ ملف RUN_ON_SUPABASE_v2_0_1_COMPLETE.sql مرة واحدة.');
     }
   }catch(e){
-    if(String(e.message||'').includes('alin_v49_storage_fix')) throw e;
+    if(String(e.message||'').includes('RUN_ON_SUPABASE_v2_0_1_COMPLETE.sql')) throw e;
   }
 }
 function safeFileName(name){
@@ -109,17 +137,17 @@ async function uploadFile(bucketPath, file, opts={}){
   const {data,error}=await sb.storage.from('alin-files').upload(path,cleanFile,{upsert:true, contentType, cacheControl:'3600'});
   if(error){
     const m=String(error.message||'').toLowerCase();
-    if(m.includes('bucket') || m.includes('not found')) throw new Error('مجلد التخزين alin-files غير موجود. نفّذ ملف alin_v49_storage_fix.sql مرة واحدة.');
-    if(m.includes('policy') || m.includes('permission') || m.includes('row-level')) throw new Error('صلاحيات الرفع ناقصة. نفّذ ملف alin_v49_storage_fix.sql مرة واحدة.');
+    if(m.includes('bucket') || m.includes('not found')) throw new Error('مجلد التخزين alin-files غير موجود. نفّذ ملف RUN_ON_SUPABASE_v2_0_1_COMPLETE.sql مرة واحدة.');
+    if(m.includes('policy') || m.includes('permission') || m.includes('row-level')) throw new Error('صلاحيات الرفع ناقصة. نفّذ ملف RUN_ON_SUPABASE_v2_0_1_COMPLETE.sql مرة واحدة.');
     if(m.includes('invalid key')) throw new Error('تعذر إنشاء اسم آمن للملف. تم إصلاح هذا الخلل في V51؛ حدّث ملفات الموقع وحاول الرفع من جديد.');
     throw new Error('فشل رفع الملف: '+(error.message||'خطأ غير معروف'));
   }
   const publicUrl=mediaUrl(data?.path||path);
   try{
     const ok=await checkPublicFile(publicUrl);
-    if(!ok) throw new Error('الملف رُفع لكن الرابط غير عام. نفّذ ملف alin_v49_storage_fix.sql.');
+    if(!ok) throw new Error('الملف رُفع لكن الرابط غير عام. نفّذ ملف RUN_ON_SUPABASE_v2_0_1_COMPLETE.sql.');
   }catch(e){
-    if(String(e.message||'').includes('alin_v49_storage_fix')) throw e;
+    if(String(e.message||'').includes('RUN_ON_SUPABASE_v2_0_1_COMPLETE.sql')) throw e;
   }
   return data?.path||path;
 }
@@ -404,7 +432,7 @@ function renderTeacher(){const fn=window.AlinTeacherModules&&window.AlinTeacherM
 function renderLibrary(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['renderLibrary'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] renderLibrary is not loaded yet');}
 function libraryOrderStatus(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['libraryOrderStatus'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] libraryOrderStatus is not loaded yet');}
 renderOrdersAdmin=function(){const labels={new:'جديد',payment_pending:'بانتظار الدفع',processing:'قيد التجهيز',ready:'جاهز',completed:'تم التسليم',cancelled:'ملغي'};adminContent.innerHTML='<h2>الطلبات</h2>'+(db.orders.length?db.orders.map(x=>`<div class="row"><div><b>${esc(x.order_number||x.id)} — ${esc(x.title)} × ${x.qty}</b><small>${esc(x.student_name)} — ${money(x.total)} د.ع — ${labels[x.status]||esc(x.status||'')}</small><div class="timeline">${(x.status_history||[]).map(h=>`<span class="done">${labels[h.status]||esc(h.status)}</span>`).join('')}</div></div><div class="row-actions"><button onclick="orderStatus('${x.id}','processing')">تجهيز</button><button onclick="orderStatus('${x.id}','ready')">جاهز</button><button onclick="orderStatus('${x.id}','completed')">تسليم</button><button class="danger" onclick="orderStatus('${x.id}','cancelled')">إلغاء</button></div></div>`).join(''):emptyState('لا توجد طلبات'));}
-orderStatus=async function(id,status){const o=db.orders.find(x=>x.id===id);const h=[...(o?.status_history||[]),{status,at:new Date().toISOString()}];await update('orders',{status,status_history:h},{id});/* Stock is reserved atomically by alin_create_store_orders; status changes must not deduct it again. */await audit('order','تحديث الطلب '+id+' إلى '+status);await load();renderOrdersAdmin();toast('تم تحديث الطلب');}
+orderStatus=async function(id,status){const o=db.orders.find(x=>x.id===id);const h=[...(o?.status_history||[]),{status,at:new Date().toISOString()}];await update('orders',{status,status_history:h},{id});if(status==='processing'&&o&&o.kind!=='booklet'){const p=db.products.find(x=>x.id===o.item_id);if(p&&!(o.status_history||[]).some(x=>x.status==='processing'))await update('products',{stock:Math.max(0,+p.stock-(+o.qty||0))},{id:p.id});}await audit('order','تحديث الطلب '+id+' إلى '+status);await load();renderOrdersAdmin();toast('تم تحديث الطلب');}
 renderSettingsAdmin=function(){adminContent.innerHTML=`<h2>إعدادات المنصة</h2><div class="form-grid"><input id="platformName" value="${esc(db.settings.platform_name||'منصة آلين')}" placeholder="اسم المنصة"><input id="platformPhone" value="${esc(db.settings.platform_phone||'')}" placeholder="رقم الهاتف"><input id="heroTitle" value="${esc(db.settings.hero_title||'')}" placeholder="عنوان الواجهة"><input id="heroText" value="${esc(db.settings.hero_text||'')}" placeholder="نص الواجهة"><input id="lowStockDefault" type="number" value="${esc(db.settings.low_stock_default||'5')}" placeholder="حد المخزون المنخفض"><button onclick="savePlatformSettings()">حفظ الإعدادات</button></div><div class="settings-preview"><b>معاينة</b><h3>${esc(db.settings.hero_title||'')}</h3><p>${esc(db.settings.hero_text||'')}</p></div>`;}
 async function savePlatformSettings(){const vals={platform_name:platformName.value.trim(),platform_phone:platformPhone.value.trim(),hero_title:heroTitle.value.trim(),hero_text:heroText.value.trim(),low_stock_default:lowStockDefault.value||'5'};for(const [key,value] of Object.entries(vals))await sb.from('settings').upsert({key,value});await audit('settings','تحديث إعدادات المنصة');await load();renderSettingsAdmin();toast('تم حفظ الإعدادات')}
 
@@ -5658,257 +5686,7 @@ window.renderLibrary=renderLibrary=function(){
 })();
 
 
-/* ================= ALIN V96 ADMIN BANNER UPLOAD ================= */
-(function(){
-  function bannerImage(b){
-    return b?.image_path||b?.image_url||b?.cover_path||'';
-  }
-
-  function bannerIsActive(b){
-    return !(b?.active===false || String(b?.active)==='false' || b?.status==='hidden');
-  }
-
-  async function uploadBannerImage(file){
-    if(!file)return '';
-    if(typeof uploadFile!=='function')throw new Error('رفع الملفات غير متاح');
-    const result=await uploadFile('banners',file,{type:'image'});
-    return result?.path||result?.url||result||'';
-  }
-
-  window.alinV96ClearBannerForm=function(){
-    ['alinV96BannerTitle','alinV96BannerText','alinV96BannerLink','alinV96BannerStart','alinV96BannerEnd']
-      .forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
-    const file=document.getElementById('alinV96BannerFile');
-    if(file)file.value='';
-    const edit=document.getElementById('alinV96BannerEditId');
-    if(edit)edit.value='';
-    const btn=document.getElementById('alinV96BannerSaveBtn');
-    if(btn)btn.textContent='إضافة البنر';
-  };
-
-  window.alinV96SaveBanner=async function(){
-    const id=(document.getElementById('alinV96BannerEditId')?.value||'').trim();
-    const title=(document.getElementById('alinV96BannerTitle')?.value||'').trim();
-    const text=(document.getElementById('alinV96BannerText')?.value||'').trim();
-    const link=(document.getElementById('alinV96BannerLink')?.value||'').trim();
-    const start_date=document.getElementById('alinV96BannerStart')?.value||null;
-    const end_date=document.getElementById('alinV96BannerEnd')?.value||null;
-    const file=document.getElementById('alinV96BannerFile')?.files?.[0];
-
-    if(!title)return alert('اكتب عنوان البنر');
-    if(start_date&&end_date&&start_date>end_date)return alert('تاريخ النهاية يجب أن يكون بعد تاريخ البداية');
-
-    try{
-      const existing=(db.banners||[]).find(x=>String(x.id)===String(id));
-      const image_path=file?await uploadBannerImage(file):(existing?.image_path||'');
-      const payload={
-        title,
-        text,
-        link_url:link,
-        image_path,
-        start_date,
-        end_date,
-        active:existing?bannerIsActive(existing):true,
-        updated_at:new Date().toISOString()
-      };
-
-      if(id){
-        await update('banners',payload,{id});
-        Object.assign(existing,payload);
-        try{await audit('banner','تعديل البنر '+title)}catch(_){}
-        toast('تم تعديل البنر');
-      }else{
-        const row={
-          id:typeof uid==='function'?uid('BN'):('BN-'+Date.now()),
-          ...payload,
-          created_at:new Date().toISOString()
-        };
-        await insert('banners',row);
-        db.banners=db.banners||[];
-        db.banners.unshift(row);
-        try{await audit('banner','إضافة البنر '+title)}catch(_){}
-        toast('تمت إضافة البنر');
-      }
-
-      alinV96ClearBannerForm();
-      alinV96RenderBannerAdmin();
-      try{renderStore()}catch(_){}
-    }catch(e){
-      console.error('V96 banner save',e);
-      alert(e?.message||'تعذر حفظ البنر');
-    }
-  };
-
-  window.alinV96EditBanner=function(id){
-    const b=(db.banners||[]).find(x=>String(x.id)===String(id));
-    if(!b)return;
-
-    document.getElementById('alinV96BannerEditId').value=b.id;
-    document.getElementById('alinV96BannerTitle').value=b.title||'';
-    document.getElementById('alinV96BannerText').value=b.text||'';
-    document.getElementById('alinV96BannerLink').value=b.link_url||'';
-    document.getElementById('alinV96BannerStart').value=b.start_date||'';
-    document.getElementById('alinV96BannerEnd').value=b.end_date||'';
-    document.getElementById('alinV96BannerSaveBtn').textContent='حفظ التعديل';
-    document.getElementById('alinV96BannerTitle').scrollIntoView({behavior:'smooth',block:'center'});
-  };
-
-  window.alinV96ToggleBanner=async function(id){
-    const b=(db.banners||[]).find(x=>String(x.id)===String(id));
-    if(!b)return;
-    const active=!bannerIsActive(b);
-    try{
-      await update('banners',{active,updated_at:new Date().toISOString()},{id});
-      b.active=active;
-      alinV96RenderBannerAdmin();
-      try{renderStore()}catch(_){}
-      toast(active?'تم إظهار البنر':'تم إخفاء البنر');
-    }catch(e){
-      alert(e?.message||'تعذر تغيير حالة البنر');
-    }
-  };
-
-  window.alinV96DeleteBanner=async function(id){
-    const b=(db.banners||[]).find(x=>String(x.id)===String(id));
-    if(!b)return;
-    if(!confirm('حذف البنر '+(b.title||'')+'؟'))return;
-
-    try{
-      await removeRow('banners',{id});
-      db.banners=(db.banners||[]).filter(x=>String(x.id)!==String(id));
-      try{await audit('banner','حذف البنر '+(b.title||''))}catch(_){}
-      alinV96RenderBannerAdmin();
-      try{renderStore()}catch(_){}
-      toast('تم حذف البنر');
-    }catch(e){
-      alert(e?.message||'تعذر حذف البنر');
-    }
-  };
-
-  window.alinV96RenderBannerAdmin=function(){
-    if(!window.adminContent)return;
-    const rows=db.banners||[];
-
-    adminContent.innerHTML=`
-      <div class="alin-v96-banner-admin">
-        <div class="alin-v96-banner-heading">
-          <div>
-            <h2>الإعلانات والبنرات</h2>
-            <p>ارفع لوحة إعلانية تظهر أعلى واجهة المتجر.</p>
-          </div>
-          <span>${rows.length} بنر</span>
-        </div>
-
-        <input id="alinV96BannerEditId" type="hidden">
-
-        <div class="alin-v96-banner-form">
-          <label>
-            <span>عنوان البنر</span>
-            <input id="alinV96BannerTitle" placeholder="مثال: عروض العودة إلى المدارس">
-          </label>
-
-          <label>
-            <span>نص الإعلان</span>
-            <textarea id="alinV96BannerText" placeholder="اكتب وصفاً مختصراً للإعلان"></textarea>
-          </label>
-
-          <label>
-            <span>رابط عند الضغط — اختياري</span>
-            <input id="alinV96BannerLink" placeholder="https://...">
-          </label>
-
-          <label class="alin-v96-file-label">
-            <span>رفع صورة البنر</span>
-            <input id="alinV96BannerFile" type="file" accept="image/*">
-            <small>يفضل مقاس عريض مثل 1600 × 500 بكسل.</small>
-          </label>
-
-          <label>
-            <span>تاريخ البداية</span>
-            <input id="alinV96BannerStart" type="date">
-          </label>
-
-          <label>
-            <span>تاريخ النهاية</span>
-            <input id="alinV96BannerEnd" type="date">
-          </label>
-
-          <div class="alin-v96-banner-form-actions">
-            <button id="alinV96BannerSaveBtn" onclick="alinV96SaveBanner()">إضافة البنر</button>
-            <button class="secondary" onclick="alinV96ClearBannerForm()">تفريغ الحقول</button>
-          </div>
-        </div>
-
-        <div class="alin-v96-banner-list">
-          ${rows.map(b=>`
-            <article class="alin-v96-banner-row">
-              <div class="alin-v96-banner-preview">
-                ${bannerImage(b)?`<img src="${mediaUrl(bannerImage(b))}" alt="${esc(b.title||'بنر')}">`:'<div>لا توجد صورة</div>'}
-              </div>
-
-              <div class="alin-v96-banner-info">
-                <div>
-                  <h3>${esc(b.title||'بدون عنوان')}</h3>
-                  <span class="${bannerIsActive(b)?'active':'hidden'}">${bannerIsActive(b)?'ظاهر':'مخفي'}</span>
-                </div>
-                <p>${esc(b.text||'')}</p>
-                <small>${b.start_date||'بدون بداية'} — ${b.end_date||'بدون نهاية'}</small>
-              </div>
-
-              <div class="alin-v96-banner-actions">
-                <button onclick="alinV96EditBanner('${b.id}')">تعديل</button>
-                <button class="secondary" onclick="alinV96ToggleBanner('${b.id}')">${bannerIsActive(b)?'إخفاء':'إظهار'}</button>
-                <button class="danger" onclick="alinV96DeleteBanner('${b.id}')">حذف</button>
-              </div>
-            </article>
-          `).join('')||'<div class="alin-v96-empty-banner">لا توجد بنرات مضافة حالياً.</div>'}
-        </div>
-      </div>
-    `;
-  };
-
-  const previousAdminTab=window.adminTab||adminTab;
-  window.adminTab=adminTab=function(tab){
-    if(tab==='ads'||tab==='banners'||tab==='advertisements'){
-      window.activeAdminTab='ads';
-      return alinV96RenderBannerAdmin();
-    }
-    return previousAdminTab.apply(this,arguments);
-  };
-
-  const previousRenderStore=window.renderStore||renderStore;
-  window.renderStore=renderStore=function(){
-    const result=previousRenderStore.apply(this,arguments);
-
-    setTimeout(()=>{
-      const box=document.getElementById('bannerBox');
-      if(!box)return;
-
-      const today=new Date().toISOString().slice(0,10);
-      const rows=(db.banners||[]).filter(b=>
-        bannerIsActive(b) &&
-        (!b.start_date||b.start_date<=today) &&
-        (!b.end_date||b.end_date>=today)
-      );
-
-      box.innerHTML=rows.map(b=>`
-        <article class="alin-v96-store-banner ${b.link_url?'clickable':''}" ${b.link_url?`onclick="window.open('${esc(b.link_url)}','_blank')"`:''}>
-          ${bannerImage(b)?`<img src="${mediaUrl(bannerImage(b))}" alt="${esc(b.title||'إعلان')}">`:''}
-          <div>
-            <small>إعلان منصة آلين</small>
-            <h2>${esc(b.title||'')}</h2>
-            <p>${esc(b.text||'')}</p>
-          </div>
-        </article>
-      `).join('');
-
-      box.style.display=rows.length?'grid':'none';
-    },0);
-
-    return result;
-  };
-})();
-
+/* ALIN 2.0.1: legacy V96 banner patch removed; store/banners.js is authoritative. */
 
 /* ================= ALIN V97 FAVORITE HEART SYNC FIX ================= */
 (function(){
@@ -6062,6 +5840,938 @@ window.addEventListener('load',()=>{
     if(typeof renderStore==='function') setTimeout(()=>renderStore(),300);
   }catch(e){ console.error('ALIN rescue startup',e); }
 });
+
+
+;
+
+// === core/supabase.js ===
+/* ===== core/js/supabase-final-integration-rc5.js ===== */
+/* منصة آلين RC5 - طبقة الربط النهائي مع Supabase
+   - تحافظ على التوافق مع الواجهة الحالية.
+   - تضيف مزامنة سحابية، إعادة محاولة، قائمة انتظار محلية، Realtime، وفحص المخطط.
+*/
+(function(){
+  'use strict';
+
+  const RC5_TABLES = [
+    'settings','accounts','delivery_areas','couriers','courier_areas','categories',
+    'booklets','teacher_requests','teacher_request_versions','products','orders',
+    'order_items','order_timeline','permits','ledger','financial_entries',
+    'financial_payouts','withdrawals','library_settlements','teacher_settlements',
+    'delegate_settlements','admin_settlements','notifications','banners','coupons',
+    'student_profiles','product_reviews','stock_alerts','bundles','bundle_items',
+    'audit','backup_logs','system_health_logs'
+  ];
+  const REQUIRED_TABLES = ['settings','accounts','booklets','products','orders','notifications','audit'];
+  const QUEUE_KEY = 'alin_rc5_offline_queue';
+  const DEAD_QUEUE_KEY = 'alin_rc5_failed_queue';
+  const CRITICAL_TABLES = new Set([
+    'orders','order_items','order_timeline','coupons','products','ledger',
+    'financial_entries','financial_payouts','withdrawals','library_settlements',
+    'teacher_settlements','delegate_settlements','admin_settlements'
+  ]);
+  const SNAPSHOT_KEY = 'alin_rc5_last_cloud_snapshot';
+  const STATUS_EVENT = 'alin:cloud-status';
+  let realtimeChannel = null;
+  let reloadTimer = null;
+  let flushing = false;
+
+  function nowIso(){ return new Date().toISOString(); }
+  function readQueue(){ try{return JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]')}catch(_){return []} }
+  function writeQueue(q){ localStorage.setItem(QUEUE_KEY,JSON.stringify(q.slice(-500))); }
+  function readDeadQueue(){ try{return JSON.parse(localStorage.getItem(DEAD_QUEUE_KEY)||'[]')}catch(_){return []} }
+  function writeDeadQueue(q){ localStorage.setItem(DEAD_QUEUE_KEY,JSON.stringify(q.slice(-500))); }
+  function emit(status,detail={}){
+    window.AlinCloudStatus={status,at:nowIso(),...detail};
+    window.dispatchEvent(new CustomEvent(STATUS_EVENT,{detail:window.AlinCloudStatus}));
+  }
+  function client(){
+    try{
+      if(typeof init==='function') init();
+      return window.sb || (typeof sb!=='undefined'?sb:null);
+    }catch(_){return null}
+  }
+  function connected(){ return !!client() && navigator.onLine; }
+  function safeId(prefix='ID'){ return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2,8)}`; }
+  function normalizeError(e){ return e?.message || String(e||'خطأ غير معروف'); }
+
+  async function tableExists(table){
+    const c=client(); if(!c) return false;
+    const {error}=await c.from(table).select('*',{head:true,count:'exact'}).limit(1);
+    if(!error) return true;
+    const m=String(error.message||'').toLowerCase();
+    return !(m.includes('does not exist')||m.includes('schema cache')||m.includes('not found'));
+  }
+
+  async function schemaCheck(){
+    const result={ok:true,tables:{},missing:[],checked_at:nowIso()};
+    if(!client()){result.ok=false;result.error='Supabase client غير متوفر';return result;}
+    for(const t of REQUIRED_TABLES){
+      try{ const ok=await tableExists(t); result.tables[t]=ok; if(!ok) result.missing.push(t); }
+      catch(e){result.tables[t]=false;result.missing.push(t);}
+    }
+    result.ok=result.missing.length===0;
+    return result;
+  }
+
+  async function selectAll(table,opts={}){
+    const c=client(); if(!c) throw new Error('Supabase غير متصل');
+    let q=c.from(table).select(opts.columns||'*');
+    if(opts.orderBy) q=q.order(opts.orderBy,{ascending:!!opts.ascending});
+    if(opts.limit) q=q.limit(opts.limit);
+    const {data,error}=await q;
+    if(error) throw error;
+    return data||[];
+  }
+
+  async function selectAccountsForCurrentSession(){
+    const c=client(); if(!c) return [];
+    if(window.ALIN_CONFIG?.authEnabled!==true) return selectAll('accounts');
+    const {data:{user}}=await c.auth.getUser();
+    if(!user){
+      const {data,error}=await c.from('alin_public_accounts').select('*');
+      if(error)throw error; return data||[];
+    }
+    const {data:own,error:ownError}=await c.from('accounts').select('*').eq('auth_user_id',user.id);
+    if(ownError)throw ownError;
+    if((own||[]).some(x=>x.role==='admin'))return selectAll('accounts');
+    const {data:visible,error}=await c.from('alin_public_accounts').select('*');
+    if(error)throw error;
+    const map=new Map((visible||[]).map(x=>[x.id,x]));(own||[]).forEach(x=>map.set(x.id,x));
+    return [...map.values()];
+  }
+
+  async function selectSettingsForCurrentSession(){
+    const c=client(); if(!c) return [];
+    if(window.ALIN_CONFIG?.authEnabled!==true) return selectAll('settings');
+    const {data:{user}}=await c.auth.getUser();
+    if(user){
+      const {data:own}=await c.from('accounts').select('role').eq('auth_user_id',user.id).maybeSingle();
+      if(own?.role==='admin')return selectAll('settings');
+    }
+    const {data,error}=await c.from('alin_public_settings').select('*');
+    if(error)throw error;return data||[];
+  }
+
+  function queueMutation(type,table,payload,match){
+    const q=readQueue();
+    q.push({id:safeId('Q'),type,table,payload,match,created_at:nowIso(),attempts:0});
+    writeQueue(q); emit('offline-queued',{queued:q.length});
+  }
+
+  async function cloudInsert(table,row){
+    const c=client(); if(!c||!navigator.onLine){
+      if(CRITICAL_TABLES.has(table)) throw new Error('لا يمكن حفظ الطلب أو العملية المالية بدون اتصال. لم تُمسح بياناتك؛ أعد المحاولة بعد عودة الإنترنت.');
+      queueMutation('insert',table,row);return {...row,_queued:true};
+    }
+    const {data,error}=await c.from(table).insert(row).select().single();
+    if(error) throw error;
+    return data;
+  }
+  async function cloudUpdate(table,values,match){
+    const c=client(); if(!c||!navigator.onLine){
+      if(CRITICAL_TABLES.has(table)) throw new Error('لا يمكن تعديل الطلب أو العملية المالية بدون اتصال. أعد المحاولة بعد عودة الإنترنت.');
+      queueMutation('update',table,values,match);return {_queued:true};
+    }
+    let q=c.from(table).update(values); Object.entries(match||{}).forEach(([k,v])=>q=q.eq(k,v));
+    const {data,error}=await q.select(); if(error) throw error; return data||[];
+  }
+  async function cloudDelete(table,match){
+    const c=client(); if(!c||!navigator.onLine){
+      if(CRITICAL_TABLES.has(table)) throw new Error('لا يمكن حذف الطلب أو العملية المالية بدون اتصال. أعد المحاولة بعد عودة الإنترنت.');
+      queueMutation('delete',table,null,match);return {_queued:true};
+    }
+    let q=c.from(table).delete(); Object.entries(match||{}).forEach(([k,v])=>q=q.eq(k,v));
+    const {error}=await q; if(error) throw error; return true;
+  }
+
+  async function flushQueue(){
+    if(flushing||!connected()) return;
+    flushing=true; let q=readQueue(); const remain=[];
+    emit('syncing',{queued:q.length});
+    for(const item of q){
+      try{
+        if(item.type==='insert') await cloudInsert(item.table,item.payload);
+        else if(item.type==='update') await cloudUpdate(item.table,item.payload,item.match);
+        else if(item.type==='delete') await cloudDelete(item.table,item.match);
+      }catch(e){
+        item.attempts=(item.attempts||0)+1;
+        item.last_error=normalizeError(e);
+        if(item.attempts<5) remain.push(item);
+        else {
+          item.failed_at=nowIso();
+          const dead=readDeadQueue();
+          dead.push(item);
+          writeDeadQueue(dead);
+          emit('sync-failed',{failed:dead.length,table:item.table});
+        }
+      }
+    }
+    writeQueue(remain); flushing=false;
+    emit(remain.length?'sync-partial':'online',{queued:remain.length});
+  }
+
+  function mapCloudToLegacy(rows){
+    const accounts=rows.accounts||[];
+    const snapshot={
+      accounts:{
+        teachers:accounts.filter(x=>x.role==='teacher'&&!x.deleted_at),
+        libraries:accounts.filter(x=>x.role==='library'&&!x.deleted_at)
+      },
+      booklets:(rows.booklets||[]).filter(x=>!x.deleted_at),
+      products:(rows.products||[]).filter(x=>!x.deleted_at),
+      categories:rows.categories||[], banners:rows.banners||[], orders:rows.orders||[],
+      permits:rows.permits||[], ledger:rows.ledger||[], withdrawals:rows.withdrawals||[],
+      audit:rows.audit||[], settings:{storeType:'booklet'},
+      couriers:(rows.couriers||[]).filter(x=>!x.deleted_at),
+      deliveryAreas:rows.delivery_areas||[], notifications:rows.notifications||[],
+      teacherRequests:rows.teacher_requests||[], orderItems:rows.order_items||[],
+      orderTimeline:rows.order_timeline||[], financialEntries:rows.financial_entries||[],
+      financialPayouts:rows.financial_payouts||[], librarySettlements:rows.library_settlements||[],
+      teacherSettlements:rows.teacher_settlements||[], courierSettlements:rows.delegate_settlements||[],
+      coupons:rows.coupons||[], backupLogs:rows.backup_logs||[], systemHealthLogs:rows.system_health_logs||[]
+    };
+    const settingsRows=rows.settings||[];
+    settingsRows.forEach(s=>{
+      if(s.id==='main') Object.assign(snapshot.settings,s.data||{},s);
+      else if(s.key) snapshot.settings[s.key]=s.value;
+    });
+    return snapshot;
+  }
+
+  async function loadCloudSnapshot(){
+    const c=client();
+    if(!c){ emit('offline',{reason:'no-client'}); return null; }
+    emit('loading');
+    const rows={};
+    await Promise.all(RC5_TABLES.map(async t=>{
+      try{ rows[t]=t==='accounts'?await selectAccountsForCurrentSession():t==='settings'?await selectSettingsForCurrentSession():await selectAll(t,{orderBy:['orders','notifications','audit','order_timeline'].includes(t)?'created_at':undefined,ascending:false}); }
+      catch(e){ rows[t]=[]; console.warn('[RC5]',t,normalizeError(e)); }
+    }));
+    const snapshot=mapCloudToLegacy(rows);
+    localStorage.setItem(SNAPSHOT_KEY,JSON.stringify({at:nowIso(),snapshot}));
+    window.db=snapshot;
+    try{ if(typeof renderAll==='function') renderAll(); }catch(e){console.warn(e);}
+    emit('online',{tables:Object.keys(rows).length});
+    return snapshot;
+  }
+
+  function loadCachedSnapshot(){
+    try{const x=JSON.parse(localStorage.getItem(SNAPSHOT_KEY)||'null'); if(x?.snapshot){window.db=x.snapshot;return x.snapshot}}catch(_){}
+    return null;
+  }
+
+  function scheduleReload(){ clearTimeout(reloadTimer); reloadTimer=setTimeout(()=>loadCloudSnapshot().catch(()=>{}),700); }
+  function startRealtime(){
+    const c=client(); if(!c?.channel||realtimeChannel) return;
+    realtimeChannel=c.channel('alin-rc5-live');
+    ['orders','notifications','booklets','products','accounts','couriers','ledger','financial_entries'].forEach(t=>{
+      realtimeChannel.on('postgres_changes',{event:'*',schema:'public',table:t},scheduleReload);
+    });
+    realtimeChannel.subscribe(status=>emit(status==='SUBSCRIBED'?'realtime':'realtime-wait',{realtime:status}));
+  }
+
+  function installLegacyBridge(){
+    window.query=async function(table){ return selectAll(table); };
+    window.insert=async function(table,row){ return cloudInsert(table,row); };
+    window.update=async function(table,values,match){ return cloudUpdate(table,values,match); };
+    window.removeRow=async function(table,match){ return cloudDelete(table,match); };
+
+    const legacyLoad=window.load;
+    window.load=async function(){
+      try{
+        const snap=await loadCloudSnapshot();
+        if(snap) return snap;
+      }catch(e){ console.error('[RC5 load]',e); emit('error',{message:normalizeError(e)}); }
+      loadCachedSnapshot();
+      if(typeof legacyLoad==='function') return legacyLoad.apply(this,arguments);
+    };
+  }
+
+  async function health(){
+    const started=performance.now();
+    const schema=await schemaCheck();
+    return {
+      ok:schema.ok,
+      latency_ms:Math.round(performance.now()-started),
+      online:navigator.onLine,
+      queue:readQueue().length,
+      schema,
+      version:'RC5',
+      checked_at:nowIso()
+    };
+  }
+
+  window.AlinCloud={
+    version:'RC5', client, connected, selectAll, insert:cloudInsert, update:cloudUpdate,
+    remove:cloudDelete, flushQueue, loadCloudSnapshot, loadCachedSnapshot,
+    schemaCheck, health, startRealtime, queueSize:()=>readQueue().length,
+    failedQueueSize:()=>readDeadQueue().length
+  };
+
+  installLegacyBridge();
+  window.addEventListener('online',()=>{flushQueue();startRealtime();loadCloudSnapshot().catch(()=>{});});
+  window.addEventListener('offline',()=>emit('offline'));
+  document.addEventListener('DOMContentLoaded',async()=>{
+    if(!navigator.onLine) loadCachedSnapshot();
+    try{ await flushQueue(); startRealtime(); }catch(e){console.warn('[RC5 init]',e);}
+  });
+})();
+
+/* ===== core/js/cloud-status-ui-rc5.js ===== */
+(function(){
+  const labels={online:'متصل بـ Supabase',offline:'غير متصل',loading:'جاري تحميل البيانات',syncing:'جاري مزامنة البيانات','offline-queued':'تم حفظ العملية للمزامنة','sync-partial':'بعض العمليات بانتظار المزامنة',error:'خطأ في الاتصال',realtime:'التحديث الفوري يعمل'};
+  let el,timer;
+  function show(d){
+    if(!el){el=document.createElement('div');el.className='alin-cloud-status';document.body.appendChild(el)}
+    const s=d?.status||'online'; el.className=`alin-cloud-status show ${s}`; el.textContent=labels[s]||s;
+    clearTimeout(timer); timer=setTimeout(()=>el.classList.remove('show'),s==='error'?6000:2800);
+  }
+  window.addEventListener('alin:cloud-status',e=>show(e.detail));
+})();
+
+
+;
+
+// === admin/shell.js ===
+/* ===== admin/js/admin-shell.js ===== */
+
+(function(){
+  const registry=new Map();
+  window.AlinAdminModules={
+    register(name,enhancer){registry.set(name,enhancer)},
+    enhance(name){const fn=registry.get(name);if(typeof fn==='function')try{fn(document.getElementById('adminContent'))}catch(e){console.warn('Admin module',name,e)}},
+    list(){return [...registry.keys()]}
+  };
+  function markTabs(tab){
+    document.querySelectorAll('#adminPage .admin-tabs button').forEach(btn=>{
+      const m=(btn.getAttribute('onclick')||'').match(/adminTab\('([^']+)'\)/);
+      if(m) btn.dataset.adminTab=m[1];
+      btn.classList.toggle('active-admin-tab',btn.dataset.adminTab===tab);
+    });
+  }
+  function decorate(tab){
+    const page=document.getElementById('adminPage'),content=document.getElementById('adminContent');
+    if(!page||!content)return;
+    page.dataset.activeAdminTab=tab||'';
+    page.classList.add('admin-module-ready');
+    content.dataset.adminModule=tab||'';
+    markTabs(tab);
+    window.AlinAdminModules.enhance(tab);
+  }
+  function install(){
+    document.querySelectorAll('#adminPage .admin-tabs button').forEach(btn=>{
+      const m=(btn.getAttribute('onclick')||'').match(/adminTab\('([^']+)'\)/);if(m)btn.dataset.adminTab=m[1];
+    });
+    const base=window.adminTab;
+    if(typeof base==='function'&&!base.__alinModular){
+      const wrapped=function(tab){const result=base.apply(this,arguments);requestAnimationFrame(()=>decorate(tab));return result};
+      wrapped.__alinModular=true;window.adminTab=wrapped;
+    }
+    const current=window.activeAdminTab||document.querySelector('#adminPage .admin-tabs button')?.dataset.adminTab||'accounts';
+    requestAnimationFrame(()=>decorate(current));
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
+})();
+
+
+;
+
+// === admin/accounts.js ===
+/* ===== admin/js/accounts.js ===== */
+
+(function(){AlinAdminModules.register('accounts',root=>{if(!root)return;root.classList.add('admin-accounts-module');const h=root.querySelector('h2');if(h&&!root.querySelector('.admin-module-note'))h.insertAdjacentHTML('afterend','<div class="admin-module-note">إدارة المدرسين والمكتبات وحالات الحسابات من هذا القسم.</div>')})})();
+
+/* ===== admin/js/admin-accounts-v131.js ===== */
+(function(){
+  const state={query:'',role:'all',status:'all',area:'all'};
+  const escx=v=>typeof esc==='function'?esc(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const arr=v=>Array.isArray(v)?v:[];
+  const roleLabel={teacher:'مدرس',library:'مكتبة',courier:'مندوب',accountant:'محاسب',admin:'مدير'};
+  function initials(name){return String(name||'؟').trim().split(/\s+/).slice(0,2).map(x=>x[0]||'').join('')||'؟'}
+  function allAccounts(){
+    const teachers=arr(db?.accounts?.teachers).map(x=>({...x,role:'teacher'}));
+    const libraries=arr(db?.accounts?.libraries).map(x=>({...x,role:'library'}));
+    const couriers=arr(db?.accounts?.couriers||db?.couriers).map(x=>({...x,role:'courier'}));
+    const accountants=arr(db?.accounts?.accountants).map(x=>({...x,role:'accountant'}));
+    return [...teachers,...libraries,...couriers,...accountants];
+  }
+  function normalizedStatus(x){const s=String(x.status||'active').toLowerCase();return ['active','open','enabled','approved'].includes(s)?'active':['pending','review'].includes(s)?'pending':'inactive'}
+  function filtered(){return allAccounts().filter(x=>{
+    const text=[x.name,x.username,x.phone,x.area,x.landmark,roleLabel[x.role]].join(' ').toLowerCase();
+    return (!state.query||text.includes(state.query.toLowerCase()))&&(state.role==='all'||x.role===state.role)&&(state.status==='all'||normalizedStatus(x)===state.status)&&(state.area==='all'||String(x.area||'')===state.area);
+  })}
+  function areas(){return [...new Set(allAccounts().map(x=>String(x.area||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'))}
+  function stats(){const a=allAccounts();return {all:a.length,active:a.filter(x=>normalizedStatus(x)==='active').length,inactive:a.filter(x=>normalizedStatus(x)==='inactive').length,teachers:a.filter(x=>x.role==='teacher').length,libraries:a.filter(x=>x.role==='library').length}}
+  function card(x){
+    const st=normalizedStatus(x), locked=['admin','accountant'].includes(x.role), phone=x.phone||x.mobile||'', meta=[x.username?`الدخول: ${escx(x.username)}`:'',x.area?escx(x.area):'',phone?escx(phone):''].filter(Boolean);
+    return `<article class="v131-account-card"><div class="v131-avatar ${escx(x.role)}">${escx(initials(x.name))}</div><div class="v131-account-info"><h3>${escx(x.name||roleLabel[x.role])}</h3><div class="v131-account-meta"><span class="v131-chip">${roleLabel[x.role]||escx(x.role)}</span>${meta.map(m=>`<span class="v131-chip">${m}</span>`).join('')}<span class="v131-status ${st}">${st==='active'?'فعال':st==='pending'?'قيد المراجعة':'موقوف'}</span></div></div><div class="v131-card-actions">${locked?`<button class="secondary" onclick="v131AccountInfo('${escx(x.id)}')">تفاصيل الصلاحية</button>`:`<button class="secondary" onclick="v132OpenAccountEditor('${escx(x.id)}')">تعديل كامل</button><button class="warning" onclick="v132ToggleAccount('${escx(x.id)}','${st==='active'?'inactive':'active'}')">${st==='active'?'إيقاف':'تفعيل'}</button><button class="secondary" onclick="v132OpenActivity('${escx(x.id)}')">النشاط</button><button class="danger" onclick="v132SafeDeleteAccount('${escx(x.id)}')">حذف</button>`}</div></article>`
+  }
+  function render(){
+    if(!window.adminContent)return;
+    const s=stats(), rows=filtered();
+    adminContent.innerHTML=`<section class="v131-accounts"><header class="v131-accounts-head"><div><h2>إدارة الحسابات</h2><p>إدارة المدرسين والمكتبات والمندوبين والصلاحيات من مكان واحد.</p></div><button class="v131-add-account" onclick="v131ToggleAccountForm()">+ إضافة حساب جديد</button></header><section class="v131-account-stats"><article class="v131-account-stat"><small>إجمالي الحسابات</small><b>${s.all}</b></article><article class="v131-account-stat"><small>الحسابات الفعالة</small><b>${s.active}</b></article><article class="v131-account-stat danger"><small>الحسابات الموقوفة</small><b>${s.inactive}</b></article><article class="v131-account-stat"><small>المدرسون</small><b>${s.teachers}</b></article><article class="v131-account-stat"><small>المكتبات</small><b>${s.libraries}</b></article></section><section id="v131AccountForm" class="v131-account-form"><h3>إضافة حساب</h3><div class="form-grid"><select id="aRole"><option value="teacher">مدرس</option><option value="library">مكتبة</option><option value="courier">مندوب</option><option value="accountant">محاسب</option></select><input id="aName" placeholder="الاسم الكامل"><input id="aUser" placeholder="اسم الدخول"><input id="aPass" type="password" placeholder="الرمز السري"><input id="aArea" placeholder="المنطقة"><input id="aLandmark" placeholder="أقرب نقطة دالة"></div><div class="form-actions"><button class="secondary" onclick="v131ToggleAccountForm(false)">إلغاء</button><button onclick="addAccount()">حفظ الحساب</button></div></section><section class="v131-account-tools"><input id="v131AccountSearch" value="${escx(state.query)}" placeholder="ابحث بالاسم أو اسم الدخول أو المنطقة" oninput="v131AccountFilter('query',this.value)"><select onchange="v131AccountFilter('role',this.value)"><option value="all">كل أنواع الحسابات</option>${Object.entries(roleLabel).map(([k,v])=>`<option value="${k}" ${state.role===k?'selected':''}>${v}</option>`).join('')}</select><select onchange="v131AccountFilter('status',this.value)"><option value="all">كل الحالات</option><option value="active" ${state.status==='active'?'selected':''}>فعال</option><option value="inactive" ${state.status==='inactive'?'selected':''}>موقوف</option><option value="pending" ${state.status==='pending'?'selected':''}>قيد المراجعة</option></select><select onchange="v131AccountFilter('area',this.value)"><option value="all">كل المناطق</option>${areas().map(a=>`<option value="${escx(a)}" ${state.area===a?'selected':''}>${escx(a)}</option>`).join('')}</select></section><nav class="v131-role-tabs">${[['all','الكل'],...Object.entries(roleLabel)].map(([k,v])=>`<button class="${state.role===k?'active':''}" onclick="v131AccountFilter('role','${k}')">${v}</button>`).join('')}</nav><section class="v131-account-grid">${rows.map(card).join('')||'<div class="v131-empty">لا توجد حسابات مطابقة للبحث والفلترة.</div>'}</section><section id="v132AccountEditorHost"></section></section>`;
+    adminContent.dataset.adminModule='accounts';
+  }
+  window.v131AccountFilter=(k,v)=>{state[k]=v;render()};
+  window.v131ToggleAccountForm=(force)=>{const el=document.getElementById('v131AccountForm');if(!el)return;el.classList.toggle('open',typeof force==='boolean'?force:!el.classList.contains('open'));if(el.classList.contains('open'))el.scrollIntoView({behavior:'smooth',block:'center'})};
+  window.v131AccountInfo=id=>{const x=allAccounts().find(a=>String(a.id)===String(id));if(!x)return;alert(`${x.name}\nنوع الحساب: ${roleLabel[x.role]}\nالصلاحية: ${x.role==='admin'?'إدارة كاملة':'المالية والتقارير فقط'}`)};
+  window.renderAccountsAdmin=render;
+  if(window.AlinAdminModules?.register) AlinAdminModules.register('accounts',()=>render());
+})();
+
+
+;
+
+// === core/features.js ===
+/* ===== core/js/platform-features.js ===== */
+
+(function(){
+  const FAV_KEY='alin_v98_favorites';
+
+  const $=sel=>document.querySelector(sel);
+  const $$=sel=>[...document.querySelectorAll(sel)];
+  const escHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  function favs(){
+    try{
+      const x=JSON.parse(localStorage.getItem(FAV_KEY)||'[]');
+      return Array.isArray(x)?x.map(String):[];
+    }catch(_){return[]}
+  }
+  function favKey(kind,id){return `${kind}:${id}`}
+  function isFav(kind,id){return favs().includes(favKey(kind,id))}
+  function saveFavs(rows){localStorage.setItem(FAV_KEY,JSON.stringify(rows))}
+
+  window.alin98ToggleFavorite=function(kind,id){
+    const key=favKey(kind,id);
+    let rows=favs();
+    rows=rows.includes(key)?rows.filter(x=>x!==key):[...rows,key];
+    saveFavs(rows);
+    syncHearts();
+    if(typeof toast==='function')toast(rows.includes(key)?'تمت الإضافة إلى المفضلة':'تمت الإزالة من المفضلة');
+  };
+
+  function rawItem(kind,id){
+    return kind==='booklet'
+      ? (db.booklets||[]).find(x=>String(x.id)===String(id))
+      : (db.products||[]).find(x=>String(x.id)===String(id));
+  }
+  function titleOf(x){return x?.title||x?.name||'مادة'}
+  function coverOf(x){return x?.cover_path||x?.image_path||x?.image_url||x?.cover||x?.image||''}
+  function categoryOf(x){return String(x?.subject||x?.grade||x?.category||x?.category_id||x?.type||'').toLowerCase()}
+
+  function syncHearts(){
+    $$('.alin98-heart[data-kind][data-id]').forEach(btn=>{
+      const active=isFav(btn.dataset.kind,btn.dataset.id);
+      btn.classList.toggle('active',active);
+      btn.textContent=active?'♥':'♡';
+    });
+  }
+
+  function decorateCards(){
+    $$('#storeGrid .alin-v76-card').forEach(card=>{
+      const open=card.querySelector('[onclick*="alinV77OpenDetails"]')?.getAttribute('onclick')||'';
+      const m=open.match(/alinV77OpenDetails\('([^']+)','([^']+)'\)/);
+      if(!m)return;
+      const [,kind,id]=m;
+      let btn=card.querySelector('.alin98-heart');
+      if(!btn){
+        btn=document.createElement('button');
+        btn.type='button';
+        btn.className='alin98-heart';
+        btn.dataset.kind=kind;
+        btn.dataset.id=id;
+        btn.onclick=e=>{e.preventDefault();e.stopPropagation();alin98ToggleFavorite(kind,id)};
+        card.appendChild(btn);
+      }
+    });
+    syncHearts();
+  }
+
+  window.alin98ShowFavorites=function(){
+    const rows=favs().map(k=>{
+      const [kind,...r]=k.split(':');
+      const id=r.join(':');
+      const x=rawItem(kind,id);
+      return x?{kind,id,x}:null;
+    }).filter(Boolean);
+
+    const m=document.createElement('div');
+    m.className='alin-v85-overlay';
+    m.innerHTML=`<div class="alin-v85-sheet">
+      <button class="alin-v85-close" onclick="this.closest('.alin-v85-overlay').remove()">×</button>
+      <h2>❤️ المفضلة</h2>
+      <div class="alin-v85-favgrid">
+        ${rows.map(r=>`<article>
+          <div>${coverOf(r.x)?`<img src="${mediaUrl(coverOf(r.x))}">`:'<span>آ</span>'}</div>
+          <b>${escHtml(titleOf(r.x))}</b>
+          <small>${money(+r.x.price||0)} د.ع</small>
+          <button onclick="this.closest('.alin-v85-overlay').remove();alinV77OpenDetails('${r.kind}','${r.id}')">عرض</button>
+        </article>`).join('')||'<p>لا توجد مواد محفوظة.</p>'}
+      </div>
+    </div>`;
+    document.body.appendChild(m);
+  };
+
+  function related(kind,id){
+    const source=rawItem(kind,id);
+    if(!source)return[];
+    const cat=categoryOf(source);
+    return [
+      ...(db.booklets||[]).filter(x=>x.status==='published').map(x=>({kind:'booklet',raw:x})),
+      ...(db.products||[]).filter(x=>!['hidden','inactive','deleted','archived'].includes(String(x.status||'published'))).map(x=>({kind:'product',raw:x}))
+    ].filter(x=>!(x.kind===kind&&String(x.raw.id)===String(id)))
+     .map(x=>({...x,score:(categoryOf(x.raw)===cat?5:0)+(x.kind===kind?1:0)}))
+     .filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,4);
+  }
+
+  const oldOpen=window.alinV77OpenDetails;
+  if(typeof oldOpen==='function'){
+    window.alinV77OpenDetails=function(kind,id){
+      const r=oldOpen.apply(this,arguments);
+      setTimeout(()=>{
+        const modal=$('.alin-v77-modal:last-of-type');
+        const content=modal?.querySelector('.alin-v77-modal-content');
+        if(!content)return;
+
+        if(!content.querySelector('.alin98-modal-fav')){
+          content.insertAdjacentHTML('afterbegin',`<button class="alin98-modal-fav" onclick="alin98ToggleFavorite('${kind}','${id}')">${isFav(kind,id)?'♥ محفوظ في المفضلة':'♡ أضف للمفضلة'}</button>`);
+        }
+
+        if(!content.querySelector('.alin98-related')){
+          const rows=related(kind,id);
+          content.insertAdjacentHTML('beforeend',`<section class="alin98-related">
+            <h3>مواد ذات صلة</h3>
+            <div class="alin98-related-grid">
+              ${rows.map(x=>`<article onclick="this.closest('.alin-v77-modal').remove();alinV77OpenDetails('${x.kind}','${x.raw.id}')">
+                ${coverOf(x.raw)?`<img src="${mediaUrl(coverOf(x.raw))}">`:'<span>آ</span>'}
+                <b>${escHtml(titleOf(x.raw))}</b>
+                <small>${money(+x.raw.price||0)} د.ع</small>
+              </article>`).join('')||'<p>لا توجد مواد مشابهة حالياً.</p>'}
+            </div>
+          </section>`);
+        }
+      },0);
+      return r;
+    };
+  }
+
+  function activeBanners(){
+    const today=new Date().toISOString().slice(0,10);
+    return (db.banners||[]).filter(b=>{
+      const active=!(b.active===false||String(b.active)==='false'||b.status==='hidden');
+      return active&&(!b.start_date||b.start_date<=today)&&(!b.end_date||b.end_date>=today);
+    });
+  }
+
+  function renderBanners(){
+    const box=$('#bannerBox');
+    if(!box)return;
+    const rows=activeBanners();
+    box.innerHTML=rows.map(b=>`<article class="alin98-banner ${b.link_url?'clickable':''}" ${b.link_url?`onclick="window.open('${String(b.link_url).replace(/'/g,"\\'")}','_blank')"`:''}>
+      ${coverOf(b)?`<img src="${mediaUrl(coverOf(b))}">`:''}
+      <div><small>إعلان منصة آلين</small><h2>${escHtml(b.title||'')}</h2><p>${escHtml(b.text||'')}</p></div>
+    </article>`).join('');
+    box.style.display=rows.length?'grid':'none';
+  }
+
+  window.alin98WhatsAppOrder=function(orderId){
+    const o=(db.orders||[]).find(x=>String(x.id)===String(orderId));
+    if(!o)return alert('الطلب غير موجود');
+    const lib=(db.accounts?.libraries||[]).find(x=>String(x.id)===String(o.library_id));
+    const phone=String(lib?.whatsapp||lib?.phone||db.settings?.whatsapp||'').replace(/\D/g,'');
+    if(!phone)return alert('رقم واتساب غير محدد');
+    const msg=encodeURIComponent(`السلام عليكم، بخصوص طلبي في منصة آلين\nرقم الطلب: ${o.order_number||o.id}\nالطلب: ${o.title||''}`);
+    window.open(`https://wa.me/${phone}?text=${msg}`,'_blank');
+  };
+
+  function notificationCount(){
+    try{
+      const seen=JSON.parse(localStorage.getItem('alin98_seen_notifications')||'[]').map(String);
+      const role=current?.role||'student';
+      return (db.notifications||[]).filter(n=>['all',role].includes(n.target_role||n.audience||'all')&&!seen.includes(String(n.id))).length;
+    }catch(_){return 0}
+  }
+  window.alin98MarkAllRead=function(){
+    localStorage.setItem('alin98_seen_notifications',JSON.stringify((db.notifications||[]).map(n=>String(n.id))));
+    updateNotificationCount();
+  };
+  function updateNotificationCount(){
+    const n=notificationCount();
+    $$('.alin98-notify-count').forEach(x=>{x.textContent=n;x.hidden=!n});
+  }
+
+  function decorateNotificationButton(){
+    const buttons=$$('.alin-v78-notify-btn,.alin-v94-notification-button');
+    if(!buttons.length)return;
+    const primary=buttons[0];
+    buttons.slice(1).forEach(x=>x.remove());
+    primary.classList.add('alin98-notify');
+  }
+
+  const oldRenderStore=window.renderStore;
+  if(typeof oldRenderStore==='function'){
+    window.renderStore=renderStore=function(){
+      const r=oldRenderStore.apply(this,arguments);
+      setTimeout(()=>{decorateCards();renderBanners();updateNotificationCount()},0);
+      return r;
+    };
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    decorateNotificationButton();
+    updateNotificationCount();
+    $$('.alin98-bottom button').forEach(btn=>btn.addEventListener('click',()=>{
+      $$('.alin98-bottom button').forEach(x=>x.classList.remove('active'));
+      btn.classList.add('active');
+    }));
+  });
+
+  window.addEventListener('load',()=>{
+    setTimeout(()=>{decorateCards();renderBanners();decorateNotificationButton();updateNotificationCount()},600);
+  });
+})();
+
+
+;
+
+// === store/discovery.js ===
+/* ===== store/js/discovery.js ===== */
+/* ALIN V99 — focused storefront growth layer. No data bootstrap, observer, or competing poll loop. */
+(()=>{
+  'use strict';
+  const FAV_KEY='alin_v99_favorites';
+  const state={filters:{kind:'',grade:'',subject:'',teacher:'',min:'',max:'',available:'',badge:'',sort:'recommended'},tables:{},schema:{},timer:null,modalReturnFocus:null};
+  const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const num=v=>Number(v)||0;
+  const fmt=v=>new Intl.NumberFormat('ar-IQ').format(num(v));
+  const now=()=>Date.now();
+  const imageUrl=p=>{try{return p?(typeof mediaUrl==='function'?mediaUrl(p):p):''}catch(_){return p||''}};
+  const teacherBy=id=>(db.accounts?.teachers||[]).find(t=>String(t.id)===String(id));
+  const statusVisible=s=>!['hidden','inactive','deleted','archived','draft'].includes(String(s||'published'));
+  const hasSb=()=>typeof sb!=='undefined'&&!!sb;
+  const isDesktop=()=>document.body.classList.contains('store-desktop');
+  const isMobile=()=>document.body.classList.contains('store-mobile');
+  const orderCounts=()=>{const x={};(db.orders||[]).forEach(o=>x[`${o.kind}:${o.item_id}`]=(x[`${o.kind}:${o.item_id}`]||0)+num(o.qty||1));return x};
+  function canonicalItems(){
+    const counts=orderCounts();
+    const books=(db.booklets||[]).filter(x=>statusVisible(x.status)).map(x=>{
+      const t=teacherBy(x.teacher_id)||{};return {kind:'booklet',id:String(x.id),raw:x,title:x.title||'ملزمة',teacher:t.name||'',teacherId:x.teacher_id||'',subject:x.subject||'',grade:x.grade||'',category:'ملازم',price:num(x.price),originalPrice:num(x.original_price),stock:x.stock==null?null:num(x.stock),image:x.cover_path||x.image_path||'',created:x.created_at||'',sold:num(x.sales_count)||counts[`booklet:${x.id}`]||0,badge:x.badge||'',prep:num(x.prep_minutes),dealPrice:num(x.deal_price),dealStart:x.deal_start,dealEnd:x.deal_end,description:x.description||'',status:x.status};
+    });
+    const products=(db.products||[]).filter(x=>statusVisible(x.status)).map(x=>({kind:x.type||'product',id:String(x.id),raw:x,title:x.name||x.title||'منتج',teacher:x.teacher||'',teacherId:x.teacher_id||'',subject:x.subject||x.category||'',grade:x.grade||'',category:x.category||x.type||'',price:num(x.price),originalPrice:num(x.original_price),stock:x.stock==null?null:num(x.stock),image:x.image_path||x.cover_path||'',created:x.created_at||'',sold:num(x.sales_count)||counts[`${x.type||'product'}:${x.id}`]||counts[`product:${x.id}`]||0,badge:x.badge||'',prep:num(x.prep_minutes),dealPrice:num(x.deal_price),dealStart:x.deal_start,dealEnd:x.deal_end,description:x.description||'',status:x.status}));
+    return [...books,...products];
+  }
+  function activeDeal(x){const t=now(),a=x.dealStart?Date.parse(x.dealStart):0,b=x.dealEnd?Date.parse(x.dealEnd):0;return x.dealPrice>0&&x.dealPrice<x.price&&(!a||a<=t)&&(!b||b>=t)}
+  function effectivePrice(x){return activeDeal(x)?x.dealPrice:x.price}
+  function stableKey(kind,id){return `${kind}:${id}`}
+  function favorites(){
+    let rows=[];for(const key of [FAV_KEY,'alin_v98_favorites','alin_v85_favorites','ALIN_FAVORITES']){try{const x=JSON.parse(localStorage.getItem(key)||'[]');if(Array.isArray(x))rows.push(...x.map(v=>typeof v==='string'?v:stableKey(v.kind,v.id)))}catch(_){}}
+    rows=[...new Set(rows.map(String).filter(Boolean))];localStorage.setItem(FAV_KEY,JSON.stringify(rows));try{localStorage.setItem('alin_v98_favorites',JSON.stringify(rows))}catch(_){}return rows;
+  }
+  function canonicalFavoriteItems(){return favorites().map(k=>{const [kind,...id]=k.split(':');return findItem(kind,id.join(':'))}).filter(Boolean)}
+  window.v99ShowFavorites=()=>{const rows=canonicalFavoriteItems();modal(`<section class="v99-desktop-favorites"><h2>المفضلة</h2>${rows.length?`<p class="muted">${fmt(rows.length)} مادة محفوظة للعودة إليها بسهولة.</p><div class="v99-rail">${rows.map(miniCard).join('')}</div>`:`<div class="v99-favorites-empty"><span aria-hidden="true">آ</span><h3>مفضلتك جاهزة لاختياراتك</h3><p>احفظ المواد والمنتجات التي تهمك لتجدها هنا في أي وقت.</p><button type="button" data-v99-action="browseProducts">تصفح المنتجات</button></div>`}</section>`)};
+  function isFav(x){return favorites().includes(stableKey(x.kind,x.id))}
+  window.v99ToggleFavorite=(kind,id)=>{let rows=favorites(),key=stableKey(kind,id);rows=rows.includes(key)?rows.filter(x=>x!==key):[...rows,key];localStorage.setItem(FAV_KEY,JSON.stringify(rows));try{localStorage.setItem('alin_v98_favorites',JSON.stringify(rows))}catch(_){}renderEffectiveStore();updateDesktopHeader();if(typeof toast==='function')toast(rows.includes(key)?'تمت الإضافة إلى المفضلة':'تمت الإزالة من المفضلة')};
+  const badges=x=>[
+    x.badge,activeDeal(x)?'عرض اليوم':'',x.sold>=5?'الأكثر طلباً':'',x.created&&Date.now()-Date.parse(x.created)<30*864e5?'جديد':'',x.stock!==null&&x.stock>0&&x.stock<=5?'كمية محدودة':''
+  ].filter(Boolean);
+  function card(x){const out=x.stock!==null&&x.stock<=0,p=effectivePrice(x);return `<article class="v99-product-card" data-v99-item="${esc(stableKey(x.kind,x.id))}">
+    <button class="v99-fav" type="button" data-v99-action="favorite" data-kind="${esc(x.kind)}" data-id="${esc(x.id)}" aria-label="المفضلة">${isFav(x)?'♥':'♡'}</button>
+    <button class="v99-product-media" type="button" data-v99-action="details" data-kind="${esc(x.kind)}" data-id="${esc(x.id)}" aria-label="عرض تفاصيل ${esc(x.title)}">${x.image?`<img src="${esc(imageUrl(x.image))}" alt="" loading="lazy">`:'<span class="v99-placeholder" aria-hidden="true">آ</span>'}</button>
+    <div class="v99-product-body"><div class="v99-badges">${badges(x).map(b=>`<span class="v99-badge ${b==='كمية محدودة'?'stock':''}">${esc(b)}</span>`).join('')}</div>
+      <h3><button class="v99-title-button" type="button" data-v99-action="details" data-kind="${esc(x.kind)}" data-id="${esc(x.id)}">${esc(x.title)}</button></h3><p>${esc([x.teacher,x.subject,x.grade].filter(Boolean).join(' • '))}</p>
+      <div class="v99-card-meta"><span class="v99-stock ${out?'out':''}">${x.stock===null?'متاح':out?'نافد':`متوفر: ${fmt(x.stock)}`}</span><span>${x.prep?`تجهيز ${fmt(x.prep)} د`:'تجهيز حسب المكتبة'}</span></div>
+      <div class="v99-card-price">${fmt(p)} د.ع ${activeDeal(x)?`<del>${fmt(x.price)}</del>`:''}</div>
+      <div class="v99-actions"><button class="${out?'v99-alert-action':''}" data-v99-action="cart" data-kind="${esc(x.kind)}" data-id="${esc(x.id)}">${out?'أبلغني':'أضف للسلة'}</button><button class="v99-secondary" data-v99-action="details" data-kind="${esc(x.kind)}" data-id="${esc(x.id)}">التفاصيل</button></div>
+    </div></article>`}
+  function matches(x){const f=state.filters,q=String($('#searchInput')?.value||'').trim().toLowerCase(),hay=[x.title,x.teacher,x.subject,x.grade,x.category].join(' ').toLowerCase();return (!q||hay.includes(q))&&(!f.kind||x.kind===f.kind||x.category===f.kind)&&(!f.grade||x.grade===f.grade)&&(!f.subject||x.subject===f.subject)&&(!f.teacher||String(x.teacherId)===f.teacher)&&(!f.min||effectivePrice(x)>=num(f.min))&&(!f.max||effectivePrice(x)<=num(f.max))&&(!f.available||(f.available==='yes'?(x.stock===null||x.stock>0):x.stock===0))&&(!f.badge||(f.badge==='deal'?activeDeal(x):badges(x).includes(f.badge)))}
+  function sorted(rows){const f=state.filters.sort;return rows.sort((a,b)=>f==='newest'?String(b.created).localeCompare(String(a.created)):f==='best'?b.sold-a.sold:f==='priceAsc'?effectivePrice(a)-effectivePrice(b):f==='priceDesc'?effectivePrice(b)-effectivePrice(a):(activeDeal(b)-activeDeal(a))||(b.sold-a.sold))}
+  function options(rows,key,label,value=x=>x[key]){return `<option value="">${label}</option>`+[...new Map(rows.map(x=>[String(value(x)||''),String(value(x)||'')])).values()].filter(Boolean).sort().map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('')}
+  function renderFilters(){const root=$('#v99DiscoveryTools');if(!root)return;const rows=canonicalItems(),teachers=(db.accounts?.teachers||[]).filter(t=>t.status==='active'||!t.status),desktop=isDesktop(),mobile=isMobile();if(desktop||mobile){root.setAttribute('role','dialog');root.setAttribute('aria-modal','true');root.setAttribute('tabindex','-1')}if(desktop)root.setAttribute('aria-labelledby','v99FilterDrawerTitle');if(mobile)root.setAttribute('aria-labelledby','v99MobileFilterDrawerTitle');const drawerHead=desktop?`<div class="v99-drawer-head"><h2 id="v99FilterDrawerTitle">فلترة المنتجات</h2><button type="button" class="v99-drawer-close" data-v99-action="closeDesktopFilters" aria-label="إغلاق لوحة الفلاتر">×</button></div>`:mobile?`<div class="v99-mobile-drawer-head"><h2 id="v99MobileFilterDrawerTitle">فلترة المنتجات</h2><button type="button" class="v99-mobile-drawer-close" data-v99-action="closeMobileFilters" aria-label="إغلاق لوحة الفلاتر">×</button></div>`:`<button class="v99-filter-toggle" type="button" data-v99-action="toggleFilters" aria-expanded="false"><span>تصفية وفرز المنتجات</span><span class="v99-toggle-mark" aria-hidden="true">+</span></button>`;root.innerHTML=`${drawerHead}<div id="v99ActiveFilters" class="v99-active-filters" aria-live="polite"></div><div class="v99-filters" aria-label="عوامل التصفية">
+    <label><span>النوع أو القسم</span><select data-filter="kind">${options(rows,'kind','الكل',x=>x.kind)}</select></label><label><span>المرحلة الدراسية</span><select data-filter="grade">${options(rows,'grade','كل المراحل')}</select></label><label><span>المادة</span><select data-filter="subject">${options(rows,'subject','كل المواد')}</select></label><label><span>المدرس</span><select data-filter="teacher"><option value="">كل المدرسين</option>${teachers.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('')}</select></label>
+    <fieldset class="v99-price-range"><legend>نطاق السعر</legend><label><span>من</span><input data-filter="min" type="number" min="0" inputmode="numeric" placeholder="0"></label><label><span>إلى</span><input data-filter="max" type="number" min="0" inputmode="numeric" placeholder="بدون حد"></label></fieldset><label><span>حالة التوفر</span><select data-filter="available"><option value="">الكل</option><option value="yes">متوفر</option><option value="no">نافد</option></select></label><label><span>الشارة أو العرض</span><select data-filter="badge"><option value="">الكل</option><option value="deal">عرض اليوم</option><option>جديد</option><option>الأكثر طلباً</option><option>كمية محدودة</option></select></label><label class="v99-sort-control"><span>ترتيب النتائج</span><select data-filter="sort"><option value="recommended">الموصى بها</option><option value="newest">الأحدث</option><option value="best">الأكثر مبيعاً</option><option value="priceAsc">السعر: الأقل</option><option value="priceDesc">السعر: الأعلى</option></select></label>
+    </div><div class="v99-filter-actions"><span class="v99-filter-summary" id="v99FilterSummary"></span><button type="button" class="v99-secondary" data-v99-action="clearFilters">مسح الكل</button></div>`;syncFilterControls();renderFilterChips()}
+  function syncFilterControls(){$$('[data-filter]').forEach(el=>{el.value=state.filters[el.dataset.filter]||''})}
+  function renderFilterChips(){const root=$('#v99ActiveFilters');if(!root)return;const labels={kind:'النوع',grade:'المرحلة',subject:'المادة',teacher:'المدرس',min:'من',max:'إلى',available:'التوفر',badge:'العرض',sort:'الترتيب'};const rows=Object.entries(state.filters).filter(([k,v])=>v&&!(k==='sort'&&v==='recommended'));const visible=(k,v)=>{if(k==='min'||k==='max')return `${fmt(v)} د.ع`;const control=$(`[data-filter="${k}"]`),option=[...(control?.options||[])].find(o=>o.value===String(v));return option?.textContent?.trim()||String(v)};root.innerHTML=rows.map(([k,v])=>`<button type="button" data-v99-action="removeFilter" data-filter-key="${esc(k)}" aria-label="إزالة فلتر ${esc(labels[k])}">${esc(labels[k])}: ${esc(visible(k,v))} <span aria-hidden="true">×</span></button>`).join('');root.hidden=!rows.length;for(const id of ['v99DesktopFilterCount','v99MobileFilterCount']){const count=$('#'+id);if(count){count.textContent=fmt(rows.length);count.hidden=!rows.length}}}
+  function miniCard(x){return `<article class="v99-mini-card"><div class="v99-mini-media">${x.image?`<img src="${esc(imageUrl(x.image))}" alt="">`:'<span class="v99-placeholder">آ</span>'}</div><div class="v99-mini-body"><div class="v99-badges">${badges(x).slice(0,2).map(b=>`<span class="v99-badge">${esc(b)}</span>`).join('')}</div><h3>${esc(x.title)}</h3><p>${esc([x.teacher,x.subject,x.grade].filter(Boolean).join(' • '))}</p><div class="v99-card-price">${fmt(effectivePrice(x))} د.ع</div><button data-v99-action="details" data-kind="${esc(x.kind)}" data-id="${esc(x.id)}">عرض</button></div></article>`}
+  function rail(rootId,title,subtitle,rows){const root=$(rootId);if(!root)return;if(!rows.length){root.innerHTML='';return}root.innerHTML=`<div class="v99-section-head"><div><h2>${esc(title)}</h2><small>${esc(subtitle)}</small></div></div><div class="v99-rail">${rows.map(miniCard).join('')}</div>`}
+  function renderStage(){const root=$('#v99Personalized');if(!root)return;const profile=studentProfile(),grades=[...new Set(canonicalItems().map(x=>x.grade).filter(Boolean))];root.innerHTML=`<div class="v99-stage-strip"><div><h2>مواد تناسب مرحلتك</h2><p>${profile.grade?`نعرض لك اختيارات ${esc(profile.grade)} أولاً.`:'اختر مرحلتك لتحصل على اقتراحات أقرب لدراستك.'}</p></div><select id="v99GradeSelect" aria-label="المرحلة الدراسية"><option value="">كل المراحل</option>${grades.map(g=>`<option ${g===profile.grade?'selected':''}>${esc(g)}</option>`).join('')}</select></div><div id="v99PersonalizedItems" class="v99-rail-root"></div>`}
+  function renderDeal(){const root=$('#v99DailyDeals'),x=canonicalItems().filter(activeDeal).sort((a,b)=>(b.price-b.dealPrice)-(a.price-a.dealPrice))[0];if(!root)return;if(!x){root.innerHTML='';return}root.innerHTML=`<article class="v99-deal-feature"><div class="v99-deal-media">${x.image?`<img src="${esc(imageUrl(x.image))}" alt="${esc(x.title)}">`:'<span class="v99-placeholder">ALIN</span>'}</div><div class="v99-deal-copy"><span class="v99-kicker">عرض اليوم</span><h2>${esc(x.title)}</h2><p>${esc([x.teacher,x.subject,x.grade].filter(Boolean).join(' • '))}</p><div class="v99-price">${fmt(x.dealPrice)} د.ع <del>${fmt(x.price)}</del></div><div class="v99-countdown" data-deal-end="${esc(x.dealEnd||'')}"></div><div class="v99-actions"><button data-v99-action="cart" data-kind="${esc(x.kind)}" data-id="${esc(x.id)}">أضف للسلة</button><button class="v99-secondary" data-v99-action="share" data-kind="${esc(x.kind)}" data-id="${esc(x.id)}">مشاركة</button></div></div></article>`;updateCountdowns()}
+  function renderRails(){const rows=canonicalItems(),grade=studentProfile().grade;let newest=rows;if(isDesktop()||isMobile()){if(state.filters.badge==='deal')newest=newest.filter(activeDeal);else if(state.filters.kind)newest=newest.filter(x=>x.kind===state.filters.kind)}rail('#v99NewArrivals','وصل حديثاً','أحدث المواد المضافة',newest.filter(x=>x.created).sort((a,b)=>String(b.created).localeCompare(String(a.created))).slice(0,8));const bestBase=isDesktop()||isMobile()?rows.filter(x=>x.kind==='stationery'||x.kind==='gift'):rows;rail('#v99BestSellers','الأكثر طلباً','اختيارات الطلاب الأكثر رواجاً',[...bestBase].sort((a,b)=>b.sold-a.sold).filter(x=>x.sold>0).slice(0,8));renderTeachers();renderBundles();if(grade)rail('#v99PersonalizedItems','حسب مرحلتي','',rows.filter(x=>x.grade===grade).slice(0,8))}
+  function syncDesktopCategoryUI(){if(!isDesktop())return;const active=state.filters.badge==='deal'?'deal':state.filters.kind||'',labels={booklet:['الملازم','كل الملازم المتاحة'],stationery:['القرطاسية','منتجات القرطاسية'],gift:['الهدايا','هدايا مختارة'],deal:['العروض','العروض الفعالة الآن']},copy=labels[active]||['كل المنتجات','الكتالوج الكامل'];$$('[data-v99-category]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v99Category===active)));const title=$('#v99CatalogTitle'),kicker=$('#v99CatalogKicker');if(title)title.textContent=copy[0];if(kicker)kicker.textContent=copy[1]}
+  function syncMobileCategoryUI(){if(!isMobile())return;const active=state.filters.badge==='deal'?'deal':state.filters.kind||'',labels={booklet:['الملازم','كل الملازم المتاحة'],stationery:['القرطاسية','منتجات القرطاسية'],gift:['الهدايا','هدايا مختارة'],deal:['العروض','العروض الفعالة الآن']},copy=labels[active]||['كل المنتجات','الكتالوج الكامل'];$$('[data-v99-category]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v99Category===active)));const title=$('#v99MobileCatalogTitle'),kicker=$('#v99MobileCatalogKicker');if(title)title.textContent=copy[0];if(kicker)kicker.textContent=copy[1]}
+  function renderEffectiveStore(){const grid=$('#storeGrid');if(!grid)return;const rows=sorted(canonicalItems().filter(matches));grid.innerHTML=rows.map(card).join('')||'<div class="v99-empty"><b>لا توجد نتائج مطابقة</b><p>غيّر عوامل التصفية أو امسحها للعودة إلى جميع المواد.</p></div>';const s=$('#v99FilterSummary');if(s)s.textContent=`${fmt(rows.length)} نتيجة`;renderFilterChips();syncDesktopCategoryUI();syncMobileCategoryUI();renderDeal();renderRails();updateDesktopHeader();updateMobileHeader()}
+  function publicTeachers(){return (db.accounts?.teachers||[]).filter(t=>t.public_profile===false?false:(t.status==='active'||t.status==='approved'||!t.status))}
+  function renderTeachers(){const root=$('#v99TeacherRail'),rows=publicTeachers();if(!root)return;if(isDesktop()||isMobile()){root.innerHTML='';root.hidden=true;return}if(!rows.length){root.innerHTML='';return}root.innerHTML=`<div class="v99-section-head"><div><h2>مدرسون مميزون</h2><small>تعرّف على المدرس وملزماته</small></div></div><div class="v99-rail">${rows.slice(0,10).map(t=>`<article class="v99-teacher-card" data-v99-action="teacher" data-id="${esc(t.id)}"><span class="v99-avatar">${t.avatar_path||t.image_path?`<img src="${esc(imageUrl(t.avatar_path||t.image_path))}" alt="">`:esc((t.name||'آ').slice(0,1))}</span><span><b>${esc(t.name)}</b><small>${esc(t.specialty||t.subject||'مدرس معتمد')}</small></span></article>`).join('')}</div>`}
+  function renderBundles(){const root=$('#v99Bundles'),bundles=state.tables.bundles||[],items=state.tables.bundle_items||[];if(!root)return;const active=bundles.filter(b=>b.active!==false&&statusVisible(b.status));if(!active.length){root.innerHTML='';return}root.innerHTML=`<div class="v99-section-head"><div><h2>حزم أوفر</h2><small>مجموعة مواد بسعر واحد</small></div></div><div class="v99-rail">${active.map(b=>{const n=items.filter(i=>String(i.bundle_id)===String(b.id)).length;return `<article class="v99-mini-card"><div class="v99-mini-body"><span class="v99-kicker">حزمة ${fmt(n)} مواد</span><h3>${esc(b.name||b.title)}</h3><p>${esc(b.description||'اختيار متكامل بسعر مخفّض')}</p><div class="v99-card-price">${fmt(b.bundle_price||b.price)} د.ع</div><button data-v99-action="bundle" data-id="${esc(b.id)}">عرض الحزمة</button></div></article>`}).join('')}</div>`}
+  function findItem(kind,id){return canonicalItems().find(x=>x.kind===kind&&x.id===String(id))||canonicalItems().find(x=>x.id===String(id))}
+  function closeModal(restore=true){const m=$('.v99-modal');if(!m)return;m.remove();document.body.classList.remove('v99-modal-open');if(restore&&state.modalReturnFocus?.isConnected)state.modalReturnFocus.focus();state.modalReturnFocus=null}
+  function modal(html){const existing=$('.v99-modal');if(!existing)state.modalReturnFocus=document.activeElement;else existing.remove();const m=document.createElement('div');m.className='v99-modal';m.setAttribute('role','presentation');m.innerHTML=`<div class="v99-modal-card" role="dialog" aria-modal="true" tabindex="-1"><button class="v99-close" type="button" data-v99-action="close" aria-label="إغلاق النافذة">×</button>${html}</div>`;const title=m.querySelector('h2');if(title){title.id='v99DialogTitle';m.querySelector('[role="dialog"]').setAttribute('aria-labelledby','v99DialogTitle')}else m.querySelector('[role="dialog"]').setAttribute('aria-label','نافذة متجر آلين');document.body.appendChild(m);document.body.classList.add('v99-modal-open');requestAnimationFrame(()=>m.querySelector('[role="dialog"]').focus());return m}
+  function reviewsFor(x){return (state.tables.product_reviews||[]).filter(r=>r.kind===x.kind&&String(r.item_id)===x.id&&['approved','published'].includes(r.status||'approved'))}
+  function relatedItems(x){return canonicalItems().filter(y=>stableKey(y.kind,y.id)!==stableKey(x.kind,x.id)).map(y=>({y,score:(y.subject&&y.subject===x.subject?5:0)+(y.grade&&y.grade===x.grade?4:0)+(y.teacherId&&String(y.teacherId)===String(x.teacherId)?3:0)+(y.category&&y.category===x.category?2:0)})).filter(r=>r.score>0).sort((a,b)=>b.score-a.score).slice(0,6).map(r=>r.y)}
+  function relatedDetailHtml(x){const rows=relatedItems(x);return rows.length?`<section class="v99-related"><div class="v99-section-head"><div><h2>مواد مرتبطة</h2><small>اقتراحات من نفس المادة أو المرحلة</small></div></div><div class="v99-rail">${rows.map(miniCard).join('')}</div></section>`:''}
+  window.v99OpenDetails=(kind,id)=>{const x=findItem(kind,id);if(!x)return;const rows=reviewsFor(x),avg=rows.length?rows.reduce((a,r)=>a+num(r.rating),0)/rows.length:0,out=x.stock!==null&&x.stock<=0;modal(`<div class="v99-detail"><div class="v99-detail-media">${x.image?`<img src="${esc(imageUrl(x.image))}" alt="${esc(x.title)}">`:'<span class="v99-placeholder">ALIN</span>'}</div><div class="v99-detail-copy"><div class="v99-badges">${badges(x).map(b=>`<span class="v99-badge">${esc(b)}</span>`).join('')}</div><h2>${esc(x.title)}</h2><p>${esc([x.teacher,x.subject,x.grade,x.category].filter(Boolean).join(' • '))}</p><p>${esc(x.description||'مادة مختارة من متجر آلين، راجع التفاصيل وحدد طريقة الاستلام أو التوصيل عند إكمال الطلب.')}</p><div class="v99-price">${fmt(effectivePrice(x))} د.ع ${activeDeal(x)?`<del>${fmt(x.price)}</del>`:''}</div><div class="v99-card-meta"><span>${out?'غير متوفر حالياً':x.stock===null?'متاح للطلب':`المخزون ${fmt(x.stock)}`}</span><span>${x.prep?`تقدير التجهيز ${fmt(x.prep)} دقيقة`:'وقت التجهيز تؤكده المكتبة'}</span></div><div class="v99-notice">يمكنك اختيار الاستلام من المكتبة أو التوصيل عند إكمال الطلب. تبقى الكوبونات الحالية متاحة داخل السلة.</div><div class="v99-qty"><label for="v99DetailQty">الكمية</label><input id="v99DetailQty" type="number" min="1" max="99" value="1"></div><div class="v99-actions">${out?`<button data-v99-action="stockForm" data-kind="${esc(x.kind)}" data-id="${esc(x.id)}">أبلغني عند التوفر</button>`:`<button data-v99-action="cartQty" data-kind="${esc(x.kind)}" data-id="${esc(x.id)}">أضف للسلة</button><button class="v99-secondary" data-v99-action="buy" data-kind="${esc(x.kind)}" data-id="${esc(x.id)}">شراء الآن</button>`}<button class="v99-ghost" data-v99-action="share" data-kind="${esc(x.kind)}" data-id="${esc(x.id)}">مشاركة</button><button class="v99-ghost" data-v99-action="favorite" data-kind="${esc(x.kind)}" data-id="${esc(x.id)}">${isFav(x)?'إزالة من المفضلة':'حفظ بالمفضلة'}</button></div></div></div><section class="v99-reviews"><h3>التقييمات ${rows.length?`— ${avg.toFixed(1)} من 5`:''}</h3>${rows.map(r=>`<div class="row"><div><b>${fmt(r.rating)} / 5</b><small>${esc(r.comment||'')}</small></div></div>`).join('')||'<p class="muted">لا توجد تقييمات منشورة بعد.</p>'}<button data-v99-action="reviewForm" data-kind="${esc(x.kind)}" data-id="${esc(x.id)}">أضف تقييمك</button></section>${relatedDetailHtml(x)}`)};
+  async function shareItem(x){const url=new URL(location.href);url.hash='';url.searchParams.set('item',stableKey(x.kind,x.id));const data={title:x.title,text:`${x.title} — ${fmt(effectivePrice(x))} د.ع`,url:url.toString()};try{if(navigator.share)await navigator.share(data);else{await navigator.clipboard.writeText(`${data.text}\n${data.url}`);if(typeof toast==='function')toast('تم نسخ رابط المنتج')}}catch(e){if(e.name!=='AbortError')alert('تعذر نسخ الرابط')}}
+  function stockForm(x){modal(`<h2>أبلغني عند التوفر</h2><p>سنحفظ طلب التنبيه في النظام فقط إذا كانت خدمة V99 مفعلة.</p><div class="v99-form"><input id="v99StockContact" placeholder="رقم الهاتف"><button data-v99-action="stockSubmit" data-kind="${esc(x.kind)}" data-id="${esc(x.id)}">حفظ التنبيه</button><div id="v99FormMsg"></div></div>`)}
+  async function stockSubmit(x){const el=$('#v99StockContact'),msg=$('#v99FormMsg'),contact=el?.value.trim();if(!contact){msg.innerHTML='<div class="v99-notice error">اكتب رقم الهاتف.</div>';return}if(!state.schema.stock_alerts||!hasSb()){msg.innerHTML='<div class="v99-notice error">خدمة التنبيه تحتاج تطبيق ترحيل V99 على قاعدة البيانات.</div>';return}try{const {error}=await sb.from('stock_alerts').insert({kind:x.kind,item_id:x.id,contact,status:'pending'});if(error)throw error;msg.innerHTML='<div class="v99-notice success">تم تسجيل طلب التنبيه.</div>'}catch(e){msg.innerHTML=`<div class="v99-notice error">لم يتم الحفظ: ${esc(e.message||'راجع إعدادات الخدمة')}</div>`}}
+  function reviewForm(x){modal(`<h2>قيّم ${esc(x.title)}</h2><div class="v99-form"><input id="v99ReviewContact" placeholder="رقم الهاتف"><select id="v99ReviewRating"><option value="5">5 — ممتاز</option><option value="4">4 — جيد جداً</option><option value="3">3 — جيد</option><option value="2">2 — مقبول</option><option value="1">1 — ضعيف</option></select><textarea id="v99ReviewComment" placeholder="اكتب رأيك"></textarea><button data-v99-action="reviewSubmit" data-kind="${esc(x.kind)}" data-id="${esc(x.id)}">إرسال للمراجعة</button><div id="v99FormMsg"></div></div>`)}
+  async function reviewSubmit(x){const msg=$('#v99FormMsg'),contact=$('#v99ReviewContact')?.value.trim(),rating=num($('#v99ReviewRating')?.value),comment=$('#v99ReviewComment')?.value.trim();if(!contact||!comment){msg.innerHTML='<div class="v99-notice error">أكمل رقم الهاتف والتعليق.</div>';return}if(!state.schema.product_reviews||!hasSb()){msg.innerHTML='<div class="v99-notice error">التقييمات تحتاج تطبيق ترحيل V99.</div>';return}try{const {error}=await sb.from('product_reviews').insert({kind:x.kind,item_id:x.id,student_contact:contact,rating,comment,status:'pending'});if(error)throw error;msg.innerHTML='<div class="v99-notice success">تم إرسال تقييمك للمراجعة قبل النشر.</div>'}catch(e){msg.innerHTML=`<div class="v99-notice error">لم يتم الإرسال: ${esc(e.message||'راجع إعدادات الخدمة')}</div>`}}
+  function teacherModal(id){const t=publicTeachers().find(x=>String(x.id)===String(id));if(!t)return;const books=canonicalItems().filter(x=>x.kind==='booklet'&&String(x.teacherId)===String(id));modal(`<div class="v99-detail"><div><span class="v99-avatar">${t.avatar_path||t.image_path?`<img src="${esc(imageUrl(t.avatar_path||t.image_path))}" alt="">`:esc((t.name||'آ').slice(0,1))}</span></div><div class="v99-detail-copy"><span class="v99-kicker">ملف المدرس</span><h2>${esc(t.name)}</h2><p><b>${esc(t.specialty||'مدرس معتمد')}</b></p><p>${esc(t.bio||'مدرس معتمد في منصة آلين.')}</p></div></div><div class="v99-rail">${books.map(miniCard).join('')||'<div class="v99-empty">لا توجد ملازم منشورة حالياً.</div>'}</div>`)}
+  function bundleModal(id){const b=(state.tables.bundles||[]).find(x=>String(x.id)===String(id));if(!b)return;const lines=(state.tables.bundle_items||[]).filter(x=>String(x.bundle_id)===String(id)),mapped=lines.map(l=>({...l,item:findItem(l.kind,String(l.item_id))})).filter(x=>x.item);modal(`<h2>${esc(b.name||b.title)}</h2><p>${esc(b.description||'')}</p><div>${mapped.map(x=>`<div class="row"><div><b>${esc(x.item.title)}</b><small>الكمية ${fmt(x.quantity||1)}</small></div><span>${fmt(effectivePrice(x.item))} د.ع</span></div>`).join('')||'<div class="v99-empty">لا توجد عناصر متاحة في هذه الحزمة.</div>'}</div><div class="v99-price">سعر الحزمة: ${fmt(b.bundle_price||b.price)} د.ع</div><button data-v99-action="bundleAdd" data-id="${esc(id)}" ${mapped.length?'':'disabled'}>أضف الحزمة للسلة</button>`)}
+  function addBundle(id){const lines=(state.tables.bundle_items||[]).filter(x=>String(x.bundle_id)===String(id));lines.forEach(l=>{for(let i=0;i<Math.max(1,num(l.quantity));i++)if(typeof addToCart==='function')addToCart(l.kind,String(l.item_id))});updateDesktopHeader();if(typeof toast==='function')toast('أضيفت عناصر الحزمة المتاحة إلى السلة')}
+  function studentProfile(){try{return JSON.parse(localStorage.getItem('alin_v99_student_profile')||'{}')}catch(_){return{}}}
+  function updateDesktopHeader(){if(!isDesktop())return;const favCount=canonicalFavoriteItems().length,fav=$('#v99DesktopFavoriteCount');if(fav){fav.textContent=fmt(favCount);fav.hidden=!favCount}const cartCount=Array.isArray(cart)?cart.reduce((a,x)=>a+Math.max(1,num(x.qty)),0):0,cartBadge=$('#desktopCartCount');if(cartBadge){cartBadge.textContent=fmt(cartCount);cartBadge.hidden=!cartCount}let s=null;try{s=typeof currentStudent==='function'?currentStudent():null}catch(_){}const btn=$('#studentAuthBtn'),status=$('#studentAuthStatus');if(btn)btn.innerHTML=`<span class="desktop-account-icon" aria-hidden="true"></span><small>${esc(s?.name||'تسجيل الدخول')}</small>`;if(status)status.textContent=s?`مرحباً ${s.name}`:'التسجيل اختياري'}
+  function updateMobileHeader(){if(!isMobile())return;const favCount=canonicalFavoriteItems().length,fav=$('#mobileFavoriteCount');if(fav){fav.textContent=fmt(favCount);fav.hidden=!favCount}const cartCount=Array.isArray(cart)?cart.reduce((a,x)=>a+Math.max(1,num(x.qty)),0):0,cartBadge=$('#mobileCartCount');if(cartBadge){cartBadge.textContent=fmt(cartCount);cartBadge.hidden=!cartCount}let s=null;try{s=typeof currentStudent==='function'?currentStudent():null}catch(_){}const btn=$('#studentAuthBtn'),status=$('#studentAuthStatus');if(btn)btn.innerHTML=`<span class="mobile-account-icon" aria-hidden="true"></span><small>${esc(s?.name||'الحساب')}</small>`;if(status)status.textContent=s?`مرحباً ${s.name}`:'التسجيل اختياري'}
+  async function saveGrade(grade){const p={...studentProfile(),grade};try{const s=typeof currentStudent==='function'?currentStudent():null;if(s){p.phone=s.phone;p.name=s.name}}catch(_){}localStorage.setItem('alin_v99_student_profile',JSON.stringify(p));renderStage();renderEffectiveStore();if(p.phone&&state.schema.student_profiles&&hasSb()){try{await sb.from('student_profiles').upsert({phone:p.phone,name:p.name||null,grade:p.grade||null},{onConflict:'phone'})}catch(_){}}}
+  window.v99Reorder=id=>{const o=(db.orders||[]).find(x=>String(x.id)===String(id));if(!o||!o.item_id)return alert('تفاصيل هذا الطلب القديم غير مكتملة');for(let i=0;i<Math.max(1,num(o.qty));i++)if(typeof addToCart==='function')addToCart(o.kind,String(o.item_id));if(typeof openCart==='function')openCart()};
+  function renderStudentHub(){const root=$('#v99StudentHub');if(!root)return;let s=null;try{s=typeof currentStudent==='function'?currentStudent():null}catch(_){}const orders=s?(db.orders||[]).filter(o=>o.student_phone===s.phone).slice(0,5):[];if(isDesktop()||isMobile()){if(!s){root.innerHTML='';return}root.innerHTML=`<div class="v99-section-head"><div><h2>طلباتي الأخيرة</h2><small>إعادة الطلب أو متابعة حالته بسهولة</small></div></div><article class="v99-hub-card desktop-orders-card">${orders.map(o=>`<div class="v99-order-row"><div><b>${esc(o.title||o.order_number||o.id)}</b><small>${esc(o.status||'جديد')}${o.ready_eta?` • جاهز تقريباً ${esc(o.ready_eta)}`:''}</small></div><button data-v99-action="reorder" data-id="${esc(o.id)}">أعد الطلب</button></div>`).join('')||'<p>لا توجد طلبات سابقة.</p>'}</article>`;return}const loyalty=(state.tables.loyalty_accounts||[]).find(x=>s&&x.phone===s.phone);root.innerHTML=`<div class="v99-section-head"><div><h2>مساحة الطالب</h2><small>طلباتك ومكافآتك وخيارات الطلب الجماعي</small></div></div><div class="v99-hub-grid"><article class="v99-hub-card"><h3>آخر الطلبات</h3>${s?(orders.map(o=>`<div class="v99-order-row"><div><b>${esc(o.title||o.order_number||o.id)}</b><small>${esc(o.status||'جديد')}${o.ready_eta?` • جاهز تقريباً ${esc(o.ready_eta)}`:''}</small></div><button data-v99-action="reorder" data-id="${esc(o.id)}">أعد الطلب</button></div>`).join('')||'<p>لا توجد طلبات سابقة.</p>'):'<p>سجل دخول الطالب لرؤية طلباتك.</p>'}</article><article class="v99-hub-card"><h3>نقاط آلين</h3>${loyalty?`<div class="v99-price">${fmt(loyalty.points_balance)} نقطة</div><p>يُحتسب الرصيد من النظام الآمن فقط.</p>`:'<div class="v99-notice">لا يوجد رصيد نقاط متاح. تظهر النقاط هنا بعد تفعيل نظام V99 وربط الحساب.</div>'}</article><article class="v99-hub-card"><h3>طلب جماعي</h3><p>اجمع طلبات زملائك في مجموعة واحدة عندما تكون الخدمة مفعلة.</p><button data-v99-action="groupOrder">إنشاء أو انضمام</button></article></div>`}
+  function groupOrder(){const ready=state.schema.group_orders&&state.schema.group_order_members;modal(`<h2>الطلب الجماعي</h2>${ready?'<p>أنشئ رمز مجموعة أو أدخل رمزاً موجوداً. يتطلب الحفظ صلاحية قاعدة البيانات.</p>':'<div class="v99-notice error">الخدمة غير مفعلة. طبّق ترحيل V99 أولاً.</div>'}<div class="v99-form"><input id="v99GroupCode" placeholder="رمز المجموعة"><button data-v99-action="groupJoin" ${ready?'':'disabled'}>انضمام للمجموعة</button><button data-v99-action="groupCreate" ${ready?'':'disabled'}>إنشاء مجموعة</button><div id="v99FormMsg"></div></div>`)}
+  async function groupWrite(mode){const msg=$('#v99FormMsg'),code=$('#v99GroupCode')?.value.trim().toUpperCase(),s=studentProfile();if(!hasSb()){msg.innerHTML='<div class="v99-notice error">الاتصال غير متاح.</div>';return}try{if(mode==='create'){const c=code||`ALIN-${Math.random().toString(36).slice(2,7).toUpperCase()}`;const {data,error}=await sb.from('group_orders').insert({code:c,status:'open',owner_contact:s.phone||null}).select().single();if(error)throw error;msg.innerHTML=`<div class="v99-notice success">تم إنشاء المجموعة: <b>${esc(data.code)}</b></div>`}else{if(!code)throw Error('اكتب رمز المجموعة');const {data:g,error:e}=await sb.from('group_orders').select('id,code').eq('code',code).eq('status','open').maybeSingle();if(e)throw e;if(!g)throw Error('المجموعة غير موجودة');const {error}=await sb.from('group_order_members').insert({group_order_id:g.id,contact:s.phone||null,name:s.name||null});if(error)throw error;msg.innerHTML='<div class="v99-notice success">تم الانضمام للمجموعة.</div>'}}catch(e){msg.innerHTML=`<div class="v99-notice error">لم يتم الحفظ: ${esc(e.message||'تحقق من الصلاحيات')}</div>`}}
+  function updateCountdowns(){$$('[data-deal-end]').forEach(el=>{const end=Date.parse(el.dataset.dealEnd);if(!end){el.textContent='لفترة محدودة';return}const d=Math.max(0,end-now()),h=Math.floor(d/36e5),m=Math.floor((d%36e5)/6e4),s=Math.floor((d%6e4)/1000);el.textContent=d?`ينتهي خلال ${fmt(h)}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:'انتهى العرض'})}
+  async function safeTable(name){if(!hasSb())return null;try{const {data,error}=await sb.from(name).select('*').limit(100);if(error)throw error;state.schema[name]=true;return data||[]}catch(_){state.schema[name]=false;return null}}
+  async function loadGrowthData(){for(const name of ['student_profiles','bundles','bundle_items','product_reviews','stock_alerts','loyalty_accounts','loyalty_transactions','group_orders','group_order_members','group_order_items']){const x=await safeTable(name);state.tables[name]=x||[]}renderEffectiveStore();renderStudentHub();renderAdminGrowth()}
+  function renderAdminGrowth(){const panel=$('#v99AdminPanel');if(panel)panel.remove()}
+  window.v99EditMerch=async(kind,id)=>{const x=findItem(kind,id);if(!x)return;const deal=prompt('سعر العرض (اتركه فارغاً للإلغاء)',x.dealPrice||''),start=prompt('بداية العرض ISO أو فارغ',x.dealStart||''),end=prompt('نهاية العرض ISO أو فارغ',x.dealEnd||''),badge=prompt('الشارة',x.badge||''),prep=prompt('دقائق التجهيز',x.prep||'');if([deal,start,end,badge,prep].some(v=>v===null))return;try{await update(kind==='booklet'?'booklets':'products',{deal_price:deal?num(deal):null,deal_start:start||null,deal_end:end||null,badge:badge||null,prep_minutes:prep?num(prep):null},{id});await load();alert('تم حفظ بيانات العرض')}catch(e){alert('تعذر الحفظ. طبّق ترحيل V99 أولاً.\n'+e.message)}};
+  function decorateAdminRows(){if(!$('#adminContent'))return;const rows=$$('#adminContent .row');rows.forEach(r=>{if(r.querySelector('[data-v99-merch]'))return;const txt=r.textContent;const x=canonicalItems().find(i=>txt.includes(i.title));if(!x)return;const btn=document.createElement('button');btn.type='button';btn.dataset.v99Merch='1';btn.textContent='عرض V99';btn.onclick=()=>v99EditMerch(x.kind,x.id);(r.querySelector('.row-actions')||r).appendChild(btn)})}
+  function setupWrappers(){
+    const oldRender=window.renderStore;if(typeof oldRender==='function')window.renderStore=renderStore=function(){const r=oldRender.apply(this,arguments);renderEffectiveStore();return r};
+    const oldAuthUpdate=window.updateStudentAuthBar;if(typeof oldAuthUpdate==='function')window.updateStudentAuthBar=updateStudentAuthBar=function(){const r=oldAuthUpdate.apply(this,arguments);updateDesktopHeader();updateMobileHeader();renderStudentHub();return r};
+    const oldCartBadge=window.renderCartBadge;if(typeof oldCartBadge==='function')window.renderCartBadge=renderCartBadge=function(){const r=oldCartBadge.apply(this,arguments);updateDesktopHeader();updateMobileHeader();return r};
+    const oldOpenCart=window.openCart;if(typeof oldOpenCart==='function')window.openCart=openCart=function(){const r=oldOpenCart.apply(this,arguments);if(isDesktop()||isMobile()){const close=$('#checkoutModal .x');if(close){close.textContent='إغلاق';close.setAttribute('aria-label','إغلاق السلة');close.classList.add(isMobile()?'mobile-cart-close':'desktop-cart-close')}}updateDesktopHeader();updateMobileHeader();return r};
+    const oldCloseCheckout=window.closeCheckout;if(typeof oldCloseCheckout==='function')window.closeCheckout=closeCheckout=function(){const close=$('#checkoutModal .x');if(close){close.textContent='×';close.setAttribute('aria-label','إغلاق');close.classList.remove('desktop-cart-close','mobile-cart-close')}return oldCloseCheckout.apply(this,arguments)};
+    const oldOpenAuth=window.openStudentAuth;if(typeof oldOpenAuth==='function')window.openStudentAuth=openStudentAuth=function(){const r=oldOpenAuth.apply(this,arguments),m=$('#studentAuthModal');if((isDesktop()||isMobile())&&m){m.setAttribute('role','dialog');m.setAttribute('aria-modal','true');m.setAttribute('aria-label','حساب الطالب');m.querySelector('.modal-card')?.setAttribute('tabindex','-1');requestAnimationFrame(()=>m.querySelector('button,input,[tabindex="-1"]')?.focus())}return r};
+    const oldCloseAuth=window.closeStudentAuth;if(typeof oldCloseAuth==='function')window.closeStudentAuth=closeStudentAuth=function(){const r=oldCloseAuth.apply(this,arguments);if(isDesktop()||isMobile())$('#studentAuthBtn')?.focus();return r};
+    const oldConfirm=window.confirmCartCheckout;if(typeof oldConfirm==='function')window.confirmCartCheckout=confirmCartCheckout=async function(){const snap=Array.isArray(cart)?cart.map(x=>({...x})):[],before=(db.orders||[]).length;const result=await oldConfirm.apply(this,arguments);if(snap.length&&((db.orders||[]).length>before||!cart.length))localStorage.setItem('alin_v99_last_successful_cart',JSON.stringify({at:new Date().toISOString(),items:snap}));renderStudentHub();return result};
+    const oldTrack=window.trackOrder;if(typeof oldTrack==='function')window.trackOrder=trackOrder=async function(){const r=await oldTrack.apply(this,arguments);const code=$('#trackOrderInput')?.value.trim(),o=(db.orders||[]).find(x=>[x.id,x.order_number,x.tracking_code].map(String).includes(code));if(o&&$('#trackOrderResult')){const extra=[];if(o.ready_eta)extra.push(`الجاهزية المتوقعة: ${o.ready_eta}`);if(o.handoff_token&&['ready','completed'].includes(o.status))extra.push(`<button data-v99-action="handoff" data-id="${esc(o.id)}">رمز الاستلام</button>`);if(extra.length)$('#trackOrderResult').insertAdjacentHTML('beforeend',`<div class="v99-notice">${extra.join('<br>')}</div>`)}return r};
+    const oldAdmin=window.adminTab;if(typeof oldAdmin==='function')window.adminTab=adminTab=function(){const r=oldAdmin.apply(this,arguments);setTimeout(()=>{decorateAdminRows();renderAdminGrowth()},0);return r};
+  }
+  function handoff(id){const o=(db.orders||[]).find(x=>String(x.id)===String(id));if(!o?.handoff_token)return;modal(`<h2>رمز تسليم الطلب</h2><p>اعرض هذا الرمز للمكتبة. لا يؤكد التسليم وحده؛ التحقق يتم من النظام المصرّح.</p><div class="v99-print-token">${esc(o.handoff_token)}</div><button onclick="window.print()">طباعة الرمز</button>`)}
+  function setDesktopFilterDrawer(open,restore=true){if(!isDesktop())return;const root=$('#v99DiscoveryTools'),backdrop=$('.desktop-filter-backdrop'),trigger=$('[data-desktop-control="filter"]');if(!root)return;const wasOpen=root.classList.contains('open');if(open&&!wasOpen){root.dataset.previousHtmlOverflow=document.documentElement.style.overflow||'';document.documentElement.style.overflow='hidden'}else if(!open&&wasOpen){document.documentElement.style.overflow=root.dataset.previousHtmlOverflow||'';delete root.dataset.previousHtmlOverflow}root.classList.toggle('open',open);document.body.classList.toggle('v99-desktop-filter-open',open);trigger?.setAttribute('aria-expanded',String(open));if(backdrop)backdrop.hidden=!open;if(open)requestAnimationFrame(()=>root.querySelector('.v99-drawer-close')?.focus());else if(restore)trigger?.focus()}
+  function setMobileFilterDrawer(open,restore=true){if(!isMobile())return;const root=$('#v99DiscoveryTools'),backdrop=$('.mobile-filter-backdrop'),trigger=$('[data-mobile-control="filter"]');if(!root)return;const wasOpen=root.classList.contains('open');if(open&&!wasOpen){root.dataset.previousHtmlOverflow=document.documentElement.style.overflow||'';document.documentElement.style.overflow='hidden'}else if(!open&&wasOpen){document.documentElement.style.overflow=root.dataset.previousHtmlOverflow||'';delete root.dataset.previousHtmlOverflow}root.classList.toggle('open',open);document.body.classList.toggle('v99-mobile-filter-open',open);trigger?.setAttribute('aria-expanded',String(open));if(backdrop)backdrop.hidden=!open;if(open)requestAnimationFrame(()=>root.querySelector('.v99-mobile-drawer-close')?.focus());else if(restore)trigger?.focus()}
+  document.addEventListener('click',e=>{if(e.target.classList.contains('v99-modal')){closeModal();return}const b=e.target.closest('[data-v99-action]');if(!b)return;const a=b.dataset.v99Action,x=findItem(b.dataset.kind,b.dataset.id);if(a==='close')closeModal();else if(a==='desktopFavorites'){if(typeof alin98ShowFavorites==='function')alin98ShowFavorites()}else if(a==='toggleFilters'){const root=$('#v99DiscoveryTools'),open=root?.classList.toggle('open');b.setAttribute('aria-expanded',String(!!open));if(isDesktop()){document.body.classList.toggle('v99-desktop-filter-open',!!open);const header=$('[data-desktop-control="filter"]');if(header&&header!==b)header.setAttribute('aria-expanded',String(!!open))}const mark=b.querySelector('.v99-toggle-mark');if(mark)mark.textContent=open?'−':'+'}else if(a==='removeFilter'){state.filters[b.dataset.filterKey]=b.dataset.filterKey==='sort'?'recommended':'';syncFilterControls();renderEffectiveStore()}else if(a==='clearFilters'){state.filters={kind:'',grade:'',subject:'',teacher:'',min:'',max:'',available:'',badge:'',sort:'recommended'};syncFilterControls();renderEffectiveStore()}else if(a==='details'&&x)v99OpenDetails(x.kind,x.id);else if(a==='favorite'&&x)v99ToggleFavorite(x.kind,x.id);else if(a==='cart'&&x){if(x.stock!==null&&x.stock<=0)stockForm(x);else if(typeof addToCart==='function')addToCart(x.kind,x.id)}else if(a==='cartQty'&&x){const q=Math.max(1,num($('#v99DetailQty')?.value));for(let i=0;i<q;i++)addToCart(x.kind,x.id);updateDesktopHeader();if(typeof toast==='function')toast('أضيفت الكمية إلى السلة')}else if(a==='buy'&&x){const q=Math.max(1,num($('#v99DetailQty')?.value));for(let i=0;i<q;i++)addToCart(x.kind,x.id);updateDesktopHeader();closeModal(false);openCart()}else if(a==='share'&&x)shareItem(x);else if(a==='stockForm'&&x)stockForm(x);else if(a==='stockSubmit'&&x)stockSubmit(x);else if(a==='reviewForm'&&x)reviewForm(x);else if(a==='reviewSubmit'&&x)reviewSubmit(x);else if(a==='teacher'&&!isDesktop())teacherModal(b.dataset.id);else if(a==='bundle')bundleModal(b.dataset.id);else if(a==='bundleAdd'){addBundle(b.dataset.id);closeModal()}else if(a==='reorder')v99Reorder(b.dataset.id);else if(a==='groupOrder'&&!isDesktop())groupOrder();else if(a==='groupCreate'&&!isDesktop())groupWrite('create');else if(a==='groupJoin'&&!isDesktop())groupWrite('join');else if(a==='handoff')handoff(b.dataset.id)});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&isDesktop()&&$('#v99DiscoveryTools')?.classList.contains('open')){$('#v99DiscoveryTools').classList.remove('open');document.body.classList.remove('v99-desktop-filter-open');const f=$('[data-desktop-control="filter"]');f?.setAttribute('aria-expanded','false');f?.focus();return}if(e.key==='Escape'&&isDesktop()&&!$('#studentAuthModal')?.classList.contains('hidden')){closeStudentAuth();return}const dialog=$('.v99-modal [role="dialog"]');if(!dialog)return;if(e.key==='Escape'){e.preventDefault();closeModal();return}if(e.key!=='Tab')return;const focusable=[...dialog.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')];if(!focusable.length){e.preventDefault();dialog.focus();return}const first=focusable[0],last=focusable[focusable.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}});
+  document.addEventListener('change',e=>{if(e.target.matches('[data-filter]')){state.filters[e.target.dataset.filter]=e.target.value;renderEffectiveStore()}if(e.target.id==='v99GradeSelect')saveGrade(e.target.value)});
+  document.addEventListener('click',e=>{if(!isDesktop())return;const b=e.target.closest('[data-v99-action]');if(!b)return;const a=b.dataset.v99Action;if(!['desktopFavorites','browseProducts','closeDesktopFilters','toggleFilters'].includes(a))return;e.preventDefault();e.stopImmediatePropagation();if(a==='desktopFavorites')v99ShowFavorites();else if(a==='browseProducts'){closeModal();$('#storeGrid')?.scrollIntoView({behavior:'smooth'})}else if(a==='closeDesktopFilters')setDesktopFilterDrawer(false);else setDesktopFilterDrawer(!$('#v99DiscoveryTools')?.classList.contains('open'))},true);
+  document.addEventListener('click',e=>{if(!isDesktop())return;const category=e.target.closest('[data-v99-category]'),clear=e.target.closest('[data-v99-action="clearDesktopCategory"]');if(!category&&!clear)return;e.preventDefault();e.stopImmediatePropagation();if(clear){state.filters.kind='';state.filters.badge=''}else if(category.dataset.v99Category==='deal'){state.filters.kind='';state.filters.badge='deal'}else{state.filters.kind=category.dataset.v99Category;state.filters.badge=''}syncFilterControls();renderEffectiveStore();const heading=$('#v99CatalogHeading');heading?.scrollIntoView({behavior:'smooth',block:'start'});requestAnimationFrame(()=>heading?.focus())},true);
+  document.addEventListener('keydown',e=>{if(!isDesktop()||!$('#v99DiscoveryTools')?.classList.contains('open'))return;const root=$('#v99DiscoveryTools');if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();setDesktopFilterDrawer(false);return}if(e.key!=='Tab')return;const focusable=[...root.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')];if(!focusable.length){e.preventDefault();root.focus();return}const first=focusable[0],last=focusable[focusable.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}},true);
+  document.addEventListener('click',e=>{if(!isMobile())return;const action=e.target.closest('[data-v99-action]'),category=e.target.closest('[data-v99-category]');if(!action&&!category)return;const a=action?.dataset.v99Action;if(!category&&!['mobileFavorites','browseProducts','toggleMobileFilters','closeMobileFilters','clearMobileCategory'].includes(a))return;e.preventDefault();e.stopImmediatePropagation();if(a==='mobileFavorites')v99ShowFavorites();else if(a==='browseProducts'){closeModal();$('#storeGrid')?.scrollIntoView({behavior:'smooth'})}else if(a==='toggleMobileFilters')setMobileFilterDrawer(!$('#v99DiscoveryTools')?.classList.contains('open'));else if(a==='closeMobileFilters')setMobileFilterDrawer(false);else{if(a==='clearMobileCategory'){state.filters.kind='';state.filters.badge=''}else if(category.dataset.v99Category==='deal'){state.filters.kind='';state.filters.badge='deal'}else{state.filters.kind=category.dataset.v99Category;state.filters.badge=''}syncFilterControls();renderEffectiveStore();const heading=$('#v99MobileCatalogHeading');heading?.scrollIntoView({behavior:'smooth',block:'start'});requestAnimationFrame(()=>heading?.focus())}},true);
+  document.addEventListener('keydown',e=>{if(!isMobile()||!$('#v99DiscoveryTools')?.classList.contains('open'))return;const root=$('#v99DiscoveryTools');if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();setMobileFilterDrawer(false);return}if(e.key!=='Tab')return;const focusable=[...root.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')];if(!focusable.length){e.preventDefault();root.focus();return}const first=focusable[0],last=focusable[focusable.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}},true);
+  function init(){setupWrappers();if((isDesktop()||isMobile())&&typeof openPage==='function')openPage('store');renderStage();renderFilters();renderEffectiveStore();renderStudentHub();updateDesktopHeader();updateMobileHeader();loadGrowthData();if(!state.timer)state.timer=setInterval(updateCountdowns,1000);const item=new URLSearchParams(location.search).get('item')||location.hash.replace(/^#item=/,'');if(item){const [kind,...id]=decodeURIComponent(item).split(':');setTimeout(()=>v99OpenDetails(kind,id.join(':')),500)}}
+  document.addEventListener('DOMContentLoaded',init,{once:true});
+})();
+
+
+;
+
+// === store/cart.js ===
+/* ===== store/js/cart-icons-ui.js ===== */
+
+(function(){
+  const $ = s => document.querySelector(s);
+  const byId = id => document.getElementById(id);
+  const escf = v => (typeof esc==='function' ? esc(v) : String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])));
+  const moneyf = v => (typeof money==='function' ? money(v) : Number(v||0).toLocaleString('ar-IQ'));
+  const num = v => Number(v||0);
+
+  const ICONS={
+    filter:`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/><circle cx="8" cy="6" r="1.8" fill="#e4ad31" stroke="none"/><circle cx="15" cy="12" r="1.8" fill="#e4ad31" stroke="none"/><circle cx="12" cy="18" r="1.8" fill="#e4ad31" stroke="none"/></svg>`,
+    heart:`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.7a5.4 5.4 0 0 0-7.7 0L12 5.8l-1.1-1.1a5.4 5.4 0 0 0-7.7 7.7L12 21l8.8-8.6a5.4 5.4 0 0 0 0-7.7Z"/></svg>`,
+    account:`<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></svg>`,
+    cart:`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.1a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L20.5 8H7"/><circle cx="10" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/></svg>`,
+    exit:`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/></svg>`,
+    bell:`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M14 21h-4"/></svg>`,
+    home:`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v11h14V10M9 21v-6h6v6"/></svg>`,
+    categories:`<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`
+  };
+  function installRealIcons(){
+    const map={
+      '.desktop-filter-icon,.mobile-filter-icon':'filter',
+      '.desktop-heart-icon,.mobile-heart-icon':'heart',
+      '.desktop-account-icon,.mobile-account-icon':'account',
+      '.desktop-cart-icon,.mobile-cart-icon':'cart',
+      '.desktop-exit-icon,.mobile-exit-icon':'exit',
+      '.v99-icon-bell':'bell',
+      '.mobile-home-icon':'home',
+      '.mobile-categories-icon':'categories'
+    };
+    Object.entries(map).forEach(([sel,key])=>document.querySelectorAll(sel).forEach(el=>{el.classList.add('alin-real-icon');el.innerHTML=ICONS[key]}));
+  }
+  function itemLookup(line){
+    try{
+      if(!window.db) return null;
+      if(line.kind==='booklet') return (db.booklets||[]).find(x=>String(x.id)===String(line.id)) || null;
+      return (db.products||[]).find(x=>String(x.id)===String(line.id)) || null;
+    }catch(e){ return null; }
+  }
+  function imageFor(item){
+    if(!item) return '';
+    const candidate = item.cover_path || item.image_path || item.image || item.photo || item.image_url || item.cover_url || item.thumbnail;
+    if(!candidate) return '';
+    try{ return typeof mediaUrl==='function' ? mediaUrl(candidate) : candidate; }catch(e){ return candidate; }
+  }
+  function kindLabel(kind){ return kind==='booklet' ? 'ملزمة' : 'منتج'; }
+  function kindIcon(kind){ return kind==='booklet' ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5z"/></svg>` : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l1 12H5L6 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></svg>`; }
+  function cartTotal(){ const items=(typeof cart !== 'undefined' && Array.isArray(cart))?cart:[]; return items.reduce((a,x)=>a + num(x.price) * Math.max(1,num(x.qty)),0); }
+  function checkoutButtonName(){ return 'confirmCartCheckout()'; }
+  function paymentHtml(){
+    try{
+      if(typeof fulfillmentHtml==='function') return fulfillmentHtml();
+      if(typeof alinDeliveryChoiceHtml==='function') return alinDeliveryChoiceHtml();
+      if(typeof deliveryChoiceCartHtml==='function') return deliveryChoiceCartHtml();
+      if(typeof paymentChoiceHtml==='function') return paymentChoiceHtml();
+    }catch(e){}
+    return '';
+  }
+  function activeLibraryRows(){
+    try{
+      const rows=(window.db?.accounts?.libraries||[]).filter(x=>x.status==='active');
+      return rows;
+    }catch(e){ return []; }
+  }
+  function libraryOpen(lib){
+    try{ return typeof libIsOpen==='function' ? !!libIsOpen(lib) : lib?.is_open!==false; }catch(e){ return true; }
+  }
+  function compactLibraryOptions(){
+    return activeLibraryRows().map(lib=>{
+      const open=libraryOpen(lib), label=`${lib.name||'مكتبة'} — ${open?'مفتوح':'مغلق'}`;
+      return `<option value="${escf(lib.id)}" ${open?'':'disabled'}>${escf(label)}</option>`;
+    }).join('');
+  }
+  function cartHasProducts(){
+    const items=(typeof cart!=='undefined'&&Array.isArray(cart))?cart:[];
+    return items.some(x=>x.kind!=='booklet');
+  }
+  function compactFulfillmentHtml(){
+    if(cartHasProducts()){
+      let couriers='';
+      try{ if(typeof activeCouriers==='function') couriers=activeCouriers().map(c=>`<option value="${escf(c.id)}">${escf(c.name)}${c.area?` — ${escf(c.area)}`:''}</option>`).join(''); }catch(e){}
+      return `<section class="alin-fulfillment"><h4>طريقة الاستلام والدفع</h4><div class="alin-delivery-options"><label class="selected"><input type="radio" name="fulfillment" value="home_delivery" checked><span><b>توصيل للبيت</b><small>الدفع للمندوب عند التسليم</small></span></label></div><div id="deliveryFields" class="alin-delivery-fields"><div class="form-grid"><input id="deliveryArea" placeholder="المنطقة"><input id="deliveryAddress" placeholder="العنوان الكامل"><input id="deliveryLandmark" placeholder="أقرب نقطة دالة"><select id="courierSelect"><option value="">تحديد المندوب من الإدارة</option>${couriers}</select></div></div></section>`;
+    }
+    return `<section class="alin-fulfillment"><h4>طريقة الاستلام والدفع</h4><div class="alin-delivery-options"><label class="selected"><input type="radio" name="fulfillment" value="pickup" checked onchange="toggleDeliveryFields();alinSyncDeliveryCards()"><span><b>استلام من المكتبة</b><small>الدفع عند الاستلام</small></span></label><label><input type="radio" name="fulfillment" value="home_delivery" onchange="toggleDeliveryFields();alinSyncDeliveryCards()"><span><b>توصيل للبيت</b><small>الدفع للمندوب</small></span></label></div><div id="pickupFields" class="alin-pickup-fields"><select id="libSelect" onchange="alinShowLibraryStatus()"><option value="">اختر مكتبة الاستلام</option>${compactLibraryOptions()}</select><div id="libInfo"></div></div><div id="deliveryFields" class="alin-delivery-fields hidden"><div class="form-grid"><input id="deliveryArea" placeholder="المنطقة"><input id="deliveryAddress" placeholder="العنوان الكامل"><input id="deliveryLandmark" placeholder="أقرب نقطة دالة"><select id="courierSelect"><option value="">تحديد المندوب من الإدارة</option>${(()=>{try{return typeof activeCouriers==='function'?activeCouriers().map(c=>`<option value="${escf(c.id)}">${escf(c.name)}${c.area?` — ${escf(c.area)}`:''}</option>`).join(''):''}catch(e){return ''}})()}</select></div></div></section>`;
+  }
+  window.alinSyncDeliveryCards=function(){
+    document.querySelectorAll('#checkoutBox .alin-delivery-options label').forEach(label=>label.classList.toggle('selected',!!label.querySelector('input:checked')));
+  };
+  window.alinShowLibraryStatus=function(){
+    const select=byId('libSelect'), box=byId('libInfo');
+    if(!select||!box) return;
+    const lib=activeLibraryRows().find(x=>String(x.id)===String(select.value));
+    if(!lib){box.innerHTML='';return;}
+    const open=libraryOpen(lib);
+    box.innerHTML=`<div class="alin-library-status"><div><b>${escf(lib.name||'مكتبة')}</b><small>${escf([lib.area,lib.landmark].filter(Boolean).join(' — '))}</small></div><span class="${open?'is-open':'is-closed'}">${open?'مفتوح':'مغلق'}</span></div>`;
+  };
+  function librarySection(){
+    return `<div class="form-grid"><input id="studentName" placeholder="اسم الطالب الكامل"><input id="studentPhone" placeholder="رقم الهاتف"></div>${compactFulfillmentHtml()}`;
+  }
+  function emptyCartHtml(){
+    return `<div class="alin-cart-main"><div class="alin-cart-empty"><div class="alin-empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.1a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L20.5 8H7"/><circle cx="10" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/></svg></div><h3>السلة فارغة حالياً</h3><p>أضف ملازمك أو قرطاسيتك المفضلة، وبعدها ارجع هنا لإتمام الطلب بسرعة.</p><button type="button" onclick="closeCheckout();document.getElementById('storeGrid')?.scrollIntoView({behavior:'smooth'})">تصفح المتجر</button></div></div><aside class="alin-cart-side"><h3>ملخص الطلب</h3><div class="alin-summary-card"><div class="alin-summary-rows"><div><span>عدد المواد</span><b>0</b></div><div><span>الإجمالي</span><b>0 د.ع</b></div></div><div class="alin-cart-note">عند إضافة أي مادة ستظهر هنا تفاصيل الطلب والكوبون وبيانات الاستلام.</div></div></aside>`;
+  }
+  function renderProfessionalCart(){
+    if(!window.checkoutBox || !window.checkoutModal) return;
+    const items = (typeof cart !== 'undefined' && Array.isArray(cart)) ? cart : [];
+    const total = cartTotal();
+    const count = items.reduce((a,x)=>a + Math.max(1,num(x.qty)),0);
+    const itemsHtml = items.map((line,i)=>{
+      const source = itemLookup(line), img = imageFor(source), qty = Math.max(1,num(line.qty)), lineTotal = num(line.price) * qty;
+      return `<article class="alin-cart-item"><div class="alin-cart-thumb" data-kind="${escf(line.kind)}">${img ? `<img src="${escf(img)}" alt="${escf(line.title)}">` : `${kindIcon(line.kind)}`}</div><div class="alin-cart-info"><h3 class="alin-cart-title">${escf(line.title)}</h3><div class="alin-cart-meta"><span class="alin-cart-chip">${kindLabel(line.kind)}</span><span class="alin-cart-chip">سعر القطعة: ${moneyf(line.price)} د.ع</span></div><div class="alin-cart-price">${moneyf(lineTotal)} د.ع</div></div><div class="alin-cart-controls"><div class="alin-qty-box"><button type="button" aria-label="تقليل الكمية" onclick="alinCartQty(${i},-1)">−</button><b>${qty}</b><button type="button" aria-label="زيادة الكمية" onclick="alinCartQty(${i},1)">+</button></div><button type="button" class="alin-remove-btn" onclick="alinCartRemove(${i})">حذف من السلة</button></div></article>`;
+    }).join('');
+    const html = `<div class="alin-cart-shell"><section class="alin-cart-main"><div class="alin-cart-head"><div><h2>سلة آلين</h2><p>راجع المواد والكميات قبل تأكيد الطلب.</p></div><span class="alin-cart-badge">${count}</span></div><div class="alin-cart-list">${itemsHtml}</div></section><aside class="alin-cart-side"><h3>ملخص الطلب</h3><div class="alin-summary-card"><div class="alin-summary-rows"><div><span>عدد المواد</span><b>${count}</b></div><div><span>المجموع الفرعي</span><b>${moneyf(total)} د.ع</b></div></div><div class="alin-summary-total"><div>الإجمالي النهائي</div><b>${moneyf(total)} د.ع</b></div><div class="coupon-box"><input id="couponInput" placeholder="أدخل كود الخصم"><button type="button" onclick="alinApplyCoupon()">تطبيق</button></div><div id="couponMsg"></div><div class="alin-cart-form"><h4>بيانات الطالب والاستلام</h4>${librarySection()}</div><button type="button" class="alin-cart-submit" onclick="${checkoutButtonName()}">تأكيد الطلب الآن</button></div></aside></div>`;
+    checkoutBox.innerHTML = items.length ? html : `<div class="alin-cart-shell">${emptyCartHtml()}</div>`;
+    checkoutModal.classList.remove('hidden');
+    const close = document.querySelector('#checkoutModal .x');
+    if(close){ close.textContent='إغلاق'; close.setAttribute('aria-label','إغلاق السلة'); }
+    setTimeout(()=>{ try{ alinSyncDeliveryCards(); alinShowLibraryStatus(); }catch(e){} },0);
+  }
+  window.alinCartQty = function(i,d){ if(typeof window.cartQty==='function'){ window.cartQty(i,d); } else { const items=(typeof cart !== 'undefined'&&Array.isArray(cart))?cart:[]; if(!items[i]) return; items[i].qty=Math.max(1,num(items[i].qty)+d); if(typeof cartSave==='function') cartSave(); updateCartCounters(); renderProfessionalCart(); } };
+  window.alinCartRemove = function(i){ if(typeof window.cartRemove==='function'){ window.cartRemove(i); } else { const items=(typeof cart !== 'undefined'&&Array.isArray(cart))?cart:[]; if(!items[i]) return; items.splice(i,1); if(typeof cartSave==='function') cartSave(); updateCartCounters(); renderProfessionalCart(); } };
+  window.alinApplyCoupon = function(){ if(typeof window.checkCoupon==='function') window.checkCoupon(); };
+
+  function updateCartCounters(){
+    const items=(typeof cart !== 'undefined'&&Array.isArray(cart))?cart:[];
+    const count=items.reduce((a,x)=>a+Math.max(1,num(x.qty)),0);
+    ['desktopCartCount','mobileCartCount','mobileBottomCartCount'].forEach(id=>{const el=byId(id);if(!el)return;el.textContent=String(count);el.hidden=!count;});
+  }
+
+  function install(){
+    installRealIcons();
+    if(typeof window.openCart === 'function') window.openCart = renderProfessionalCart;
+    if(typeof window.addToCart === 'function'){
+      const originalAdd=window.addToCart;
+      window.addToCart=function(){const r=originalAdd.apply(this,arguments);updateCartCounters();return r;};
+    }
+    updateCartCounters();
+    const oldClose = window.closeCheckout;
+    if(typeof oldClose === 'function') window.closeCheckout = function(){ const r = oldClose.apply(this,arguments); const close = document.querySelector('#checkoutModal .x'); if(close){ close.textContent='×'; close.setAttribute('aria-label','إغلاق'); } return r; };
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install); else install();
+})();
+
+
+;
+
+// === teacher/shell.js ===
+/* ===== teacher/js/teacher-shell.js ===== */
+/* V111: actual teacher code moved from core/js/platform-legacy.js */
+window.AlinTeacherModules=window.AlinTeacherModules||{};
+function renderTeacher(){ if(!window.teacherStats||!db.ledger)return; const teacherId=current?.role==='teacher'?current.id:(db.accounts.teachers[0]?.id||''); const books=db.booklets.filter(x=>x.teacher_id===teacherId), ledger=db.ledger.filter(x=>x.teacher_id===teacherId); teacherStats.innerHTML=`<div><b>الملازم</b><span>${books.length}</span></div><div><b>المبيعات</b><span>${ledger.length}</span></div><div><b>الرصيد</b><span>${money(ledger.reduce((a,x)=>a+(+x.teacher||0),0))} د.ع</span></div>`; teacherBooks.innerHTML=books.map(x=>`<div class="row"><b>${x.title}</b><span class="status">${x.status}</span></div>`).join('')||'لا توجد ملازم'; teacherSales.innerHTML=ledger.map(x=>`<div class="row"><b>${x.order_id}</b><span>${money(x.teacher)} د.ع</span></div>`).join('')||'لا توجد مبيعات'; }
+
+renderTeacher=function(){if(!window.teacherStats)return;const id=current?.role==='teacher'?current.id:'';const books=db.booklets.filter(x=>x.teacher_id===id),led=db.ledger.filter(x=>x.teacher_id===id),bookIds=new Set(books.map(x=>x.id)),orders=db.orders.filter(x=>bookIds.has(x.item_id));const notices=v19Notifications.filter(n=>n.status==='active'&&((n.target_role||n.audience)==='all'||(n.target_role||n.audience)==='teacher'));teacherStats.innerHTML=`<div><b>ملازمي</b><span>${books.length}</span></div><div><b>الطلبات</b><span>${orders.length}</span></div><div><b>النسخ المطلوبة</b><span>${orders.reduce((a,x)=>a+(+x.qty||0),0)}</span></div><div><b>المستحقات</b><span>${money(led.reduce((a,x)=>a+(+x.teacher||0),0))} د.ع</span></div>`;teacherBooks.innerHTML=notices.map(n=>`<div class="notice"><b>${esc(n.title)}</b><div>${esc(n.message||n.text||'')}</div></div>`).join('')+books.map(x=>`<div class="row"><b>${esc(x.title)}</b><span class="status">${esc(x.status)}</span></div>`).join('');teacherSales.innerHTML=orders.map(x=>`<div class="row"><div><b>${esc(x.order_number||x.id)}</b><small>${esc(x.title)} × ${x.qty}</small></div><span>${money(x.total)} د.ع</span></div>`).join('')||emptyState('لا توجد مبيعات');}
+
+renderTeacher=function(){
+  if(!window.teacherStats || !window.teacherContent)return;
+  const {id,teacher,books,orders,ledger,payouts,requests}=teacherData();
+  const today=new Date().toISOString().slice(0,10), month=today.slice(0,7);
+  const due=ledger.reduce((a,x)=>a+(+x.teacher||0),0), paid=teacherAccountPaid(id), remaining=Math.max(0,due-paid);
+  const notices=(v19Notifications||[]).filter(n=>n.status==='active'&&((n.target_role||n.audience)==='all'||(n.target_role||n.audience)==='teacher'));
+  teacherStats.innerHTML=`<div><b>الملازم</b><span>${books.length}</span></div><div><b>طلبات اليوم</b><span>${orders.filter(x=>(x.created_at||'').slice(0,10)===today).length}</span></div><div><b>النسخ المباعة</b><span>${orders.reduce((a,x)=>a+(+x.qty||0),0)}</span></div><div><b>المتبقي</b><span>${money(remaining)} د.ع</span></div>`;
+  let html='';
+  if(notices.length) html += notices.map(n=>`<div class="notice"><b>${esc(n.title)}</b><div>${esc(n.message||n.text||'')}</div></div>`).join('');
+  if(activeTeacherTab==='dashboard'){
+    html += `<h3>الرئيسية</h3><div class="stats"><div><b>أرباح مستحقة</b><span>${money(due)} د.ع</span></div><div><b>مدفوع</b><span>${money(paid)} د.ع</span></div><div><b>هذا الشهر</b><span>${orders.filter(x=>(x.created_at||'').slice(0,7)===month).length}</span></div><div><b>أكثر ملزمة</b><span>${bestTeacherBook(books,orders)}</span></div></div>`;
+  } else if(activeTeacherTab==='booklets'){
+    html += `<h3>ملازمي المصممة من الإدارة</h3>${books.map(b=>{const qty=orders.filter(o=>o.item_id===b.id).reduce((a,o)=>a+(+o.qty||0),0);return `<div class="row"><div><b>${esc(b.title)}</b><small>${esc(b.subject||'')} — ${esc(b.grade||'')} — ${money(b.price)} د.ع — ${qty} نسخة</small></div><div class="row-actions">${b.file_path?`<button onclick="openTeacherPdf('${b.id}')">مشاهدة الملزمة</button>`:''}<span class="status">${esc(b.status||'')}</span></div></div>`}).join('')||emptyState('لا توجد ملازم')}`;
+  } else if(activeTeacherTab==='orders'){
+    html += `<h3>طلبات ملازمي</h3>${orders.map(o=>`<div class="row"><div><b>${esc(o.order_number||o.id)} — ${esc(o.title)}</b><small>العدد ${o.qty} • المكتبة: ${esc((db.accounts.libraries.find(l=>l.id===o.library_id)||{}).name||'-')} • الحالة: ${esc(o.status||'')}</small></div><span>${money(o.total)} د.ع</span></div>`).join('')||emptyState('لا توجد طلبات')}`;
+  } else if(activeTeacherTab==='finance'){
+    html += `<h3>الأرباح والمستحقات</h3><div class="stats"><div><b>الإجمالي</b><span>${money(due)} د.ع</span></div><div><b>المدفوع</b><span>${money(paid)} د.ع</span></div><div><b>المتبقي</b><span>${money(remaining)} د.ع</span></div></div><div class="form-grid"><input id="tFrom" type="date"><input id="tTo" type="date"><button onclick="printTeacherStatement()">طباعة كشف حساب</button><input id="teacherWithdrawAmount" type="number" placeholder="مبلغ السحب"><button onclick="requestWithdraw('teacher')">طلب سحب</button></div>${ledger.map(x=>`<div class="row"><b>${esc(x.order_id)}</b><span>${money(x.teacher)} د.ع</span></div>`).join('')||emptyState('لا توجد أرباح مسجلة')}`;
+  } else if(activeTeacherTab==='requests'){
+    html += `<h3>طلب إضافة ملزمة</h3><p>ارفع طلب الملزمة للإدارة. الإدارة تصممها وتراجعها ثم ترفع النسخة النهائية في صفحة المدرس للمشاهدة فقط.</p><form id="teacherRequestForm" class="form-grid"><input name="title" placeholder="اسم الملزمة"><input name="subject" placeholder="المادة"><input name="grade" placeholder="المرحلة/الصف"><textarea name="note" placeholder="تفاصيل إضافية للإدارة"></textarea><label>ملف أولي اختياري PDF<input name="source" type="file" accept=".pdf"></label><button type="button" onclick="sendTeacherBookRequest()">إرسال الطلب</button></form><h3>طلباتي</h3>${requests.map(r=>`<div class="row"><div><b>${esc(r.title)}</b><small>${esc(r.subject||'')} — ${esc(r.grade||'')} — ${esc(r.status||'')}</small></div></div>`).join('')||emptyState('لا توجد طلبات')}`;
+  } else if(activeTeacherTab==='profile'){
+    html += `<h3>ملف المدرس</h3><div class="form-grid"><input id="tpPhone" value="${esc(teacher.phone||'')}" placeholder="رقم الهاتف"><input id="tpSpecialty" value="${esc(teacher.specialty||'')}" placeholder="الاختصاص"><textarea id="tpBio" placeholder="نبذة قصيرة">${esc(teacher.bio||'')}</textarea><label>الصورة الشخصية<input id="tpAvatar" type="file" accept="image/*"></label><button onclick="saveTeacherProfile()">حفظ الملف</button></div><p class="print-only-note">الاسم وربط الملازم يتحكم بهما المدير فقط.</p>`;
+  }
+  teacherContent.innerHTML=html;
+};
+
+function teacherData(){
+  const id=current?.role==='teacher'?current.id:'';
+  const teacher=db.accounts.teachers.find(x=>x.id===id)||{};
+  const books=db.booklets.filter(x=>x.teacher_id===id);
+  const bookIds=new Set(books.map(x=>x.id));
+  const orders=db.orders.filter(x=>x.kind==='booklet' && bookIds.has(x.item_id));
+  const ledger=db.ledger.filter(x=>x.teacher_id===id);
+  const payouts=(db.teacherPayouts||[]).filter(x=>x.teacher_id===id);
+  const requests=(db.teacherRequests||[]).filter(x=>x.teacher_id===id);
+  return {id,teacher,books,bookIds,orders,ledger,payouts,requests};
+}
+
+function teacherTab(tab){ activeTeacherTab=tab; renderTeacher(); }
+
+async function saveTeacherProfile(){
+  try{
+    const avatar=tpAvatar.files&&tpAvatar.files[0]?await uploadFile('teachers',tpAvatar.files[0],{type:'image'}):(teacherData().teacher.avatar_path||'');
+    await update('accounts',{phone:tpPhone.value.trim(),specialty:tpSpecialty.value.trim(),bio:tpBio.value.trim(),avatar_path:avatar},{id:current.id});
+    await audit('teacher','تحديث ملف مدرس'); await load(); toast('تم حفظ ملف المدرس');
+  }catch(e){alert(e.message)}
+}
+
+function teacherObj(id){ return (db.accounts?.teachers||[]).find(x=>x.id===id)||{}; }
+window.AlinTeacherModules['renderTeacher']=typeof renderTeacher==='function'?renderTeacher:window['renderTeacher'];window['renderTeacher']=window.AlinTeacherModules['renderTeacher'];
+window.AlinTeacherModules['teacherData']=typeof teacherData==='function'?teacherData:window['teacherData'];window['teacherData']=window.AlinTeacherModules['teacherData'];
+window.AlinTeacherModules['teacherTab']=typeof teacherTab==='function'?teacherTab:window['teacherTab'];window['teacherTab']=window.AlinTeacherModules['teacherTab'];
+window.AlinTeacherModules['saveTeacherProfile']=typeof saveTeacherProfile==='function'?saveTeacherProfile:window['saveTeacherProfile'];window['saveTeacherProfile']=window.AlinTeacherModules['saveTeacherProfile'];
+window.AlinTeacherModules['teacherObj']=typeof teacherObj==='function'?teacherObj:window['teacherObj'];window['teacherObj']=window.AlinTeacherModules['teacherObj'];
 
 
 ;

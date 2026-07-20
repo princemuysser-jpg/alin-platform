@@ -1,8 +1,0 @@
-ALIN v2.0.1 RELEASE CHECKS
-[PASS] JavaScript syntax
-[PASS] HTML local paths
-[PASS] Duplicate HTML IDs
-[PASS] Service worker paths
-[PASS] Shared desktop/mobile JavaScript bundles
-[PASS] Old duplicate bundle references removed
-[PASS] Runtime connection health message

@@ -1,5 +1,5 @@
--- منصة آلين v2.0.3 — إغلاق صلاحيات anon الخطرة وتقوية إنشاء الطلبات
--- شغّل هذا الملف مرة واحدة من Supabase > SQL Editor بعد التأكد أن حساب المدير مربوط في accounts.auth_user_id.
+-- منصة آلين v2.0.1 — إغلاق صلاحيات anon الخطرة
+-- شغّل هذا الملف من Supabase > SQL Editor بعد التأكد أن حساب المدير مربوط في accounts.auth_user_id. الملف قابل لإعادة التشغيل بأمان.
 
 begin;
 
@@ -180,20 +180,80 @@ revoke insert, update, delete on public.coupons from anon;
 revoke select on public.coupons from anon;
 grant select, insert, update, delete on public.coupons to authenticated;
 
--- الإعلانات: العرض العام للفعال، والكتابة للإدارة فقط.
+-- الإعلانات: ملف واحد وصلاحيات واحدة للعرض والإدارة.
+alter table public.banners add column if not exists image_path text;
+alter table public.banners add column if not exists image_url text;
+alter table public.banners add column if not exists link_url text;
+alter table public.banners add column if not exists start_date date;
+alter table public.banners add column if not exists end_date date;
+alter table public.banners add column if not exists sort_order integer not null default 0;
+alter table public.banners add column if not exists active boolean not null default true;
+alter table public.banners add column if not exists created_at timestamptz not null default now();
+alter table public.banners add column if not exists updated_at timestamptz not null default now();
 alter table public.banners enable row level security;
 drop policy if exists banners_authenticated_insert on public.banners;
 drop policy if exists banners_authenticated_update on public.banners;
 drop policy if exists banners_authenticated_delete on public.banners;
+drop policy if exists banners_public_read on public.banners;
 drop policy if exists banners_admin_insert on public.banners;
 drop policy if exists banners_admin_update on public.banners;
 drop policy if exists banners_admin_delete on public.banners;
+create policy banners_public_read on public.banners for select to anon, authenticated using (true);
 create policy banners_admin_insert on public.banners for insert to authenticated with check (public.alin_is_admin());
 create policy banners_admin_update on public.banners for update to authenticated using (public.alin_is_admin()) with check (public.alin_is_admin());
 create policy banners_admin_delete on public.banners for delete to authenticated using (public.alin_is_admin());
 revoke insert, update, delete on public.banners from anon;
 grant select on public.banners to anon;
 grant select, insert, update, delete on public.banners to authenticated;
+
+-- التخزين المعتمد: bucket واحد باسم alin-files، وصور البنرات داخل banners/.
+insert into storage.buckets (id,name,public,file_size_limit,allowed_mime_types)
+values (
+  'alin-files','alin-files',true,10485760,
+  array['image/jpeg','image/png','image/webp','image/gif','image/svg+xml','application/pdf']
+)
+on conflict (id) do update set
+  public=excluded.public,
+  file_size_limit=excluded.file_size_limit,
+  allowed_mime_types=excluded.allowed_mime_types;
+
+drop policy if exists alin_files_public_read on storage.objects;
+drop policy if exists alin_banners_admin_insert on storage.objects;
+drop policy if exists alin_banners_admin_update on storage.objects;
+drop policy if exists alin_banners_admin_delete on storage.objects;
+
+create policy alin_files_public_read on storage.objects
+for select to anon, authenticated
+using (bucket_id='alin-files');
+
+create policy alin_banners_admin_insert on storage.objects
+for insert to authenticated
+with check (
+  bucket_id='alin-files' and
+  (storage.foldername(name))[1]='banners' and
+  public.alin_is_admin()
+);
+
+create policy alin_banners_admin_update on storage.objects
+for update to authenticated
+using (
+  bucket_id='alin-files' and
+  (storage.foldername(name))[1]='banners' and
+  public.alin_is_admin()
+)
+with check (
+  bucket_id='alin-files' and
+  (storage.foldername(name))[1]='banners' and
+  public.alin_is_admin()
+);
+
+create policy alin_banners_admin_delete on storage.objects
+for delete to authenticated
+using (
+  bucket_id='alin-files' and
+  (storage.foldername(name))[1]='banners' and
+  public.alin_is_admin()
+);
 
 notify pgrst, 'reload schema';
 commit;
@@ -308,14 +368,9 @@ declare
   v_index integer := 0;
   v_customer_name text := btrim(coalesce(p_customer->>'name',''));
   v_customer_phone text := btrim(coalesce(p_customer->>'phone',''));
-  v_area jsonb;
-  v_requested_area text := btrim(coalesce(p_fulfillment->>'delivery_area',''));
 begin
   if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items)=0 then
     raise exception 'السلة فارغة';
-  end if;
-  if jsonb_array_length(p_items)>50 then
-    raise exception 'عدد عناصر السلة أكبر من الحد المسموح';
   end if;
   if v_customer_name='' or v_customer_phone='' then
     raise exception 'أكمل اسم الطالب ورقم الهاتف';
@@ -324,32 +379,8 @@ begin
     raise exception 'بيانات الزبون غير صحيحة';
   end if;
 
-  -- لا نثق بأي رسوم يرسلها المتصفح. الرسوم تؤخذ من جدول المناطق حصراً.
-  v_delivery_fee := 0;
-  if coalesce(p_fulfillment->>'fulfillment_type','')='home_delivery' then
-    if v_requested_area='' then
-      raise exception 'اختر منطقة التوصيل';
-    end if;
-    execute $q$
-      select to_jsonb(a)
-      from public.delivery_areas a
-      where a.id::text=$1
-         or lower(coalesce(to_jsonb(a)->>'name',to_jsonb(a)->>'area',''))=lower($1)
-      limit 1
-    $q$ into v_area using v_requested_area;
-    if v_area is null then
-      raise exception 'منطقة التوصيل غير معتمدة';
-    end if;
-    if coalesce(v_area->>'status','active') not in ('active','available','published') then
-      raise exception 'منطقة التوصيل غير متاحة حالياً';
-    end if;
-    v_delivery_fee := least(greatest(coalesce(
-      nullif(v_area->>'delivery_fee','')::numeric,
-      nullif(v_area->>'fee','')::numeric,
-      nullif(v_area->>'price','')::numeric,
-      0
-    ),0),100000);
-  end if;
+  -- لا نثق برسوم مرسلة من المتصفح. نسمح بقيمة موجبة محدودة فقط لحين ربط جدول المناطق.
+  v_delivery_fee := least(greatest(coalesce((p_fulfillment->>'delivery_fee')::numeric,0),0),100000);
 
   for v_item in select value from jsonb_array_elements(p_items)
   loop
