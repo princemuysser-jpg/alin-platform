@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "version": "2.1.1-platform-cart-orders-extracted",
+  "automated_checks": {
+    "javascript_files": 52,
+    "modules": 43,
+    "release_checks": 82,
+    "platform_cart_extraction": true,
+    "coupon_extraction": true,
+    "accounts_auth": true,
+    "session_restore": true,
+    "finance": true,
+    "cart_aliases": 7
+  },
+  "browser_checks": {
+    "pickup_order": true,
+    "courier_order": true,
+    "secure_checkout_single_call": true,
+    "javascript_errors": 0
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "fallback": {
+    "pickup": "pickup",
+    "courier": "home_delivery",
+    "delivery_fee": 1000
+  },
+  "secure": {
+    "calls": 1,
+    "cart": 0
+  },
+  "errors": []
+}

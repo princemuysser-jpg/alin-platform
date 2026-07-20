@@ -1,4 +1,4 @@
-const VERSION='alin-v2.0.14-modular-runtime';
+const VERSION='alin-v2.1.1-platform-cart-orders';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[
@@ -10,6 +10,7 @@ const CORE=[
   './modules/core/config.js',
   './modules/core/platform.js',
   './modules/core/supabase.js',
+  './modules/store/coupons.js',
   './modules/admin/shell.js',
   './modules/admin/accounts.js',
   './modules/core/features.js',
@@ -34,6 +35,7 @@ const CORE=[
   './modules/admin/products.js',
   './modules/admin/accounts-advanced.js',
   './modules/admin/finance.js',
+  './modules/admin/coupons.js',
   './modules/admin/marketing.js',
   './modules/admin/reports.js',
   './modules/admin/settings.js',

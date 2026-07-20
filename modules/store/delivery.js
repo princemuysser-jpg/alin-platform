@@ -65,12 +65,8 @@
   window.alinV162ClearGps=function(){['deliveryLatitude','deliveryLongitude','deliveryLocationUrl','deliveryLocationAccuracy'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});try{sessionStorage.removeItem(stateKey)}catch(_){};const st=$('#v162GpsStatus'),dt=$('#v162GpsDetails'),op=$('#v162OpenMapBtn'),cl=$('#v162ClearGpsBtn');if(st){st.textContent='غير محدد';st.classList.remove('is-set')}if(dt)dt.hidden=true;if(op)op.disabled=true;if(cl)cl.hidden=true};
 
   function installCartHook(){
-    if(typeof window.openCart==='function'){
-      const old=window.openCart;window.openCart=function(){const r=old.apply(this,arguments);setTimeout(enhanceDeliveryFields,0);return r};
-    }
-    if(typeof window.toggleDeliveryFields==='function'){
-      const oldToggle=window.toggleDeliveryFields;window.toggleDeliveryFields=function(){const r=oldToggle.apply(this,arguments);setTimeout(enhanceDeliveryFields,0);return r};
-    }
+    document.addEventListener('alin:cart-rendered',()=>setTimeout(enhanceDeliveryFields,0));
+    document.addEventListener('alin:fulfillment-changed',()=>setTimeout(enhanceDeliveryFields,0));
     document.addEventListener('change',e=>{if(e.target?.name==='fulfillment')setTimeout(enhanceDeliveryFields,0)});
   }
 

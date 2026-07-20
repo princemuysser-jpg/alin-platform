@@ -71,22 +71,6 @@ window.AlinCourierModules['alinCouriersOptions']=typeof alinCouriersOptions==='f
 
   /* student checkout: fixed area list, courier always assigned by admin */
   function deliveryBlock(hidden=false){return `<div id="deliveryFields" class="${hidden?'hidden':''}"><div class="form-grid"><select id="deliveryArea" required><option value="">اختر منطقة التوصيل في كركوك</option>${areasOptions()}</select><input id="deliveryAddress" placeholder="العنوان الكامل للبيت"><input id="deliveryLandmark" placeholder="أقرب نقطة دالة"></div><div class="checkout-total">أجور التوصيل: <b>${moneyV(typeof alinDeliveryFee==='function'?alinDeliveryFee():0)} د.ع</b></div><p class="v161-delivery-note">بعد تأكيد الطلب يعرض النظام للمدير المندوبين العاملين في منطقتك، والمدير يعيّن المندوب المناسب يدوياً.</p></div>`}
-  window.alinDeliveryChoiceHtml=function(){
-    const products=typeof alinCartHasProducts==='function'?alinCartHasProducts():false;
-    if(products)return `<h3>طريقة التسليم</h3><div class="delivery-choice"><label><input type="radio" name="fulfillment" value="home_delivery" checked> توصيل للبيت والدفع للمندوب</label></div>${deliveryBlock(false)}`;
-    return `<h3>طريقة التسليم والدفع</h3><div class="delivery-choice"><label><input type="radio" name="fulfillment" value="pickup" checked onchange="toggleDeliveryFields()"> استلام من المكتبة</label><label><input type="radio" name="fulfillment" value="home_delivery" onchange="toggleDeliveryFields()"> توصيل للبيت</label></div><div id="pickupFields"><select id="libSelect" onchange="showLibInfo()"><option value="">اختر مكتبة الاستلام</option>${typeof alinLibraryOptions==='function'?alinLibraryOptions():''}</select><div id="libInfo"></div></div>${deliveryBlock(true)}`;
-  };
-  window.alinOrderExtra=function(){
-    const forced=typeof alinCartHasProducts==='function'?alinCartHasProducts():false;
-    const f=forced?'home_delivery':(document.querySelector('input[name="fulfillment"]:checked')?.value||'pickup');
-    if(f==='pickup'){
-      const lib=$('#libSelect')?.value||''; if(!lib)throw new Error('اختر مكتبة الاستلام');
-      return {fulfillment_type:'pickup',library_id:lib,courier_id:null,delivery_area:null,delivery_address:null,delivery_landmark:null,delivery_fee:0,payment_method:'cash_at_library',payment_status:'cod_pending'};
-    }
-    const area=$('#deliveryArea')?.value||'',address=($('#deliveryAddress')?.value||'').trim(),landmark=($('#deliveryLandmark')?.value||'').trim();
-    if(!area||!address||!landmark)throw new Error('اختر المنطقة وأكمل عنوان التوصيل ونقطة الدلالة');
-    return {fulfillment_type:'home_delivery',library_id:null,courier_id:null,delegate_id:null,delivery_area:area,delivery_address:address,delivery_landmark:landmark,delivery_fee:typeof alinDeliveryFee==='function'?alinDeliveryFee():0,payment_method:'cash_to_courier',payment_status:'cod_pending',assignment_status:'pending_admin'};
-  };
 
   /* admin couriers */
   window.renderCouriersAdmin=function(){

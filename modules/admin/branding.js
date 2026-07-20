@@ -14,7 +14,7 @@
   async function saveOne(k,v){if(typeof settingsSet==='function')return settingsSet(k,String(v));if(typeof alinV57SaveSetting==='function')return alinV57SaveSetting(k,String(v));if(typeof sb!=='undefined'&&sb?.from){const {error}=await sb.from('settings').upsert({key:k,value:String(v)});if(error)throw error;return}try{if(db?.settings)db.settings[k]=String(v);localStorage.setItem('alin_db',JSON.stringify(db))}catch(e){}}
   function previewImage(box,file){if(!file)return;const u=URL.createObjectURL(file);box.innerHTML=`<img src="${u}" alt="معاينة">`}
   function render(root){const v=current();root.className='admin-brand-v176';root.innerHTML=`
-    <div class="ab176-head"><div><h2>الهوية البصرية</h2><p>تحكم بألوان وشعار وخط وتصميم منصة آلين من مكان واحد.</p></div><span class="ab176-badge">v2.0.14</span></div>
+    <div class="ab176-head"><div><h2>الهوية البصرية</h2><p>تحكم بألوان وشعار وخط وتصميم منصة آلين من مكان واحد.</p></div><span class="ab176-badge">v2.0.15</span></div>
     <div class="ab176-layout"><div class="ab176-stack">
       <section class="ab176-card"><h3>القوالب الجاهزة</h3><p>اختر قالباً ثم عدّل التفاصيل حسب رغبتك.</p><div class="ab176-templates">
         <button class="ab176-template ${v.theme==='classic'?'active':''}" data-theme="classic"><span class="ab176-swatches"><i style="background:#1d4ed8"></i><i style="background:#f59e0b"></i><i style="background:#f8fafc"></i></span><b>Alin Classic</b><small>أزرق وأبيض</small></button>

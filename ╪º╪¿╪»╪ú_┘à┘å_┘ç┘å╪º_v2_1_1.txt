@@ -1,0 +1,14 @@
+ALIN v2.1.1 — تنظيف platform.js / المرحلة الأولى
+
+هذه النسخة تنقل نظام الكوبونات فعليًا خارج platform.js.
+لا تحتاج تشغيل SQL جديد إذا كانت v2.0.15 تعمل عندك.
+ارفع محتويات ZIP مباشرة بدل ملفات الموقع ثم نفذ Ctrl+F5.
+
+الملفات الجديدة:
+- modules/store/coupons.js
+- modules/admin/coupons.js
+
+تم حذف تنفيذ الكوبونات القديم من:
+- modules/core/platform.js
+- modules/admin/marketing.js
+- core/v2-runtime.js

@@ -2,78 +2,54 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 
-const source=fs.readFileSync(new URL('../modules/admin/marketing.js',import.meta.url),'utf8');
+const storeSource=fs.readFileSync(new URL('../modules/store/coupons.js',import.meta.url),'utf8');
+const adminSource=fs.readFileSync(new URL('../modules/admin/coupons.js',import.meta.url),'utf8');
 
+function makeElement(value=''){
+  return {value,disabled:false,textContent:'',innerHTML:'',dataset:{},hidden:false,scrollIntoView(){}};
+}
 function makeContext(initialCoupons=[]){
-  const state={alerts:[],toasts:[],insertCalls:0,updateCalls:0,rows:[...initialCoupons]};
-  const button={disabled:false,textContent:'إضافة الكوبون'};
+  const state={alerts:[],toasts:[],insertCalls:0,updateCalls:0,rows:initialCoupons.map(x=>({...x}))};
+  const elements={
+    adminContent:makeElement(),couponAdminCode:makeElement(),couponAdminType:makeElement('percent'),couponAdminValue:makeElement('10'),
+    couponAdminLimit:makeElement('0'),couponAdminExpiry:makeElement(''),couponAdminApplies:makeElement('all'),couponAdminStatus:makeElement('active'),
+    couponAdminSave:makeElement(),couponAdminSearch:makeElement(),couponAdminList:makeElement(),couponInput:makeElement(),couponMsg:makeElement(),
+  };
   const context={
-    console,
-    window:null,
-    document:{
-      getElementById:id=>id==='v140CouponSaveBtn'?button:null,
-      body:{contains:node=>node===button},
-      querySelectorAll:()=>[],
-    },
-    adminContent:{innerHTML:'',scrollIntoView(){}},
-    db:{banners:[]},
-    v19Coupons:state.rows,
-    esc:v=>String(v??''),
-    money:v=>String(v??0),
-    uid:()=>`CP-${Date.now()}`,
-    alert:msg=>state.alerts.push(String(msg)),
-    confirm:()=>true,
-    prompt:()=>'',
-    toast:msg=>state.toasts.push(String(msg)),
-    audit:async()=>{},
-    load:async()=>{},
-    query:async table=>table==='coupons'?[...state.rows]:[],
-    insert:async(_table,row)=>{state.insertCalls+=1;state.rows.push(row);context.v19Coupons=state.rows;return row;},
-    update:async(_table,payload,filter)=>{state.updateCalls+=1;const row=state.rows.find(x=>String(x.id)===String(filter.id));if(row)Object.assign(row,payload);return row;},
-    removeRow:async()=>{},
-    uploadFile:async()=>'',
-    mediaUrl:v=>v,
-    adminTab:()=>{},
-    markAdminTab:()=>{},
+    console,window:null,Date,setTimeout,clearTimeout,
+    document:{getElementById:id=>elements[id]||null,querySelectorAll:()=>[],body:{contains:()=>true}},
     navigator:{clipboard:{writeText:async()=>{}}},
-    v140CpCode:{value:''},
-    v140CpValue:{value:'10'},
-    v140CpType:{value:'percent'},
-    v140CpLimit:{value:'0'},
-    v140CpExpiry:{value:''},
-    v140CpApplies:{value:'all'},
-    v140CpStatus:{value:'active'},
+    db:{coupons:state.rows},
+    esc:v=>String(v??''),money:v=>String(v??0),uid:()=>`CP-${Date.now()}`,
+    alert:msg=>state.alerts.push(String(msg)),confirm:()=>true,prompt:()=>'',toast:msg=>state.toasts.push(String(msg)),audit:async()=>{},
+    query:async table=>table==='coupons'?state.rows.map(x=>({...x})):[],
+    insert:async(_table,row)=>{state.insertCalls++;state.rows.push({...row});return row},
+    update:async(_table,payload,filter)=>{state.updateCalls++;const row=state.rows.find(x=>String(x.id)===String(filter.id));if(row)Object.assign(row,payload);return row},
+    removeRow:async(_table,filter)=>{state.rows=state.rows.filter(x=>String(x.id)!==String(filter.id));context.db.coupons=state.rows},
   };
   context.window=context;
   vm.createContext(context);
-  vm.runInContext(source,context,{filename:'marketing.js'});
-  return {context,state,button};
+  vm.runInContext(storeSource,context,{filename:'store/coupons.js'});
+  vm.runInContext(adminSource,context,{filename:'admin/coupons.js'});
+  return {context,state,elements};
 }
 
 {
-  const {context,state}=makeContext([{id:'CP-1',code:'ALIN20'}]);
-  context.v140CpCode.value=' alin20 ';
-  await context.saveCouponV140();
-  assert.equal(state.insertCalls,0,'duplicate coupon must not insert');
-  assert.match(state.alerts.at(-1)||'',/موجود مسبقًا/,'duplicate must show Arabic message');
+  const {context,state,elements}=makeContext([{id:'CP-1',code:'ALIN20',status:'active'}]);
+  context.renderCouponsAdmin();elements.couponAdminCode.value=' alin20 ';elements.couponAdminValue.value='10';
+  await context.saveCoupon();
+  assert.equal(state.insertCalls,0);assert.match(state.alerts.at(-1)||'',/موجود مسبقًا/);
 }
-
 {
-  const {context,state}=makeContext([]);
-  context.v140CpCode.value=' NEW 20 ';
-  await Promise.all([context.saveCouponV140(),context.saveCouponV140()]);
-  assert.equal(state.insertCalls,1,'double click must create one coupon only');
-  assert.equal(state.rows[0].code,'NEW20','coupon code must be normalized');
+  const {context,state,elements}=makeContext([]);
+  context.renderCouponsAdmin();elements.couponAdminCode.value=' NEW 20 ';elements.couponAdminValue.value='10';
+  await Promise.all([context.saveCoupon(),context.saveCoupon()]);
+  assert.equal(state.insertCalls,1);assert.equal(state.rows[0].code,'NEW20');assert.equal(context.db.coupons.some(c=>c.code==='NEW20'),true);
+  assert.match(elements.adminContent.innerHTML,/NEW20/);
 }
-
 {
-  const {context,state}=makeContext([{id:'CP-1',code:'ALIN20',discount_type:'percent',discount_value:10,status:'active'}]);
-  context.editCouponV140('CP-1');
-  context.v140CpCode.value='alin20';
-  context.v140CpValue.value='15';
-  await context.saveCouponV140();
-  assert.equal(state.updateCalls,1,'editing the same coupon code must update');
-  assert.equal(state.insertCalls,0,'editing must not insert');
+  const {context,elements}=makeContext([{id:'CP-1',code:'SAVE10',discount_type:'percent',discount_value:10,status:'active',used_count:0,max_uses:0}]);
+  assert.equal(context.validCoupon(' save10 ')?.id,'CP-1');
+  elements.couponInput.value='save10';await context.checkCoupon();assert.match(elements.couponMsg.textContent,/تم تطبيق كوبون/);
 }
-
-console.log('Coupon admin checks passed: duplicate prevention, normalization, single-save guard, edit flow.');
+console.log('Coupon checks passed: single store service, admin save, duplicate prevention, list refresh.');

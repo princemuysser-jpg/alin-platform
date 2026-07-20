@@ -1,145 +1,197 @@
-// === store/cart.js ===
-/* ===== store/js/cart-icons-ui.js ===== */
-
+// === modules/store/cart.js ===
+/* ALIN v2.1.1 — authoritative cart module. No legacy wrappers. */
 (function(){
-  const $ = s => document.querySelector(s);
-  const byId = id => document.getElementById(id);
-  const escf = v => (typeof esc==='function' ? esc(v) : String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])));
-  const moneyf = v => (typeof money==='function' ? money(v) : Number(v||0).toLocaleString('ar-IQ'));
-  const num = v => Number(v||0);
+  'use strict';
 
-  const ICONS={
-    filter:`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/><circle cx="8" cy="6" r="1.8" fill="#e4ad31" stroke="none"/><circle cx="15" cy="12" r="1.8" fill="#e4ad31" stroke="none"/><circle cx="12" cy="18" r="1.8" fill="#e4ad31" stroke="none"/></svg>`,
-    heart:`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.7a5.4 5.4 0 0 0-7.7 0L12 5.8l-1.1-1.1a5.4 5.4 0 0 0-7.7 7.7L12 21l8.8-8.6a5.4 5.4 0 0 0 0-7.7Z"/></svg>`,
-    account:`<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></svg>`,
-    cart:`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.1a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L20.5 8H7"/><circle cx="10" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/></svg>`,
-    exit:`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/></svg>`,
-    bell:`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M14 21h-4"/></svg>`,
-    home:`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v11h14V10M9 21v-6h6v6"/></svg>`,
-    categories:`<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`
-  };
-  function installRealIcons(){
-    const map={
-      '.desktop-filter-icon,.mobile-filter-icon':'filter',
-      '.desktop-heart-icon,.mobile-heart-icon':'heart',
-      '.desktop-account-icon,.mobile-account-icon':'account',
-      '.desktop-cart-icon,.mobile-cart-icon':'cart',
-      '.desktop-exit-icon,.mobile-exit-icon':'exit',
-      '.v99-icon-bell':'bell',
-      '.mobile-home-icon':'home',
-      '.mobile-categories-icon':'categories'
+  const STORAGE_KEY='ALIN_CART';
+  const aliases={booklet:'booklet',booklets:'booklet','ملزمة':'booklet','ملازم':'booklet',product:'product',products:'product',stationery:'product',stationary:'product',gift:'product',gifts:'product',deal:'product',booklet_product:'product'};
+  const $=id=>document.getElementById(id);
+  const num=value=>Number(value||0);
+  const escText=value=>typeof window.esc==='function'?window.esc(value):String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const formatMoney=value=>typeof window.money==='function'?window.money(value):num(value).toLocaleString('ar-IQ');
+  const same=(a,b)=>String(a??'')===String(b??'');
+
+  function readStoredCart(){
+    try{
+      const rows=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
+      return Array.isArray(rows)?rows:[];
+    }catch(_){return []}
+  }
+
+  if(!Array.isArray(window.cart))window.cart=readStoredCart();
+
+  function rows(){return Array.isArray(window.cart)?window.cart:(window.cart=[])}
+  function booklets(){return Array.isArray(window.db?.booklets)?window.db.booklets:[]}
+  function products(){return Array.isArray(window.db?.products)?window.db.products:[]}
+  function findBooklet(id){return booklets().find(item=>same(item.id,id))||null}
+  function findProduct(id){return products().find(item=>same(item.id,id))||null}
+
+  function normalizeKindAndId(kind,id){
+    let rawKind=String(kind??'').trim().toLowerCase();
+    let rawId=String(id??'').trim();
+    let booklet=findBooklet(rawId),product=findProduct(rawId);
+    if(!booklet&&!product&&rawKind){
+      const swappedBooklet=findBooklet(rawKind),swappedProduct=findProduct(rawKind);
+      if(swappedBooklet||swappedProduct){rawId=rawKind;rawKind=String(id??'').trim().toLowerCase();booklet=swappedBooklet;product=swappedProduct}
+    }
+    return {kind:booklet?'booklet':product?'product':aliases[rawKind]||'',id:rawId,item:booklet||product};
+  }
+
+  function normalizeLine(line,index=0){
+    const normalized=normalizeKindAndId(line?.kind,line?.id);
+    if(!normalized.kind||!normalized.id)return null;
+    const source=normalized.item;
+    return {
+      kind:normalized.kind,
+      id:normalized.id,
+      title:String(source?.title||source?.name||line?.title||`العنصر ${index+1}`),
+      price:num(source?.price??line?.price),
+      qty:Math.max(1,Math.min(100,Math.floor(num(line?.qty)||1)))
     };
-    Object.entries(map).forEach(([sel,key])=>document.querySelectorAll(sel).forEach(el=>{el.classList.add('alin-real-icon');el.innerHTML=ICONS[key]}));
   }
-  function itemLookup(line){
-    try{
-      if(!window.db) return null;
-      if(line.kind==='booklet') return (db.booklets||[]).find(x=>String(x.id)===String(line.id)) || null;
-      return (db.products||[]).find(x=>String(x.id)===String(line.id)) || null;
-    }catch(e){ return null; }
+
+  function normalizeCart(){
+    const normalized=rows().map(normalizeLine).filter(Boolean);
+    window.cart=normalized;
+    return normalized;
   }
+
   function imageFor(item){
-    if(!item) return '';
-    const candidate = item.cover_path || item.image_path || item.image || item.photo || item.image_url || item.cover_url || item.thumbnail;
-    if(!candidate) return '';
-    try{ return typeof mediaUrl==='function' ? mediaUrl(candidate) : candidate; }catch(e){ return candidate; }
+    const path=item?.cover_path||item?.image_path||item?.image||item?.image_url||item?.cover_url||item?.thumbnail||'';
+    if(!path)return '';
+    try{return typeof window.mediaUrl==='function'?window.mediaUrl(path):path}catch(_){return path}
   }
-  function kindLabel(kind){ return kind==='booklet' ? 'ملزمة' : 'منتج'; }
-  function kindIcon(kind){ return kind==='booklet' ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5z"/></svg>` : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l1 12H5L6 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></svg>`; }
-  function cartTotal(){ const items=(typeof cart !== 'undefined' && Array.isArray(cart))?cart:[]; return items.reduce((a,x)=>a + num(x.price) * Math.max(1,num(x.qty)),0); }
-  function checkoutButtonName(){ return 'confirmCartCheckout()'; }
-  function paymentHtml(){
+
+  function cartCount(){return rows().reduce((sum,line)=>sum+Math.max(1,num(line.qty)),0)}
+  function cartTotal(){return rows().reduce((sum,line)=>sum+num(line.price)*Math.max(1,num(line.qty)),0)}
+  function hasProducts(){return rows().some(line=>line.kind!=='booklet')}
+  function activeLibraries(){return (window.db?.accounts?.libraries||[]).filter(item=>item.status==='active')}
+  function libraryOpen(library){
+    try{return typeof window.libIsOpen==='function'?!!window.libIsOpen(library):!(library?.is_open===false||String(library?.is_open)==='false'||library?.open_status==='closed')}catch(_){return true}
+  }
+  function libraryOptions(){
+    return activeLibraries().map(library=>`<option value="${escText(library.id)}" ${libraryOpen(library)?'':'disabled'}>${escText(library.name||'مكتبة')} — ${libraryOpen(library)?'مفتوح':'مغلق'}${library.area?` — ${escText(library.area)}`:''}</option>`).join('');
+  }
+  function courierOptions(){
     try{
-      if(typeof fulfillmentHtml==='function') return fulfillmentHtml();
-      if(typeof alinDeliveryChoiceHtml==='function') return alinDeliveryChoiceHtml();
-      if(typeof deliveryChoiceCartHtml==='function') return deliveryChoiceCartHtml();
-      if(typeof paymentChoiceHtml==='function') return paymentChoiceHtml();
-    }catch(e){}
-    return '';
+      const list=typeof window.activeCouriers==='function'?window.activeCouriers():[];
+      return (Array.isArray(list)?list:[]).map(courier=>`<option value="${escText(courier.id)}">${escText(courier.name||'مندوب')}${courier.area?` — ${escText(courier.area)}`:''}</option>`).join('');
+    }catch(_){return ''}
   }
-  function activeLibraryRows(){
-    try{
-      const rows=(window.db?.accounts?.libraries||[]).filter(x=>x.status==='active');
-      return rows;
-    }catch(e){ return []; }
+
+  function dispatch(name,detail={}){document.dispatchEvent(new CustomEvent(name,{detail}))}
+
+  function renderCartBadge(){
+    const count=cartCount();
+    const ids=['cartCount','cartCountFab','desktopCartCount','mobileCartCount','mobileBottomCartCount'];
+    ids.forEach(id=>{const element=$(id);if(!element)return;element.textContent=String(count);if('hidden'in element)element.hidden=!count});
+    const summary=$('cartSummary');if(summary)summary.textContent=count?`${count} مادة في السلة`:'';
+    dispatch('alin:cart-changed',{count,total:cartTotal(),items:rows().map(item=>({...item}))});
+    return count;
   }
-  function libraryOpen(lib){
-    try{ return typeof libIsOpen==='function' ? !!libIsOpen(lib) : lib?.is_open!==false; }catch(e){ return true; }
+
+  function cartSave(){
+    normalizeCart();
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(rows()));
+    renderCartBadge();
   }
-  function compactLibraryOptions(){
-    return activeLibraryRows().map(lib=>{
-      const open=libraryOpen(lib), label=`${lib.name||'مكتبة'} — ${open?'مفتوح':'مغلق'}`;
-      return `<option value="${escf(lib.id)}" ${open?'':'disabled'}>${escf(label)}</option>`;
-    }).join('');
-  }
-  function cartHasProducts(){
-    const items=(typeof cart!=='undefined'&&Array.isArray(cart))?cart:[];
-    return items.some(x=>x.kind!=='booklet');
-  }
-  function compactFulfillmentHtml(){
-    if(cartHasProducts()){
-      let couriers='';
-      try{ if(typeof activeCouriers==='function') couriers=activeCouriers().map(c=>`<option value="${escf(c.id)}">${escf(c.name)}${c.area?` — ${escf(c.area)}`:''}</option>`).join(''); }catch(e){}
-      return `<section class="alin-fulfillment"><h4>طريقة الاستلام والدفع</h4><div class="alin-delivery-options"><label class="selected"><input type="radio" name="fulfillment" value="home_delivery" checked><span><b>توصيل للبيت</b><small>الدفع للمندوب عند التسليم</small></span></label></div><div id="deliveryFields" class="alin-delivery-fields"><div class="form-grid"><input id="deliveryArea" placeholder="المنطقة"><input id="deliveryAddress" placeholder="العنوان الكامل"><input id="deliveryLandmark" placeholder="أقرب نقطة دالة"><select id="courierSelect"><option value="">تحديد المندوب من الإدارة</option>${couriers}</select></div></div></section>`;
+
+  function addToCart(kind,id,qty=1){
+    const normalized=normalizeKindAndId(kind,id);
+    if(!normalized.item){
+      if(typeof window.toast==='function')window.toast('تعذر العثور على المادة في المتجر');
+      return false;
     }
-    return `<section class="alin-fulfillment"><h4>طريقة الاستلام والدفع</h4><div class="alin-delivery-options"><label class="selected"><input type="radio" name="fulfillment" value="pickup" checked onchange="toggleDeliveryFields();alinSyncDeliveryCards()"><span><b>استلام من المكتبة</b><small>الدفع عند الاستلام</small></span></label><label><input type="radio" name="fulfillment" value="home_delivery" onchange="toggleDeliveryFields();alinSyncDeliveryCards()"><span><b>توصيل للبيت</b><small>الدفع للمندوب</small></span></label></div><div id="pickupFields" class="alin-pickup-fields"><select id="libSelect" onchange="alinShowLibraryStatus()"><option value="">اختر مكتبة الاستلام</option>${compactLibraryOptions()}</select><div id="libInfo"></div></div><div id="deliveryFields" class="alin-delivery-fields hidden"><div class="form-grid"><input id="deliveryArea" placeholder="المنطقة"><input id="deliveryAddress" placeholder="العنوان الكامل"><input id="deliveryLandmark" placeholder="أقرب نقطة دالة"><select id="courierSelect"><option value="">تحديد المندوب من الإدارة</option>${(()=>{try{return typeof activeCouriers==='function'?activeCouriers().map(c=>`<option value="${escf(c.id)}">${escf(c.name)}${c.area?` — ${escf(c.area)}`:''}</option>`).join(''):''}catch(e){return ''}})()}</select></div></div></section>`;
+    const amount=Math.max(1,Math.min(100,Math.floor(num(qty)||1)));
+    if(normalized.kind==='product'&&num(normalized.item.stock)<=0){alert('المنتج نافد');return false}
+    const current=rows().find(line=>line.kind===normalized.kind&&same(line.id,normalized.id));
+    const nextQty=(current?.qty||0)+amount;
+    if(normalized.kind==='product'&&num(normalized.item.stock)<nextQty){alert('الكمية المطلوبة غير متوفرة');return false}
+    if(current){current.qty=nextQty;current.title=normalized.item.title||normalized.item.name||current.title;current.price=num(normalized.item.price)}
+    else rows().push({kind:normalized.kind,id:normalized.id,title:normalized.item.title||normalized.item.name||'مادة',price:num(normalized.item.price),qty:amount});
+    cartSave();
+    if(typeof window.toast==='function')window.toast('تمت الإضافة إلى السلة');
+    return true;
   }
-  window.alinSyncDeliveryCards=function(){
+
+  function cartQty(index,delta){
+    const line=rows()[index];if(!line)return;
+    const next=Math.max(1,Math.min(100,num(line.qty)+num(delta)));
+    const source=line.kind==='booklet'?findBooklet(line.id):findProduct(line.id);
+    if(line.kind==='product'&&source&&num(source.stock)<next){alert('الكمية المطلوبة غير متوفرة');return}
+    line.qty=next;cartSave();openCart({kind:line.kind,id:line.id});
+  }
+
+  function cartRemove(index){
+    if(!rows()[index])return;
+    rows().splice(index,1);cartSave();openCart();
+  }
+
+  function fulfillmentHtml(){
+    if(hasProducts()){
+      return `<section class="alin-fulfillment"><h4>طريقة الاستلام والدفع</h4><div class="alin-delivery-options"><label class="selected"><input type="radio" name="fulfillment" value="home_delivery" checked><span><b>توصيل للبيت</b><small>القرطاسية والهدايا تُسلّم عن طريق المندوب</small></span></label></div><div id="deliveryFields" class="alin-delivery-fields"><div class="form-grid"><input id="deliveryArea" placeholder="المنطقة"><input id="deliveryAddress" placeholder="العنوان الكامل"><input id="deliveryLandmark" placeholder="أقرب نقطة دالة"><select id="courierSelect"><option value="">تحديد المندوب من الإدارة</option>${courierOptions()}</select></div></div></section>`;
+    }
+    return `<section class="alin-fulfillment"><h4>طريقة الاستلام والدفع</h4><div class="alin-delivery-options"><label class="selected"><input type="radio" name="fulfillment" value="pickup" checked onchange="toggleDeliveryFields()"><span><b>استلام من المكتبة</b><small>الدفع عند الاستلام</small></span></label><label><input type="radio" name="fulfillment" value="home_delivery" onchange="toggleDeliveryFields()"><span><b>توصيل للبيت</b><small>الدفع للمندوب</small></span></label></div><div id="pickupFields" class="alin-pickup-fields"><select id="libSelect" onchange="showLibInfo()"><option value="">اختر مكتبة الاستلام</option>${libraryOptions()}</select><div id="libInfo"></div></div><div id="deliveryFields" class="alin-delivery-fields hidden"><div class="form-grid"><input id="deliveryArea" placeholder="المنطقة"><input id="deliveryAddress" placeholder="العنوان الكامل"><input id="deliveryLandmark" placeholder="أقرب نقطة دالة"><select id="courierSelect"><option value="">تحديد المندوب من الإدارة</option>${courierOptions()}</select></div></div></section>`;
+  }
+
+  function showLibInfo(){
+    const select=$('libSelect'),box=$('libInfo');if(!select||!box)return;
+    const library=activeLibraries().find(item=>same(item.id,select.value));
+    if(!library){box.replaceChildren();return}
+    box.innerHTML=`<div class="alin-library-status"><div><b>${escText(library.name||'مكتبة')}</b><small>${escText([library.area,library.landmark].filter(Boolean).join(' — '))}</small></div><span class="${libraryOpen(library)?'is-open':'is-closed'}">${libraryOpen(library)?'مفتوح':'مغلق'}</span></div>`;
+  }
+
+  function toggleDeliveryFields(){
+    const fulfillment=document.querySelector('#checkoutBox input[name="fulfillment"]:checked')?.value||(hasProducts()?'home_delivery':'pickup');
+    const pickup=$('pickupFields'),delivery=$('deliveryFields');
+    if(pickup)pickup.classList.toggle('hidden',fulfillment!=='pickup');
+    if(delivery)delivery.classList.toggle('hidden',fulfillment!=='home_delivery');
     document.querySelectorAll('#checkoutBox .alin-delivery-options label').forEach(label=>label.classList.toggle('selected',!!label.querySelector('input:checked')));
-  };
-  window.alinShowLibraryStatus=function(){
-    const select=byId('libSelect'), box=byId('libInfo');
-    if(!select||!box) return;
-    const lib=activeLibraryRows().find(x=>String(x.id)===String(select.value));
-    if(!lib){box.innerHTML='';return;}
-    const open=libraryOpen(lib);
-    box.innerHTML=`<div class="alin-library-status"><div><b>${escf(lib.name||'مكتبة')}</b><small>${escf([lib.area,lib.landmark].filter(Boolean).join(' — '))}</small></div><span class="${open?'is-open':'is-closed'}">${open?'مفتوح':'مغلق'}</span></div>`;
-  };
-  function librarySection(){
-    return `<div class="form-grid"><input id="studentName" placeholder="اسم الطالب الكامل"><input id="studentPhone" placeholder="رقم الهاتف"></div>${compactFulfillmentHtml()}`;
-  }
-  function emptyCartHtml(){
-    return `<div class="alin-cart-main"><div class="alin-cart-empty"><div class="alin-empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 10.1a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L20.5 8H7"/><circle cx="10" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/></svg></div><h3>السلة فارغة حالياً</h3><p>أضف ملازمك أو قرطاسيتك المفضلة، وبعدها ارجع هنا لإتمام الطلب بسرعة.</p><button type="button" onclick="closeCheckout();document.getElementById('storeGrid')?.scrollIntoView({behavior:'smooth'})">تصفح المتجر</button></div></div><aside class="alin-cart-side"><h3>ملخص الطلب</h3><div class="alin-summary-card"><div class="alin-summary-rows"><div><span>عدد المواد</span><b>0</b></div><div><span>الإجمالي</span><b>0 د.ع</b></div></div><div class="alin-cart-note">عند إضافة أي مادة ستظهر هنا تفاصيل الطلب والكوبون وبيانات الاستلام.</div></div></aside>`;
-  }
-  function renderProfessionalCart(){
-    if(!window.checkoutBox || !window.checkoutModal) return;
-    const items = (typeof cart !== 'undefined' && Array.isArray(cart)) ? cart : [];
-    const total = cartTotal();
-    const count = items.reduce((a,x)=>a + Math.max(1,num(x.qty)),0);
-    const itemsHtml = items.map((line,i)=>{
-      const source = itemLookup(line), img = imageFor(source), qty = Math.max(1,num(line.qty)), lineTotal = num(line.price) * qty;
-      return `<article class="alin-cart-item"><div class="alin-cart-thumb" data-kind="${escf(line.kind)}">${img ? `<img src="${escf(img)}" alt="${escf(line.title)}">` : `${kindIcon(line.kind)}`}</div><div class="alin-cart-info"><h3 class="alin-cart-title">${escf(line.title)}</h3><div class="alin-cart-meta"><span class="alin-cart-chip">${kindLabel(line.kind)}</span><span class="alin-cart-chip">سعر القطعة: ${moneyf(line.price)} د.ع</span></div><div class="alin-cart-price">${moneyf(lineTotal)} د.ع</div></div><div class="alin-cart-controls"><div class="alin-qty-box"><button type="button" aria-label="تقليل الكمية" onclick="alinCartQty(${i},-1)">−</button><b>${qty}</b><button type="button" aria-label="زيادة الكمية" onclick="alinCartQty(${i},1)">+</button></div><button type="button" class="alin-remove-btn" onclick="alinCartRemove(${i})">حذف من السلة</button></div></article>`;
-    }).join('');
-    const html = `<div class="alin-cart-shell"><section class="alin-cart-main"><div class="alin-cart-head"><div><h2>سلة آلين</h2><p>راجع المواد والكميات قبل تأكيد الطلب.</p></div><span class="alin-cart-badge">${count}</span></div><div class="alin-cart-list">${itemsHtml}</div></section><aside class="alin-cart-side"><h3>ملخص الطلب</h3><div class="alin-summary-card"><div class="alin-summary-rows"><div><span>عدد المواد</span><b>${count}</b></div><div><span>المجموع الفرعي</span><b>${moneyf(total)} د.ع</b></div></div><div class="alin-summary-total"><div>الإجمالي النهائي</div><b>${moneyf(total)} د.ع</b></div><div class="coupon-box"><input id="couponInput" placeholder="أدخل كود الخصم"><button type="button" onclick="alinApplyCoupon()">تطبيق</button></div><div id="couponMsg"></div><div class="alin-cart-form"><h4>بيانات الطالب والاستلام</h4>${librarySection()}</div><button type="button" class="alin-cart-submit" onclick="${checkoutButtonName()}">تأكيد الطلب الآن</button></div></aside></div>`;
-    checkoutBox.innerHTML = items.length ? html : `<div class="alin-cart-shell">${emptyCartHtml()}</div>`;
-    checkoutModal.classList.remove('hidden');
-    const close = document.querySelector('#checkoutModal .x');
-    if(close){ close.textContent='إغلاق'; close.setAttribute('aria-label','إغلاق السلة'); }
-    setTimeout(()=>{ try{ alinSyncDeliveryCards(); alinShowLibraryStatus(); }catch(e){} },0);
-  }
-  window.alinCartQty = function(i,d){ if(typeof window.cartQty==='function'){ window.cartQty(i,d); } else { const items=(typeof cart !== 'undefined'&&Array.isArray(cart))?cart:[]; if(!items[i]) return; items[i].qty=Math.max(1,num(items[i].qty)+d); if(typeof cartSave==='function') cartSave(); updateCartCounters(); renderProfessionalCart(); } };
-  window.alinCartRemove = function(i){ if(typeof window.cartRemove==='function'){ window.cartRemove(i); } else { const items=(typeof cart !== 'undefined'&&Array.isArray(cart))?cart:[]; if(!items[i]) return; items.splice(i,1); if(typeof cartSave==='function') cartSave(); updateCartCounters(); renderProfessionalCart(); } };
-  window.alinApplyCoupon = function(){ if(typeof window.checkCoupon==='function') window.checkCoupon(); };
-
-  function updateCartCounters(){
-    const items=(typeof cart !== 'undefined'&&Array.isArray(cart))?cart:[];
-    const count=items.reduce((a,x)=>a+Math.max(1,num(x.qty)),0);
-    ['desktopCartCount','mobileCartCount','mobileBottomCartCount'].forEach(id=>{const el=byId(id);if(!el)return;el.textContent=String(count);el.hidden=!count;});
+    dispatch('alin:fulfillment-changed',{fulfillment});
   }
 
-  function install(){
-    installRealIcons();
-    if(typeof window.openCart === 'function') window.openCart = renderProfessionalCart;
-    if(typeof window.addToCart === 'function'){
-      const originalAdd=window.addToCart;
-      window.addToCart=function(){const r=originalAdd.apply(this,arguments);updateCartCounters();return r;};
+  function itemIcon(kind){return kind==='booklet'?'📘':'🛍️'}
+
+  function openCart(context={}){
+    normalizeCart();
+    const box=window.checkoutBox||$('checkoutBox'),modal=window.checkoutModal||$('checkoutModal');
+    if(!box||!modal)return;
+    window.checkoutItem={kind:'cart'};
+    const list=rows(),count=cartCount(),total=cartTotal();
+    if(!list.length){
+      box.innerHTML='<div class="alin-cart-shell"><div class="alin-cart-main"><div class="alin-cart-empty"><div class="alin-empty-icon">🛒</div><h3>السلة فارغة حالياً</h3><p>أضف ملازم أو قرطاسية أو هدايا ثم ارجع لإتمام الطلب.</p><button type="button" onclick="closeCheckout();document.getElementById(\'storeGrid\')?.scrollIntoView({behavior:\'smooth\'})">تصفح المتجر</button></div></div><aside class="alin-cart-side"><h3>ملخص الطلب</h3><div class="alin-summary-card"><div class="alin-summary-rows"><div><span>عدد المواد</span><b>0</b></div><div><span>الإجمالي</span><b>0 د.ع</b></div></div></div></aside></div>';
+    }else{
+      const itemsHtml=list.map((line,index)=>{
+        const source=line.kind==='booklet'?findBooklet(line.id):findProduct(line.id),image=imageFor(source),lineTotal=num(line.price)*num(line.qty);
+        return `<article class="alin-cart-item"><div class="alin-cart-thumb">${image?`<img src="${escText(image)}" alt="${escText(line.title)}">`:`<span>${itemIcon(line.kind)}</span>`}</div><div class="alin-cart-info"><h3 class="alin-cart-title">${escText(line.title)}</h3><div class="alin-cart-meta"><span class="alin-cart-chip">${line.kind==='booklet'?'ملزمة':'منتج'}</span><span class="alin-cart-chip">سعر القطعة: ${formatMoney(line.price)} د.ع</span></div><div class="alin-cart-price">${formatMoney(lineTotal)} د.ع</div></div><div class="alin-cart-controls"><div class="alin-qty-box"><button type="button" aria-label="تقليل الكمية" onclick="cartQty(${index},-1)">−</button><b>${line.qty}</b><button type="button" aria-label="زيادة الكمية" onclick="cartQty(${index},1)">+</button></div><button type="button" class="alin-remove-btn" onclick="cartRemove(${index})">حذف من السلة</button></div></article>`;
+      }).join('');
+      box.innerHTML=`<div class="alin-cart-shell"><section class="alin-cart-main"><div class="alin-cart-head"><div><h2>سلة آلين</h2><p>راجع المواد والكميات قبل تأكيد الطلب.</p></div><span class="alin-cart-badge">${count}</span></div><div class="alin-cart-list">${itemsHtml}</div></section><aside class="alin-cart-side"><h3>ملخص الطلب</h3><div class="alin-summary-card"><div class="alin-summary-rows"><div><span>عدد المواد</span><b>${count}</b></div><div><span>المجموع الفرعي</span><b>${formatMoney(total)} د.ع</b></div></div><div class="alin-summary-total"><div>الإجمالي النهائي</div><b>${formatMoney(total)} د.ع</b></div><div class="coupon-box"><input id="couponInput" placeholder="أدخل كود الخصم"><button type="button" onclick="checkCoupon()">تطبيق</button></div><div id="couponMsg"></div><div class="alin-cart-form"><h4>بيانات الطالب والاستلام</h4><div class="form-grid"><input id="studentName" placeholder="اسم الطالب الكامل"><input id="studentPhone" placeholder="رقم الهاتف"></div>${fulfillmentHtml()}</div><button type="button" class="alin-cart-submit" onclick="confirmCartCheckout()">تأكيد الطلب الآن</button></div></aside></div>`;
     }
-    updateCartCounters();
-    const oldClose = window.closeCheckout;
-    if(typeof oldClose === 'function') window.closeCheckout = function(){ const r = oldClose.apply(this,arguments); const close = document.querySelector('#checkoutModal .x'); if(close){ close.textContent='×'; close.setAttribute('aria-label','إغلاق'); } return r; };
+    modal.classList.remove('hidden');
+    const close=modal.querySelector('.x');if(close){close.textContent='إغلاق';close.setAttribute('aria-label','إغلاق السلة')}
+    setTimeout(()=>{toggleDeliveryFields();showLibInfo();dispatch('alin:cart-rendered',{kind:context.kind||'',id:context.id||'',count,total})},0);
   }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install); else install();
+
+  function openCheckout(kind,id){
+    const normalized=normalizeKindAndId(kind,id);
+    if(!normalized.item)return alert('المادة غير موجودة');
+    const pause=String(window.db?.settings?.order_pause_scope||'');
+    const itemScope=String(normalized.item.type||normalized.item.category||'');
+    if(pause&&(pause==='all'||pause===normalized.kind||pause===itemScope))return alert(window.db?.settings?.order_pause_reason||'الطلبات متوقفة مؤقتاً');
+    if(addToCart(normalized.kind,normalized.id))openCart({kind:normalized.kind,id:normalized.id});
+  }
+
+  function closeCheckout(){
+    const modal=window.checkoutModal||$('checkoutModal');if(modal)modal.classList.add('hidden');
+    window.checkoutItem=null;
+    const close=modal?.querySelector('.x');if(close){close.textContent='×';close.setAttribute('aria-label','إغلاق')}
+    dispatch('alin:cart-closed');
+  }
+
+  function updateTotal(){return cartTotal()}
+
+  Object.assign(window,{cartSave,renderCartBadge,addToCart,cartQty,cartRemove,openCart,openCheckout,closeCheckout,showLibInfo,toggleDeliveryFields,updateTotal,alinCartQty:cartQty,alinCartRemove:cartRemove,alinApplyCoupon:()=>window.checkCoupon?.()});
+
+  function install(){normalizeCart();cartSave()}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
-
-
-;

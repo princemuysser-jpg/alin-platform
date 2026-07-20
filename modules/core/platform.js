@@ -26,7 +26,7 @@ localStorage.removeItem('ALIN_رابط النظام');
 localStorage.removeItem('ALIN_SUPABASE_ANON_KEY');
 let sb = null;
 
-let db = {accounts:{teachers:[],libraries:[]},booklets:[],products:[],categories:[],banners:[],orders:[],permits:[],ledger:[],withdrawals:[],audit:[],settings:{storeType:'booklet'}};
+let db = {accounts:{teachers:[],libraries:[]},booklets:[],products:[],categories:[],banners:[],coupons:[],notifications:[],orders:[],permits:[],ledger:[],withdrawals:[],audit:[],settings:{storeType:'booklet'}};
 let current = null, pendingRole = '', checkoutItem = null;
 
 /* V115: live state bridge for modular role files */
@@ -77,11 +77,11 @@ async function ensureStorageReady(){
     const {error}=await sb.storage.from('alin-files').list('', {limit:1});
     if(error){
       const m=String(error.message||'').toLowerCase();
-      if(m.includes('bucket') || m.includes('not found')) throw new Error('مجلد التخزين alin-files غير موجود. نفّذ ملف RUN_ON_SUPABASE_v2_0_14_COMPLETE.sql مرة واحدة.');
-      if(m.includes('policy') || m.includes('permission') || m.includes('row-level')) throw new Error('صلاحيات التخزين ناقصة. نفّذ ملف RUN_ON_SUPABASE_v2_0_14_COMPLETE.sql مرة واحدة.');
+      if(m.includes('bucket') || m.includes('not found')) throw new Error('مجلد التخزين alin-files غير موجود. نفّذ ملف RUN_ON_SUPABASE_v2_0_15_COMPLETE.sql مرة واحدة.');
+      if(m.includes('policy') || m.includes('permission') || m.includes('row-level')) throw new Error('صلاحيات التخزين ناقصة. نفّذ ملف RUN_ON_SUPABASE_v2_0_15_COMPLETE.sql مرة واحدة.');
     }
   }catch(e){
-    if(String(e.message||'').includes('RUN_ON_SUPABASE_v2_0_14_COMPLETE.sql')) throw e;
+    if(String(e.message||'').includes('RUN_ON_SUPABASE_v2_0_15_COMPLETE.sql')) throw e;
   }
 }
 function safeFileName(name){
@@ -109,17 +109,17 @@ async function uploadFile(bucketPath, file, opts={}){
   const {data,error}=await sb.storage.from('alin-files').upload(path,cleanFile,{upsert:true, contentType, cacheControl:'3600'});
   if(error){
     const m=String(error.message||'').toLowerCase();
-    if(m.includes('bucket') || m.includes('not found')) throw new Error('مجلد التخزين alin-files غير موجود. نفّذ ملف RUN_ON_SUPABASE_v2_0_14_COMPLETE.sql مرة واحدة.');
-    if(m.includes('policy') || m.includes('permission') || m.includes('row-level')) throw new Error('صلاحيات الرفع ناقصة. نفّذ ملف RUN_ON_SUPABASE_v2_0_14_COMPLETE.sql مرة واحدة.');
+    if(m.includes('bucket') || m.includes('not found')) throw new Error('مجلد التخزين alin-files غير موجود. نفّذ ملف RUN_ON_SUPABASE_v2_0_15_COMPLETE.sql مرة واحدة.');
+    if(m.includes('policy') || m.includes('permission') || m.includes('row-level')) throw new Error('صلاحيات الرفع ناقصة. نفّذ ملف RUN_ON_SUPABASE_v2_0_15_COMPLETE.sql مرة واحدة.');
     if(m.includes('invalid key')) throw new Error('تعذر إنشاء اسم آمن للملف. تم إصلاح هذا الخلل في V51؛ حدّث ملفات الموقع وحاول الرفع من جديد.');
     throw new Error('فشل رفع الملف: '+(error.message||'خطأ غير معروف'));
   }
   const publicUrl=mediaUrl(data?.path||path);
   try{
     const ok=await checkPublicFile(publicUrl);
-    if(!ok) throw new Error('الملف رُفع لكن الرابط غير عام. نفّذ ملف RUN_ON_SUPABASE_v2_0_14_COMPLETE.sql.');
+    if(!ok) throw new Error('الملف رُفع لكن الرابط غير عام. نفّذ ملف RUN_ON_SUPABASE_v2_0_15_COMPLETE.sql.');
   }catch(e){
-    if(String(e.message||'').includes('RUN_ON_SUPABASE_v2_0_14_COMPLETE.sql')) throw e;
+    if(String(e.message||'').includes('RUN_ON_SUPABASE_v2_0_15_COMPLETE.sql')) throw e;
   }
   return data?.path||path;
 }
@@ -159,11 +159,11 @@ async function checkPublicFile(url){
 async function load(){
   if(!init()){ renderAll(); return; }
   try{
-    const [accounts,booklets,products,categories,banners,orders,permits,ledger,withdrawals,auditRows,settingsRows] = await Promise.all([
-      query('accounts'),query('booklets'),query('products'),query('categories'),query('banners'),query('orders'),query('permits'),query('ledger'),query('withdrawals'),query('audit'),query('settings')
+    const [accounts,booklets,products,categories,banners,coupons,orders,permits,ledger,withdrawals,auditRows,settingsRows] = await Promise.all([
+      query('accounts'),query('booklets'),query('products'),query('categories'),query('banners'),query('coupons').catch(error=>{console.warn('[ALIN coupons] optional load failed',error);return []}),query('orders'),query('permits'),query('ledger'),query('withdrawals'),query('audit'),query('settings')
     ]);
     db.accounts={teachers:accounts.filter(x=>x.role==='teacher'),libraries:accounts.filter(x=>x.role==='library')};
-    db.booklets=booklets; db.products=products; db.categories=categories; db.banners=banners; db.orders=orders.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')); db.permits=permits; db.ledger=ledger; db.withdrawals=withdrawals; db.audit=auditRows.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')); db.settings={storeType:'booklet'};
+    db.booklets=booklets; db.products=products; db.categories=categories; db.banners=banners; db.coupons=coupons; db.orders=orders.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')); db.permits=permits; db.ledger=ledger; db.withdrawals=withdrawals; db.audit=auditRows.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')); db.settings={storeType:'booklet'};
     settingsRows.forEach(x=>db.settings[x.key]=x.value);
     // Secure release: never create demo accounts or seed passwords automatically.
     renderAll();
@@ -200,29 +200,6 @@ function renderStore(){
   filterTeacher.innerHTML='<option value="">كل المدرسين</option>'+teachers.map(x=>`<option ${x===oldTeacher?'selected':''}>${x}</option>`).join('');
   const list=items.filter(x=>(!filterCategory.value||x.grade===filterCategory.value||x.subject===filterCategory.value)&&(!filterTeacher.value||x.teacher===filterTeacher.value)&&(`${x.title} ${x.teacher} ${x.subject}`).toLowerCase().includes(q));
   storeGrid.innerHTML=list.map(x=>`<article class="card"><div class="cover">${x.cover?`<img src="${mediaUrl(x.cover)}">`:(x.subject||'منتج')}</div><h3>${x.title}</h3>${x.teacher?`<p>${x.teacher}</p>`:''}<p>${x.grade||x.subject||''}</p>${x.stock!==null?`<p>المخزون: ${x.stock}</p>`:''}<div class="price">${money(x.price)} د.ع</div><button onclick="openCheckout('${x.kind}','${x.id}')">إتمام الشراء</button></article>`).join('')||'لا توجد مواد';
-}
-function openCheckout(kind,itemId){
-  checkoutItem={kind,itemId};
-  const item=kind==='booklet'?db.booklets.find(x=>x.id===itemId):db.products.find(x=>x.id===itemId);
-  if(!item)return;
-  const title=item.title||item.name, price=item.price||0;
-  checkoutBox.innerHTML=`<h2>إتمام الشراء</h2><div class="row"><b>${title}</b><span>${money(price)} د.ع</span></div><div class="form-grid"><input id="studentName" placeholder="اسم الطالب"><input id="studentPhone" placeholder="رقم الطالب"><input id="qty" type="number" min="1" value="1" oninput="updateTotal()" placeholder="عدد النسخ"><select id="libSelect" onchange="showLibInfo()"><option value="">اختر المكتبة</option>${db.accounts.libraries.filter(x=>x.status==='active').map(x=>`<option value="${x.id}">${x.name} — ${x.area||''} — ${x.landmark||''}</option>`).join('')}</select><div id="libInfo" class="checkout-total"></div><div class="checkout-total">المجموع: <b id="totalBox">${money(price)} د.ع</b></div></div><h3>الدفع</h3><p>حالياً إنشاء الطلب ثم تأكيد دفع تطويري من الإدارة.</p><button onclick="confirmCheckout()">إنشاء الطلب</button><div id="payMsg"></div>`;
-  checkoutModal.classList.remove('hidden');
-}
-function closeCheckout(){ checkoutModal.classList.add('hidden'); checkoutItem=null; }
-function updateTotal(){ if(!checkoutItem)return; const item=checkoutItem.kind==='booklet'?db.booklets.find(x=>x.id===checkoutItem.itemId):db.products.find(x=>x.id===checkoutItem.itemId); totalBox.textContent=money((+qty.value||1)*(item?.price||0))+' د.ع'; }
-function showLibInfo(){ const lib=db.accounts.libraries.find(x=>x.id===libSelect.value); libInfo.innerHTML=lib?`<b>${lib.name}</b><br>المنطقة: ${lib.area||'-'}<br>أقرب نقطة: ${lib.landmark||'-'}`:''; }
-async function confirmCheckout(){
-  try{
-    if(!checkoutItem)return;
-    const item=checkoutItem.kind==='booklet'?db.booklets.find(x=>x.id===checkoutItem.itemId):db.products.find(x=>x.id===checkoutItem.itemId);
-    if(!studentName.value.trim()||!studentPhone.value.trim()||!libSelect.value) throw new Error('أكمل بيانات الطلب');
-    const q=+qty.value||1, total=(item.price||0)*q, oid=uid('O');
-    await insert('orders',{id:oid,kind:checkoutItem.kind,item_id:item.id,title:item.title||item.name,student_name:studentName.value.trim(),student_phone:studentPhone.value.trim(),library_id:libSelect.value,qty:q,unit_price:item.price,total,status:'pending',payment_status:'payment_pending'});
-    await audit('order','إنشاء طلب '+(item.title||item.name));
-    payMsg.innerHTML=`<div class="checkout-total"><b>تم إنشاء الطلب</b><br>رقم الطلب: ${oid}</div>`;
-    await load();
-  }catch(e){ payMsg.textContent=e.message; }
 }
 
 function renderTeacher(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['renderTeacher'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] renderTeacher is not loaded yet');}
@@ -347,32 +324,17 @@ async function orderStatus(id,status){ await update('orders',{status},{id}); awa
 const oldOpenPageV18 = openPage;
 openPage = function(page){ oldOpenPageV18(page); if(page==='admin')setTimeout(()=>adminTab(activeAdminTab),0); }
 
-/* ================= ALIN V19.2 CONNECTION FIX ================= */
-/* ================= ALIN V19 ================= */
-let cart = JSON.parse(localStorage.getItem('ALIN_CART')||'[]');
-let v19Coupons=[], v19Notifications=[];
+/* ================= ALIN V19 NOTIFICATIONS ================= */
+let v19Notifications=[];
 const v19OldLoad=load;
-load=async function(){ await v19OldLoad(); if(sb){ try{ [v19Coupons,v19Notifications]=await Promise.all([query('coupons'),query('notifications')]); }catch(e){console.warn('V19 migration pending',e)} } applyBrand(); renderCartBadge(); renderAll(); };
+load=async function(){ await v19OldLoad(); if(sb){try{v19Notifications=await query('notifications');db.notifications=v19Notifications}catch(error){console.warn('[ALIN notifications] optional load failed',error);v19Notifications=[];db.notifications=[]}} applyBrand(); renderCartBadge(); renderAll(); };
 function applyBrand(){ const n=db.settings.platform_name||'منصة آلين'; document.title=n; document.querySelectorAll('.brand b').forEach(x=>x.textContent=n.replace('منصة ','')); const hero=document.querySelector('.hero'); if(hero)hero.innerHTML=`<h2>${esc(db.settings.hero_title||n)}</h2><p>${esc(db.settings.hero_text||'')}</p>`; }
-function cartSave(){localStorage.setItem('ALIN_CART',JSON.stringify(cart));renderCartBadge()}
-function renderCartBadge(){ const n=cart.reduce((a,x)=>a+x.qty,0); if(window.cartCount)cartCount.textContent=n; if(window.cartSummary)cartSummary.textContent=n?`${n} مادة في السلة`:''; }
-function addToCart(kind,id){ const item=kind==='booklet'?db.booklets.find(x=>x.id===id):db.products.find(x=>x.id===id); if(!item)return; if(kind!=='booklet' && +item.stock<=0)return alert('المنتج نافد'); const old=cart.find(x=>x.kind===kind&&x.id===id); if(old)old.qty++; else cart.push({kind,id,title:item.title||item.name,price:+item.price||0,qty:1}); cartSave(); toast('تمت الإضافة إلى السلة'); }
-function cartQty(i,d){cart[i].qty=Math.max(1,cart[i].qty+d);cartSave();openCart()}
-function cartRemove(i){cart.splice(i,1);cartSave();openCart()}
-function openCart(){ checkoutItem={kind:'cart'}; const sub=cart.reduce((a,x)=>a+x.price*x.qty,0); checkoutBox.innerHTML=`<h2>سلة آلين</h2><div class="cart-list">${cart.map((x,i)=>`<div class="row"><div><b>${esc(x.title)}</b><small>${money(x.price)} د.ع</small></div><div class="row-actions"><button onclick="cartQty(${i},-1)">−</button><b>${x.qty}</b><button onclick="cartQty(${i},1)">+</button><button class="danger" onclick="cartRemove(${i})">حذف</button></div></div>`).join('')||emptyState('السلة فارغة')}</div>${cart.length?`<div class="checkout-total">المجموع: <b>${money(sub)} د.ع</b></div><div class="coupon-box"><input id="couponInput" placeholder="كود الخصم"><button onclick="checkCoupon()">تطبيق</button></div><div id="couponMsg"></div><div class="form-grid"><input id="studentName" placeholder="اسم الطالب"><input id="studentPhone" placeholder="رقم الهاتف"><select id="libSelect" onchange="showLibInfo()"><option value="">اختر مكتبة الاستلام</option>${db.accounts.libraries.filter(x=>x.status==='active').map(x=>`<option value="${x.id}">${esc(x.name)} — ${esc(x.area||'')}</option>`).join('')}</select><div id="libInfo"></div></div><button onclick="confirmCartCheckout()">تأكيد الطلب</button>`:''}`; checkoutModal.classList.remove('hidden'); }
-function validCoupon(code){ const c=v19Coupons.find(x=>x.code.toUpperCase()===code.toUpperCase()&&x.status==='active'); if(!c)return null; if(c.expires_at&&new Date(c.expires_at)<new Date())return null; if(+c.max_uses>0&&+c.used_count>=+c.max_uses)return null; return c; }
-function checkCoupon(){ const c=validCoupon(couponInput.value.trim()); couponMsg.textContent=c?`تم تطبيق كوبون ${c.code}`:'الكوبون غير صالح أو منتهي'; }
-async function confirmCartCheckout(){if(window.ALINAuth?.secureCheckout)return window.ALINAuth.secureCheckout();alert('خدمة إنشاء الطلب غير جاهزة. أعد تحميل الصفحة وحاول مجدداً')}
 
 const v19Store=renderStore;
 renderStore=function(){ v19Store(); if(!window.storeGrid)return; const items=storeItems(),q=(searchInput.value||'').toLowerCase(); const list=items.filter(x=>(!filterCategory.value||x.grade===filterCategory.value||x.subject===filterCategory.value)&&(!filterTeacher.value||x.teacher===filterTeacher.value)&&(`${x.title} ${x.teacher} ${x.subject}`).toLowerCase().includes(q)); storeGrid.innerHTML=list.map(x=>`<article class="card"><div class="cover">${x.cover?`<img src="${mediaUrl(x.cover)}">`:(x.subject||'منتج')}</div><h3>${esc(x.title)}</h3>${x.teacher?`<p>${esc(x.teacher)}</p>`:''}<p>${esc(x.grade||x.subject||'')}</p>${x.stock!==null?`<p class="${x.stock<=5?'low-stock':''}">${x.stock<=0?'نافد':`المخزون: ${x.stock}`}</p>`:''}<div class="price">${money(x.price)} د.ع</div><div class="product-actions"><button onclick="addToCart('${x.kind}','${x.id}')" ${x.stock===0?'disabled':''}>أضف للسلة</button><button class="secondary" onclick="openCheckout('${x.kind}','${x.id}')">شراء مباشر</button></div></article>`).join('')||emptyState('لا توجد مواد'); renderCartBadge(); };
 
 const v19AdminTab=adminTab;
-adminTab=function(t){ window.activeAdminTab=t; if(t==='coupons')return renderCouponsAdmin(); if(t==='notifications')return renderNotificationsAdmin(); return v19AdminTab(t); };
-function renderCouponsAdmin(){adminContent.innerHTML=`<h2>الكوبونات</h2><div class="form-grid"><input id="cpCode" placeholder="الكود"><select id="cpType"><option value="percent">نسبة %</option><option value="fixed">مبلغ ثابت</option></select><input id="cpValue" type="number" placeholder="قيمة الخصم"><input id="cpMax" type="number" placeholder="عدد الاستخدامات، 0 بلا حد"><input id="cpExpiry" type="date"><button onclick="addCoupon()">إضافة كوبون</button></div>${v19Coupons.map(c=>`<div class="row"><div><b>${esc(c.code)}</b><small>${c.discount_type==='percent'?c.discount_value+'%':money(c.discount_value)+' د.ع'} — استخدام ${c.used_count||0}/${c.max_uses||'∞'}</small></div><div class="row-actions"><button onclick="toggleCoupon('${c.id}','${c.status==='active'?'disabled':'active'}')">${c.status==='active'?'إيقاف':'تشغيل'}</button><button class="danger" onclick="deleteCoupon('${c.id}')">حذف</button></div></div>`).join('')||emptyState('لا توجد كوبونات')}`}
-async function addCoupon(){try{if(!cpCode.value.trim()||+cpValue.value<=0)throw Error('أكمل بيانات الكوبون');await insert('coupons',{id:uid('CP'),code:cpCode.value.trim().toUpperCase(),discount_type:cpType.value,discount_value:+cpValue.value,max_uses:+cpMax.value||0,expires_at:cpExpiry.value?new Date(cpExpiry.value).toISOString():null,status:'active'});await load();renderCouponsAdmin();toast('تمت إضافة الكوبون')}catch(e){alert(e.message)}}
-async function toggleCoupon(id,status){await update('coupons',{status},{id});await load();renderCouponsAdmin()}
-async function deleteCoupon(id){if(!confirm('حذف الكوبون؟'))return;await removeRow('coupons',{id});await load();renderCouponsAdmin()}
+adminTab=function(t){ window.activeAdminTab=t; if(t==='notifications')return renderNotificationsAdmin(); return v19AdminTab(t); };
 function renderNotificationsAdmin(){
   const rows=(typeof alinV78NotificationRows==='function'?alinV78NotificationRows():(v19Notifications||[]));
   adminContent.innerHTML=`<h2>الإشعارات</h2><div class="form-grid"><select id="ntAudience"><option value="all">الجميع</option><option value="teacher">المدرسين</option><option value="library">المكتبات</option><option value="student">المتجر / الطلبة</option></select><input id="ntTitle" placeholder="العنوان"><input id="ntText" placeholder="نص الإشعار"><button onclick="sendNotification()">إرسال</button></div>${rows.map(n=>`<div class="row"><div><b>${esc(n.title||'')}</b><small>${esc(n.message||n.text||'')} — ${esc(n.target_role||n.audience||'all')}</small></div><button class="danger" onclick="deleteNotification('${n.id}')">حذف</button></div>`).join('')||emptyState('لا توجد إشعارات')}`;
@@ -425,39 +387,9 @@ function librariesVisibleList(){
   return `<div class="lib-list">${activeLibraries().map(x=>`<div class="lib-choice ${libIsOpen(x)?'open':'closed'}"><b>${esc(x.name)}</b>${libIsOpen(x)?'<span class="open-badge">مفتوح</span>':'<span class="closed-badge">مغلق</span>'}<small>${esc(x.area||'')} — ${esc(x.landmark||'')}</small>${!libIsOpen(x)?`<small>${esc(x.open_note||'لا يستقبل طلبات حالياً')}</small>`:''}</div>`).join('')}</div>`;
 }
 
-function showLibInfo(){
-  const lib=db.accounts.libraries.find(x=>x.id===libSelect.value);
-  if(!lib){ libInfo.innerHTML=''; return; }
-  libInfo.innerHTML=`<div class="notice"><b>${esc(lib.name)}</b> ${libIsOpen(lib)?'<span class="open-badge">مفتوح</span>':'<span class="closed-badge">مغلق</span>'}<div>${esc(lib.area||'')} — ${esc(lib.landmark||'')}</div><small>${esc(libStatusText(lib))}</small></div>`;
-}
 
-openCart=function(){
-  checkoutItem={kind:'cart'}; const sub=cart.reduce((a,x)=>a+x.price*x.qty,0);
-  checkoutBox.innerHTML=`<h2>سلة آلين</h2><div class="cart-list">${cart.map((x,i)=>`<div class="row"><div><b>${esc(x.title)}</b><small>${money(x.price)} د.ع</small></div><div class="row-actions"><button onclick="cartQty(${i},-1)">−</button><b>${x.qty}</b><button onclick="cartQty(${i},1)">+</button><button class="danger" onclick="cartRemove(${i})">حذف</button></div></div>`).join('')||emptyState('السلة فارغة')}</div>${cart.length?`<div class="checkout-total">المجموع: <b>${money(sub)} د.ع</b></div><div class="coupon-box"><input id="couponInput" placeholder="كود الخصم"><button onclick="checkCoupon()">تطبيق</button></div><div id="couponMsg"></div><h3>مكتبات الاستلام</h3>${librariesVisibleList()}<div class="form-grid"><input id="studentName" placeholder="اسم الطالب"><input id="studentPhone" placeholder="رقم الهاتف"><select id="libSelect" onchange="showLibInfo()"><option value="">اختر مكتبة الاستلام</option>${libraryOptionsHtml()}</select><div id="libInfo"></div></div><button onclick="confirmCartCheckout()">تأكيد الطلب</button>`:''}`;
-  checkoutModal.classList.remove('hidden');
-};
 
-openCheckout=function(kind,itemId){
-  checkoutItem={kind,itemId};
-  const item=kind==='booklet'?db.booklets.find(x=>x.id===itemId):db.products.find(x=>x.id===itemId);
-  if(!item)return;
-  const title=item.title||item.name, price=item.price||0;
-  checkoutBox.innerHTML=`<h2>إتمام الشراء</h2><div class="row"><b>${esc(title)}</b><span>${money(price)} د.ع</span></div><h3>مكتبات الاستلام</h3>${librariesVisibleList()}<div class="form-grid"><input id="studentName" placeholder="اسم الطالب"><input id="studentPhone" placeholder="رقم الطالب"><input id="qty" type="number" min="1" value="1" oninput="updateTotal()" placeholder="عدد النسخ"><select id="libSelect" onchange="showLibInfo()"><option value="">اختر المكتبة</option>${libraryOptionsHtml()}</select><div id="libInfo" class="checkout-total"></div><div class="checkout-total">المجموع: <b id="totalBox">${money(price)} د.ع</b></div></div><h3>الدفع</h3><p>حالياً إنشاء الطلب ثم تأكيد دفع تطويري من الإدارة.</p><button onclick="confirmCheckout()">إنشاء الطلب</button><div id="payMsg"></div>`;
-  checkoutModal.classList.remove('hidden');
-};
 
-const v21OldConfirmCheckout = confirmCheckout;
-confirmCheckout = async function(){
-  const lib=db.accounts.libraries.find(x=>x.id===libSelect?.value);
-  if(lib && !libIsOpen(lib)) return alert('هذه المكتبة مغلقة حالياً. اختر مكتبة مفتوحة.');
-  return v21OldConfirmCheckout();
-};
-const v21OldConfirmCartCheckout = confirmCartCheckout;
-confirmCartCheckout = async function(){
-  const lib=db.accounts.libraries.find(x=>x.id===libSelect?.value);
-  if(lib && !libIsOpen(lib)) return alert('هذه المكتبة مغلقة حالياً. اختر مكتبة مفتوحة.');
-  return v21OldConfirmCartCheckout();
-};
 
 function renderLibrary(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['renderLibrary'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] renderLibrary is not loaded yet');}
 
@@ -741,26 +673,9 @@ function manualPayInfoHtml(){
   const holder=esc(db.settings.manual_card_holder||'منصة آلين');
   return `<div class="checkout-total"><b>تحويل يدوي بالماستر كارد</b><br>حوّل المبلغ إلى البطاقة: <b>${card}</b><br>اسم المستلم: ${holder}<br><small>بعد التحويل ارفع صورة الوصل. الطلب يبقى بانتظار تأكيد الإدارة.</small></div>`;
 }
-function paymentChoiceHtml(){return `<h3>طريقة الدفع</h3><label><input type="radio" name="payMethod" value="cash" checked onchange="toggleManualPay()"> الدفع عند الاستلام</label> <label><input type="radio" name="payMethod" value="manual_mastercard" onchange="toggleManualPay()"> تحويل ماستر كارد يدوي</label><div id="manualPayBox" class="hidden">${manualPayInfoHtml()}<input id="paymentReceipt" type="file" accept="image/*,.pdf"><small>ارفع صورة أو PDF لوصل التحويل</small></div>`}
 function toggleManualPay(){const v=document.querySelector('input[name="payMethod"]:checked')?.value; document.getElementById('manualPayBox')?.classList.toggle('hidden',v!=='manual_mastercard');}
 
-openCheckout = function(kind,itemId){
-  checkoutItem={kind,itemId}; const item=kind==='booklet'?db.booklets.find(x=>x.id===itemId):db.products.find(x=>x.id===itemId); const title=item?.title||item?.name||'',price=item?.price||0;
-  checkoutBox.innerHTML=`<h2>إتمام الشراء</h2><div class="row"><b>${esc(title)}</b><span>${money(price)} د.ع</span></div><h3>مكتبات الاستلام</h3>${librariesVisibleList()}<div class="form-grid"><input id="studentName" placeholder="اسم الطالب"><input id="studentPhone" placeholder="رقم الطالب"><input id="qty" type="number" min="1" value="1" oninput="updateTotal()" placeholder="عدد النسخ"><select id="libSelect" onchange="showLibInfo()"><option value="">اختر المكتبة</option>${libraryOptionsHtml()}</select><div id="libInfo" class="checkout-total"></div><div class="checkout-total">المجموع: <b id="totalBox">${money(price)} د.ع</b></div></div>${paymentChoiceHtml()}<button onclick="confirmCheckoutV26()">إنشاء الطلب</button><div id="payMsg"></div>`; checkoutModal.classList.remove('hidden');
-}
-async function confirmCheckoutV26(){try{
-  if(!checkoutItem)throw Error('لا توجد مادة'); const item=checkoutItem.kind==='booklet'?db.booklets.find(x=>x.id===checkoutItem.itemId):db.products.find(x=>x.id===checkoutItem.itemId); const q=Math.max(1,+qty.value||1); if(!studentName.value.trim()||!studentPhone.value.trim()||!libSelect.value)throw Error('أكمل بيانات الطلب');
-  const method=document.querySelector('input[name="payMethod"]:checked')?.value||'cash'; let receipt=null; if(method==='manual_mastercard'){const f=paymentReceipt?.files?.[0]; if(!f)throw Error('ارفع صورة وصل التحويل'); receipt=await uploadFile('payment-receipts',f);}
-  const oid=uid('O'),num='AL-'+Date.now().toString().slice(-8)+'-'+Math.floor(Math.random()*90+10); await insert('orders',{id:oid,order_number:num,kind:checkoutItem.kind,item_id:item.id,title:item.title||item.name,student_name:studentName.value.trim(),student_phone:studentPhone.value.trim(),library_id:libSelect.value,qty:q,unit_price:item.price,total:q*item.price,status:'new',payment_status:method==='cash'?'cash_on_delivery':'manual_review',payment_method:method,payment_receipt_path:receipt,status_history:[{status:'new',at:new Date().toISOString()}]});
-  await audit('order','إنشاء طلب '+num+' بطريقة '+method); await load(); payMsg.innerHTML=`<div class="checkout-total"><b>تم إنشاء الطلب</b><br>رقم الطلب: ${esc(num)}<br>${method==='manual_mastercard'?'وصل التحويل بانتظار تأكيد الإدارة.':'الدفع عند الاستلام من المكتبة.'}</div>`;
-}catch(e){alert(e.message)}}
 
-openCart = function(){ checkoutItem={kind:'cart'}; const sub=cart.reduce((a,x)=>a+x.price*x.qty,0); checkoutBox.innerHTML=`<h2>سلة آلين</h2><div class="cart-list">${cart.map((x,i)=>`<div class="row"><div><b>${esc(x.title)}</b><small>${money(x.price)} د.ع</small></div><div class="row-actions"><button onclick="cartQty(${i},-1)">−</button><b>${x.qty}</b><button onclick="cartQty(${i},1)">+</button><button class="danger" onclick="cartRemove(${i})">حذف</button></div></div>`).join('')||emptyState('السلة فارغة')}</div>${cart.length?`<div class="checkout-total">المجموع: <b>${money(sub)} د.ع</b></div><div class="coupon-box"><input id="couponInput" placeholder="كود الخصم"><button onclick="checkCoupon()">تطبيق</button></div><div id="couponMsg"></div><h3>مكتبات الاستلام</h3>${librariesVisibleList()}<div class="form-grid"><input id="studentName" placeholder="اسم الطالب"><input id="studentPhone" placeholder="رقم الهاتف"><select id="libSelect" onchange="showLibInfo()"><option value="">اختر مكتبة الاستلام</option>${libraryOptionsHtml()}</select><div id="libInfo"></div></div>${paymentChoiceHtml()}<button onclick="confirmCartCheckoutV26()">تأكيد الطلب</button>`:''}`; checkoutModal.classList.remove('hidden'); }
-async function confirmCartCheckoutV26(){try{
-  if(!cart.length)throw Error('السلة فارغة'); if(!studentName.value.trim()||!studentPhone.value.trim()||!libSelect.value)throw Error('أكمل بيانات الطلب'); const method=document.querySelector('input[name="payMethod"]:checked')?.value||'cash'; let receipt=null; if(method==='manual_mastercard'){const f=paymentReceipt?.files?.[0]; if(!f)throw Error('ارفع صورة وصل التحويل'); receipt=await uploadFile('payment-receipts',f);} const coupon=validCoupon(couponInput?.value?.trim()||'');
-  for(const x of cart){let raw=x.price*x.qty,discount=0;if(coupon)discount=coupon.discount_type==='fixed'?Math.min(raw,+coupon.discount_value):Math.round(raw*(+coupon.discount_value/100));const oid=uid('O'),num='AL-'+Date.now().toString().slice(-8)+'-'+Math.floor(Math.random()*90+10);await insert('orders',{id:oid,order_number:num,kind:x.kind,item_id:x.id,title:x.title,student_name:studentName.value.trim(),student_phone:studentPhone.value.trim(),library_id:libSelect.value,qty:x.qty,unit_price:x.price,total:raw-discount,discount,coupon_code:coupon?.code||null,status:'new',payment_status:method==='cash'?'cash_on_delivery':'manual_review',payment_method:method,payment_receipt_path:receipt,status_history:[{status:'new',at:new Date().toISOString()}]});}
-  if(coupon)await update('coupons',{used_count:(+coupon.used_count||0)+1},{id:coupon.id}); await audit('order','إنشاء طلب سلة بطريقة '+method); cart=[];cartSave();await load();checkoutBox.innerHTML=`<h2>تم استلام طلبك</h2><p>${method==='manual_mastercard'?'تم رفع الوصل والطلبات بانتظار تأكيد الإدارة.':'الدفع عند الاستلام من المكتبة.'}</p><button onclick="closeCheckout()">إغلاق</button>`;
-}catch(e){alert(e.message)}}
 function viewPaymentReceipt(id){const o=db.orders.find(x=>x.id===id);if(!o?.payment_receipt_path)return alert('لا يوجد وصل');const url=mediaUrl(o.payment_receipt_path);checkoutBox.innerHTML=`<h2>وصل التحويل</h2><div class="pdf-viewer"><iframe src="${url}"></iframe></div><div class="row-actions"><button onclick="approveManualPayment('${id}')">تأكيد الدفع</button><button class="danger" onclick="rejectManualPayment('${id}')">رفض الوصل</button><button class="secondary" onclick="closeCheckout()">إغلاق</button></div>`;checkoutModal.classList.remove('hidden');}
 async function approveManualPayment(id){await update('orders',{payment_status:'paid',status:'paid',payment_ref:'MAN-'+Date.now()},{id});await audit('payment','تأكيد تحويل يدوي للطلب '+id);await load();closeCheckout();renderOrdersAdmin();}
 async function rejectManualPayment(id){await update('orders',{payment_status:'receipt_rejected',status:'new'},{id});await audit('payment','رفض وصل تحويل للطلب '+id);await load();closeCheckout();renderOrdersAdmin();}
@@ -945,58 +860,6 @@ load = async function(){
 };
 function deliveryFee(){ return +(db?.settings?.delivery_fee||0); }
 function activeCouriers(){const fn=window.AlinCourierModules&&window.AlinCourierModules['activeCouriers'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] activeCouriers is not loaded yet');}
-function fulfillmentHtml(){
-  return `<h3>طريقة الاستلام والدفع</h3><div class="delivery-choice"><label><input type="radio" name="fulfillment" value="pickup" checked onchange="toggleDeliveryFields()"> استلام من المكتبة والدفع عند الاستلام</label><label><input type="radio" name="fulfillment" value="home_delivery" onchange="toggleDeliveryFields()"> توصيل للبيت والدفع للمندوب</label></div><div id="pickupFields"><h3>مكتبات الاستلام</h3>${librariesVisibleList()}<select id="libSelect" onchange="showLibInfo()"><option value="">اختر مكتبة الاستلام</option>${libraryOptionsHtml()}</select><div id="libInfo"></div></div><div id="deliveryFields" class="hidden"><div class="form-grid"><input id="deliveryArea" placeholder="المنطقة"><input id="deliveryAddress" placeholder="العنوان الكامل للبيت"><input id="deliveryLandmark" placeholder="أقرب نقطة دالة"><select id="courierSelect"><option value="">اختيار مندوب لاحقًا من الإدارة</option>${activeCouriers().map(c=>`<option value="${c.id}">${esc(c.name)} — ${esc(c.area||'')}</option>`).join('')}</select></div><div class="checkout-total">أجور التوصيل: <b>${money(deliveryFee())} د.ع</b></div></div><p class="muted">تم إلغاء الماستر كارد. الدفع يكون نقدًا عند الاستلام من المكتبة أو عند التسليم للمندوب.</p>`;
-}
-function toggleDeliveryFields(){
-  const v=document.querySelector('input[name="fulfillment"]:checked')?.value||'pickup';
-  const p=document.getElementById('pickupFields'), d=document.getElementById('deliveryFields');
-  if(p)p.classList.toggle('hidden',v!=='pickup');
-  if(d)d.classList.toggle('hidden',v!=='home_delivery');
-}
-function orderBaseExtra(){
-  const f=document.querySelector('input[name="fulfillment"]:checked')?.value||'pickup';
-  if(f==='pickup'){
-    if(!libSelect?.value) throw Error('اختر مكتبة الاستلام');
-    return {fulfillment_type:'pickup',library_id:libSelect.value,courier_id:null,delivery_area:null,delivery_address:null,delivery_landmark:null,delivery_fee:0,payment_method:'cash_at_library',payment_status:'cod_pending'};
-  }
-  if(!deliveryArea.value.trim()||!deliveryAddress.value.trim()||!deliveryLandmark.value.trim()) throw Error('أكمل بيانات التوصيل للبيت');
-  return {fulfillment_type:'home_delivery',library_id:null,courier_id:courierSelect?.value||null,delivery_area:deliveryArea.value.trim(),delivery_address:deliveryAddress.value.trim(),delivery_landmark:deliveryLandmark.value.trim(),delivery_fee:deliveryFee(),payment_method:'cash_to_courier',payment_status:'cod_pending'};
-}
-openCart = function(){
-  checkoutItem={kind:'cart'}; const sub=cart.reduce((a,x)=>a+x.price*x.qty,0);
-  checkoutBox.innerHTML=`<h2>سلة آلين</h2><div class="cart-list">${cart.map((x,i)=>`<div class="row"><div><b>${esc(x.title)}</b><small>${money(x.price)} د.ع</small></div><div class="row-actions"><button onclick="cartQty(${i},-1)">−</button><b>${x.qty}</b><button onclick="cartQty(${i},1)">+</button><button class="danger" onclick="cartRemove(${i})">حذف</button></div></div>`).join('')||emptyState('السلة فارغة')}</div>${cart.length?`<div class="checkout-total">مجموع المواد: <b>${money(sub)} د.ع</b></div><div class="coupon-box"><input id="couponInput" placeholder="كود الخصم"><button onclick="checkCoupon()">تطبيق</button></div><div id="couponMsg"></div><div class="form-grid"><input id="studentName" placeholder="اسم الطالب"><input id="studentPhone" placeholder="رقم الهاتف"></div>${fulfillmentHtml()}<button onclick="confirmCartCheckoutV29()">تأكيد الطلب</button>`:''}`;
-  checkoutModal.classList.remove('hidden');
-};
-async function confirmCartCheckoutV29(){try{
-  if(!cart.length)throw Error('السلة فارغة');
-  if(!studentName.value.trim()||!studentPhone.value.trim())throw Error('أكمل اسم الطالب ورقم الهاتف');
-  const extra=orderBaseExtra();
-  const coupon=validCoupon(couponInput?.value?.trim()||'');
-  for(const x of cart){
-    const product=x.kind==='booklet'?null:db.products.find(p=>p.id===x.id);
-    if(product&&+product.stock<x.qty)throw Error('الكمية غير متوفرة: '+x.title);
-    let raw=x.price*x.qty,discount=0; if(coupon)discount=coupon.discount_type==='fixed'?Math.min(raw,+coupon.discount_value):Math.round(raw*(+coupon.discount_value/100));
-    const total=raw-discount+(extra.fulfillment_type==='home_delivery'?deliveryFee():0);
-    const oid=uid('O'), num='AL-'+Date.now().toString().slice(-8)+'-'+Math.floor(Math.random()*90+10);
-    await insert('orders',{id:oid,order_number:num,kind:x.kind,item_id:x.id,title:x.title,student_name:studentName.value.trim(),student_phone:studentPhone.value.trim(),qty:x.qty,unit_price:x.price,total,discount,coupon_code:coupon?.code||null,status:'new',status_history:[{status:'new',at:new Date().toISOString()}],...extra});
-  }
-  if(coupon) await update('coupons',{used_count:(+coupon.used_count||0)+1},{id:coupon.id});
-  await audit('order','إنشاء طلب COD '+extra.fulfillment_type);
-  cart=[];cartSave();await load();checkoutBox.innerHTML='<h2>تم استلام طلبك</h2><p>الدفع يكون عند الاستلام. إذا اخترت المكتبة تدفع للمكتبة، وإذا اخترت التوصيل تدفع للمندوب.</p><button onclick="closeCheckout()">إغلاق</button>';
-}catch(e){alert(e.message)}}
-openCheckout = function(kind,id,title,price){
-  checkoutItem={kind,id,title,price}; checkoutModal.classList.remove('hidden');
-  checkoutBox.innerHTML=`<h2>إتمام الشراء</h2><div class="row"><b>${esc(title)}</b><span>${money(price)} د.ع</span></div><div class="form-grid"><input id="studentName" placeholder="اسم الطالب"><input id="studentPhone" placeholder="رقم الطالب"><input id="qty" type="number" min="1" value="1" oninput="updateTotalV29()" placeholder="عدد النسخ"></div><div class="checkout-total">مجموع المادة: <b id="totalBox">${money(price)} د.ع</b></div>${fulfillmentHtml()}<button onclick="confirmCheckoutV29()">إنشاء الطلب</button><div id="payMsg"></div>`;
-};
-function updateTotalV29(){const q=+(document.getElementById('qty')?.value||1); if(totalBox) totalBox.textContent=money((checkoutItem?.price||0)*q)+' د.ع';}
-async function confirmCheckoutV29(){try{
-  if(!checkoutItem)throw Error('لا توجد مادة'); if(!studentName.value.trim()||!studentPhone.value.trim())throw Error('أكمل بيانات الطالب');
-  const q=Math.max(1,+(qty.value||1)); const extra=orderBaseExtra(); const raw=(checkoutItem.price||0)*q; const total=raw+(extra.fulfillment_type==='home_delivery'?deliveryFee():0);
-  const oid=uid('O'), num='AL-'+Date.now().toString().slice(-8)+'-'+Math.floor(Math.random()*90+10);
-  await insert('orders',{id:oid,order_number:num,kind:checkoutItem.kind,item_id:checkoutItem.id,title:checkoutItem.title,student_name:studentName.value.trim(),student_phone:studentPhone.value.trim(),qty:q,unit_price:checkoutItem.price,total,discount:0,status:'new',status_history:[{status:'new',at:new Date().toISOString()}],...extra});
-  await audit('order','إنشاء طلب مفرد COD'); await load(); checkoutBox.innerHTML='<h2>تم استلام الطلب</h2><p>الدفع عند الاستلام فقط.</p><button onclick="closeCheckout()">إغلاق</button>';
-}catch(e){alert(e.message)}}
 
 function openLibraryJoinPortal(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['openLibraryJoinPortal'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] openLibraryJoinPortal is not loaded yet');}
 function getLibraryGps(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['getLibraryGps'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] getLibraryGps is not loaded yet');}
@@ -1052,18 +915,7 @@ renderStore = function(){
     const fab=document.getElementById('cartCountFab'); if(fab)fab.textContent=cart.reduce((a,x)=>a+x.qty,0);
   }catch(e){}
 };
-const _addToCartV291=addToCart;
-addToCart=function(kind,id){_addToCartV291(kind,id);const fab=document.getElementById('cartCountFab');if(fab)fab.textContent=cart.reduce((a,x)=>a+x.qty,0);}
 
-const _openCheckoutV29Original = openCheckout;
-openCheckout = function(kind,id,title,price){
-  if(title===undefined){
-    const item=kind==='booklet'?(db.booklets||[]).find(x=>x.id===id):(db.products||[]).find(x=>x.id===id);
-    title=item?.title||item?.name||'المادة';
-    price=+(item?.price||0);
-  }
-  return _openCheckoutV29Original(kind,id,title,price);
-};
 
 
 /* ================= ALIN V29.2 CLEAN STOREFRONT FIX ================= */
@@ -1125,17 +977,7 @@ openCheckout = function(kind,id,title,price){
     if(window.alinStatLibraries) alinStatLibraries.textContent=(db.accounts?.libraries||[]).filter(x=>x.status==='active').length;
     renderCartBadge?.();
   };
-  const oldOpenCheckout=window.openCheckout;
-  window.openCheckout=function(kind,itemId){
-    if(kind==='booklet_product') return oldOpenCheckout('stationery', itemId);
-    return oldOpenCheckout(kind,itemId);
-  };
-  const oldAddToCart=window.addToCart;
-  window.addToCart=function(kind,id){
-    if(kind==='booklet_product') return oldAddToCart('stationery',id);
-    return oldAddToCart(kind,id);
-  };
-  window.renderSettingsAdmin=function(){
+window.renderSettingsAdmin=function(){
     adminContent.innerHTML=`<h2>إعدادات المنصة</h2><div class="form-grid"><input id="platformName" value="${esc(db.settings.platform_name||'منصة آلين')}" placeholder="اسم المنصة"><input id="platformPhone" value="${esc(db.settings.platform_phone||'')}" placeholder="رقم الهاتف"><input id="heroTitle" value="${esc(db.settings.hero_title||'')}" placeholder="عنوان الواجهة"><input id="heroText" value="${esc(db.settings.hero_text||'')}" placeholder="نص الواجهة"><input id="lowStockDefault" type="number" value="${esc(db.settings.low_stock_default||'5')}" placeholder="حد المخزون المنخفض"><button onclick="savePlatformSettings()">حفظ الإعدادات</button></div><div class="settings-preview"><b>معاينة</b><h3>${esc(db.settings.hero_title||'')}</h3><p>${esc(db.settings.hero_text||'')}</p></div>`;
   };
 })();
@@ -1146,9 +988,7 @@ openCheckout = function(kind,id,title,price){
   const statusSteps=['pending','processing','ready','out_delivery','completed'];
   function orderNo(o){return o?.order_number||o?.id||''}
   function lowStockLimit(){return +(db?.settings?.low_stock_default||5)}
-  window.renderCartBadge=window.renderCartBadge||function(){try{const n=(window.cart||[]).reduce((a,x)=>a+(+x.qty||0),0); if(window.cartCount)cartCount.textContent=n; if(window.cartCountFab)cartCountFab.textContent=n;}catch(e){}};
-
-  window.trackOrder=function(){
+window.trackOrder=function(){
     const q=(window.trackOrderInput?.value||'').trim().toLowerCase();
     const box=window.trackOrderResult; if(!box)return;
     if(!q){box.className='track-result show';box.innerHTML='اكتب رقم الطلب أولاً';return;}
@@ -1193,35 +1033,7 @@ openCheckout = function(kind,id,title,price){
     if(window.alinStatLibraries)alinStatLibraries.textContent=(db.accounts?.libraries||[]).filter(x=>x.status==='active').length;
     renderCartBadge();
   };
-
-  const oldOpenCheckout=window.openCheckout;
-  window.openCheckout=function(kind,itemId){
-    checkoutItem={kind,itemId};
-    const item=kind==='booklet'?(db.booklets||[]).find(x=>x.id===itemId):(db.products||[]).find(x=>x.id===itemId);
-    if(!item)return;
-    const title=item.title||item.name, price=+(item.price||0), libs=(db.accounts?.libraries||[]).filter(x=>x.status==='active');
-    checkoutBox.innerHTML=`<h2>إتمام الشراء</h2><div class="row"><b>${esc(title)}</b><span>${money(price)} د.ع</span></div><div class="delivery-choice"><label><input type="radio" name="fulfillmentType" value="pickup" checked> استلام من المكتبة</label><label><input type="radio" name="fulfillmentType" value="home_delivery"> توصيل للبيت وتسليم المندوب</label></div><div class="form-grid"><input id="studentName" placeholder="اسم الطالب"><input id="studentPhone" placeholder="رقم الطالب / واتساب"><input id="studentAddress" placeholder="العنوان للتوصيل"><input id="qty" type="number" min="1" value="1" oninput="updateTotal()" placeholder="عدد النسخ"><select id="libSelect" onchange="showLibInfo()"><option value="">اختر المكتبة</option>${libs.map(x=>`<option value="${x.id}">${esc(x.name)} — ${esc(x.area||'')} — ${esc(x.landmark||'')}</option>`).join('')}</select><div id="libInfo" class="checkout-total"></div><div class="checkout-total">المجموع: <b id="totalBox">${money(price)} د.ع</b></div></div><h3>الدفع</h3><p class="muted">الدفع عند الاستلام فقط: في المكتبة أو عند تسليم المندوب.</p><button onclick="confirmCheckout()">إنشاء الطلب</button><div id="payMsg"></div>`;
-    checkoutModal.classList.remove('hidden');
-  };
-
-  window.confirmCheckout=async function(){
-    try{
-      if(!checkoutItem)return;
-      const item=checkoutItem.kind==='booklet'?(db.booklets||[]).find(x=>x.id===checkoutItem.itemId):(db.products||[]).find(x=>x.id===checkoutItem.itemId);
-      if(!item)throw new Error('المادة غير موجودة');
-      if(!studentName.value.trim()||!studentPhone.value.trim()||!libSelect.value)throw new Error('أكمل بيانات الطلب');
-      const q=+qty.value||1,total=(+(item.price||0))*q,oid=uid('O'),onum='ALIN-'+String((db.orders||[]).length+1).padStart(4,'0');
-      const fulfillment=(document.querySelector('input[name="fulfillmentType"]:checked')||{}).value||'pickup';
-      await insert('orders',{id:oid,order_number:onum,kind:checkoutItem.kind,item_id:item.id,title:item.title||item.name,student_name:studentName.value.trim(),student_phone:studentPhone.value.trim(),student_address:(window.studentAddress?.value||'').trim(),library_id:libSelect.value,qty:q,unit_price:item.price,total,status:'pending',payment_status:'cod',fulfillment_type:fulfillment,status_history:[{status:'pending',at:new Date().toISOString()}]});
-      if(checkoutItem.kind!=='booklet'&&item.stock!==undefined) await update('products',{stock:Math.max(0,+item.stock-q)},{id:item.id});
-      await audit('order','إنشاء طلب '+(item.title||item.name));
-      const msg=encodeURIComponent(`طلب آلين رقم ${onum}\n${item.title||item.name}\nالعدد: ${q}\nالمجموع: ${money(total)} د.ع`);
-      payMsg.innerHTML=`<div class="checkout-total"><b>تم إنشاء الطلب بنجاح</b><br>رقم الطلب: <b>${onum}</b><br><span class="whatsapp-chip">تنبيه واتساب جاهز</span><br><a target="_blank" href="https://wa.me/?text=${msg}">إرسال تفاصيل الطلب بالواتساب</a><div style="margin-top:10px" class="qr-box" title="QR الطلب"></div></div>`;
-      await load();renderStore();
-    }catch(e){payMsg.textContent=e.message;}
-  };
-
-  const oldRenderBookletsAdmin=window.renderBookletsAdmin;
+const oldRenderBookletsAdmin=window.renderBookletsAdmin;
   window.renderBookletsAdmin=function(){
     adminContent.innerHTML=`<h2>الملازم وإصداراتها</h2><form id="bookForm" class="form-grid"><input name="title" placeholder="اسم الملزمة"><select name="teacherId">${(db.accounts?.teachers||[]).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select><input name="subject" placeholder="المادة"><input name="grade" placeholder="الصف"><input name="edition" placeholder="السنة / الإصدار مثال 2027"><input name="price" type="number" placeholder="السعر"><label>غلاف<input name="cover" type="file" accept="image/*"></label><label>صورة المدرس<input name="teacherImage" type="file" accept="image/*"></label><label>ملف PDF الحقيقي<input name="bookletFile" type="file" accept=".pdf" required></label><button type="button" onclick="uploadBooklet()">رفع ونشر</button></form>${(db.booklets||[]).map(x=>`<div class="row"><div><b>${esc(x.title)}</b><small>${esc(teacherName(x.teacher_id))} — ${esc(x.subject||'')} — ${esc(x.grade||'')} — ${esc(x.edition||x.year||'بدون إصدار')} — ${money(x.price)} د.ع — ${esc(x.status||'')}</small></div><div class="row-actions"><button onclick="setBookStatus('${x.id}','${x.status==='published'?'hidden':'published'}')">${x.status==='published'?'إخفاء':'إظهار'}</button><button class="danger" onclick="setBookStatus('${x.id}','archived')">أرشفة</button></div></div>`).join('')}`;
   };
@@ -1387,32 +1199,10 @@ function libraryOptionsClean(){const fn=window.AlinLibraryModules&&window.AlinLi
 function selectedLibraryLine(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['selectedLibraryLine'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] selectedLibraryLine is not loaded yet');}
 window.showLibInfo=selectedLibraryLine;
 
-window.openCart=function(){
-  checkoutItem={kind:'cart'}; const sub=cart.reduce((a,x)=>a+x.price*x.qty,0);
-  checkoutBox.innerHTML=`<h2>سلة آلين</h2><div class="cart-list">${cart.map((x,i)=>`<div class="row"><div><b>${esc(x.title)}</b><small>${money(x.price)} د.ع × ${x.qty}</small></div><div class="row-actions"><button onclick="cartQty(${i},-1)">−</button><b>${x.qty}</b><button onclick="cartQty(${i},1)">+</button><button class="danger" onclick="cartRemove(${i})">حذف</button></div></div>`).join('')||emptyState('السلة فارغة')}</div>${cart.length?`<div class="checkout-total">المجموع: <b>${money(sub)} د.ع</b></div><div class="coupon-box"><input id="couponInput" placeholder="كود الخصم"><button onclick="checkCoupon()">تطبيق</button></div><div id="couponMsg"></div><div class="form-grid"><input id="studentName" placeholder="اسم الطالب"><input id="studentPhone" placeholder="رقم الهاتف"><select id="libSelect" onchange="showLibInfo()"><option value="">اختر مكتبة الاستلام</option>${libraryOptionsClean()}</select><div id="libInfo"></div></div><button onclick="confirmCartCheckout()">تأكيد الطلب</button>`:''}`;
-  checkoutModal.classList.remove('hidden');
-};
 
-window.openCheckout=function(kind,itemId){
-  checkoutItem={kind,itemId};
-  const item=kind==='booklet'?db.booklets.find(x=>x.id===itemId):db.products.find(x=>x.id===itemId);
-  if(!item)return;
-  const title=item.title||item.name, price=item.price||0;
-  checkoutBox.innerHTML=`<h2>إتمام الطلب</h2><div class="row"><b>${esc(title)}</b><span>${money(price)} د.ع</span></div><div class="form-grid"><input id="studentName" placeholder="اسم الطالب"><input id="studentPhone" placeholder="رقم الطالب"><input id="qty" type="number" min="1" value="1" oninput="updateTotal()" placeholder="عدد النسخ"><select id="libSelect" onchange="showLibInfo()"><option value="">اختر المكتبة</option>${libraryOptionsClean()}</select><div id="libInfo" class="checkout-total"></div><div class="checkout-total">المجموع: <b id="totalBox">${money(price)} د.ع</b></div></div><button onclick="confirmCheckout()">إنشاء الطلب</button><div id="payMsg"></div>`;
-  checkoutModal.classList.remove('hidden');
-};
 
 /* ================= ALIN V42 CART DELIVERY + SETTLEMENT ROUTING ================= */
 window.ALIN_VERSION='Alin Clean Cart Routing';
-function cartHasNonBooklets(){ return (cart||[]).some(x=>x.kind!=='booklet'); }
-function cartHasBookletsOnly(){ return (cart||[]).length>0 && (cart||[]).every(x=>x.kind==='booklet'); }
-function deliveryChoiceCartHtml(){
-  const forcedDelivery=cartHasNonBooklets();
-  if(forcedDelivery){
-    return `<h3>طريقة التسليم</h3><div class="delivery-choice"><label><input type="radio" name="fulfillment" value="home_delivery" checked> عن طريق المندوب</label></div><div id="deliveryFields"><div class="form-grid"><input id="deliveryArea" placeholder="المنطقة"><input id="deliveryAddress" placeholder="العنوان الكامل"><input id="deliveryLandmark" placeholder="أقرب نقطة دالة"><select id="courierSelect"><option value="">اختيار المندوب من الإدارة</option>${activeCouriers().map(c=>`<option value="${c.id}">${esc(c.name)} — ${esc(c.area||'')}</option>`).join('')}</select></div><div class="checkout-total">أجور التوصيل: <b>${money(deliveryFee())} د.ع</b></div></div><p class="muted">القرطاسية والهدايا يتم تسليمها عن طريق المندوب فقط.</p>`;
-  }
-  return `<h3>طريقة التسليم والدفع</h3><div class="delivery-choice"><label><input type="radio" name="fulfillment" value="pickup" checked onchange="toggleDeliveryFields()"> عن طريق المكتبة — الدفع للمكتبة</label><label><input type="radio" name="fulfillment" value="home_delivery" onchange="toggleDeliveryFields()"> عن طريق المندوب — الدفع للمندوب</label></div><div id="pickupFields"><select id="libSelect" onchange="showLibInfo()"><option value="">اختر مكتبة الاستلام</option>${libraryOptionsClean()}</select><div id="libInfo"></div></div><div id="deliveryFields" class="hidden"><div class="form-grid"><input id="deliveryArea" placeholder="المنطقة"><input id="deliveryAddress" placeholder="العنوان الكامل"><input id="deliveryLandmark" placeholder="أقرب نقطة دالة"><select id="courierSelect"><option value="">اختيار المندوب من الإدارة</option>${activeCouriers().map(c=>`<option value="${c.id}">${esc(c.name)} — ${esc(c.area||'')}</option>`).join('')}</select></div><div class="checkout-total">أجور التوصيل: <b>${money(deliveryFee())} د.ع</b></div></div>`;
-}
 function orderExtraV42(){
   const forcedDelivery=cartHasNonBooklets();
   const f=forcedDelivery?'home_delivery':(document.querySelector('input[name="fulfillment"]:checked')?.value||'pickup');
@@ -1441,36 +1231,6 @@ window.renderStore=function(){
   renderCartBadge();
   try{ const about=document.getElementById('aboutPlatformBox'); if(about) about.innerHTML=`<h2>${esc(db.settings.about_title||'عن المنصة')}</h2><p>${esc(db.settings.about_text||'منصة آلين تجمع الملازم والقرطاسية والهدايا في مكان واحد، مع طلب سريع وتواصل واضح بين الطالب والمكتبة والإدارة.')}</p>`; const contact=document.getElementById('contactPlatformBox'); if(contact) contact.innerHTML=`<h2>${esc(db.settings.contact_title||'تواصل معنا')}</h2><p>${esc(db.settings.contact_text||'للاستفسار أو الانضمام كمدرس أو مكتبة، تواصل مع إدارة منصة آلين.')}</p>`; }catch(e){}
 };
-window.openCart=function(){
-  checkoutItem={kind:'cart'}; const sub=cart.reduce((a,x)=>a+x.price*x.qty,0);
-  checkoutBox.innerHTML=`<h2>سلة آلين</h2><div class="cart-list">${cart.map((x,i)=>`<div class="row"><div><b>${esc(x.title)}</b><small>${money(x.price)} د.ع × ${x.qty}</small></div><div class="row-actions"><button onclick="cartQty(${i},-1)">−</button><b>${x.qty}</b><button onclick="cartQty(${i},1)">+</button><button class="danger" onclick="cartRemove(${i})">حذف</button></div></div>`).join('')||emptyState('السلة فارغة')}</div>${cart.length?`<div class="checkout-total">مجموع المواد: <b>${money(sub)} د.ع</b></div><div class="coupon-box"><input id="couponInput" placeholder="كود الخصم"><button onclick="checkCoupon()">تطبيق</button></div><div id="couponMsg"></div><div class="form-grid"><input id="studentName" placeholder="اسم الطالب"><input id="studentPhone" placeholder="رقم الهاتف"></div>${deliveryChoiceCartHtml()}<button onclick="confirmCartCheckout()">تأكيد الشراء</button>`:''}`;
-  checkoutModal.classList.remove('hidden');
-};
-window.openCheckout=function(kind,itemId){ addToCart(kind,itemId); openCart(); };
-window.confirmCartCheckout=async function(){try{
-  if(!cart.length)throw Error('السلة فارغة');
-  if(!studentName.value.trim()||!studentPhone.value.trim())throw Error('أكمل اسم الطالب ورقم الهاتف');
-  const baseExtra=orderExtraV42();
-  const coupon=validCoupon(couponInput?.value?.trim()||'');
-  let deliveryAdded=false;
-  for(const x of cart){
-    const product=x.kind==='booklet'?null:db.products.find(p=>p.id===x.id);
-    if(product&&+product.stock<x.qty)throw Error('الكمية غير متوفرة: '+x.title);
-    let raw=x.price*x.qty,discount=0; if(coupon)discount=coupon.discount_type==='fixed'?Math.min(raw,+coupon.discount_value):Math.round(raw*(+coupon.discount_value/100));
-    const extra={...baseExtra};
-    if(extra.fulfillment_type==='home_delivery'){
-      extra.delivery_fee=deliveryAdded?0:deliveryFee();
-      deliveryAdded=true;
-    }
-    const total=raw-discount+(+extra.delivery_fee||0);
-    const oid=uid('O'), num='AL-'+Date.now().toString().slice(-8)+'-'+Math.floor(Math.random()*90+10);
-    await insert('orders',{id:oid,order_number:num,kind:x.kind,item_id:x.id,title:x.title,student_name:studentName.value.trim(),student_phone:studentPhone.value.trim(),qty:x.qty,unit_price:x.price,total,discount,coupon_code:coupon?.code||null,status:'new',status_history:[{status:'new',at:new Date().toISOString()}],...extra});
-  }
-  if(coupon) await update('coupons',{used_count:(+coupon.used_count||0)+1},{id:coupon.id});
-  await audit('order','إنشاء طلب من السلة - '+baseExtra.fulfillment_type);
-  const msg=baseExtra.fulfillment_type==='pickup'?'تم إنشاء الطلب. التسليم والدفع عن طريق المكتبة وسيظهر في تسويات المكتبة.':'تم إنشاء الطلب. التسليم والدفع عن طريق المندوب وسيظهر في تسويات المندوب.';
-  cart=[];cartSave();await load();checkoutBox.innerHTML=`<h2>تم استلام طلبك</h2><p>${msg}</p><button onclick="closeCheckout()">إغلاق</button>`;
-}catch(e){alert(e.message)}};
 window.maybeCreateFinancialEntry=async function(id){
   const o=(db.orders||[]).find(x=>x.id===id); if(!o) return;
   o.status='completed'; o.payment_status='paid';
@@ -1601,33 +1361,8 @@ window.uploadBooklet=async function(){
 };
 
 // كل طلب من السلة يظهر للطالب كود تتبع واضح بعد تأكيد الشراء
-window.confirmCartCheckout=async function(){try{
-  if(!cart.length)throw Error('السلة فارغة');
-  if(!studentName.value.trim()||!studentPhone.value.trim())throw Error('أكمل اسم الطالب ورقم الهاتف');
-  const baseExtra=orderExtraV42();
-  const coupon=validCoupon(couponInput?.value?.trim()||'');
-  let deliveryAdded=false;
-  const numbers=[];
-  for(const x of cart){
-    const product=x.kind==='booklet'?null:db.products.find(p=>p.id===x.id);
-    if(product&&+product.stock<x.qty)throw Error('الكمية غير متوفرة: '+x.title);
-    let raw=x.price*x.qty,discount=0;
-    if(coupon)discount=coupon.discount_type==='fixed'?Math.min(raw,+coupon.discount_value):Math.round(raw*(+coupon.discount_value/100));
-    const extra={...baseExtra};
-    if(extra.fulfillment_type==='home_delivery'){ extra.delivery_fee=deliveryAdded?0:deliveryFee(); deliveryAdded=true; }
-    const total=raw-discount+(+extra.delivery_fee||0);
-    const oid=uid('O'), num=alinOrderNumber();
-    numbers.push(num);
-    await insert('orders',{id:oid,order_number:num,tracking_code:num,kind:x.kind,item_id:x.id,title:x.title,student_name:studentName.value.trim(),student_phone:studentPhone.value.trim(),qty:x.qty,unit_price:x.price,total,discount,coupon_code:coupon?.code||null,status:'new',status_history:[{status:'new',at:new Date().toISOString()}],...extra});
-  }
-  if(coupon) await update('coupons',{used_count:(+coupon.used_count||0)+1},{id:coupon.id});
-  await audit('order','إنشاء طلب من السلة مع كود تتبع');
-  const msg=baseExtra.fulfillment_type==='pickup'?'التسليم والدفع عن طريق المكتبة.':'التسليم والدفع عن طريق المندوب.';
-  cart=[];cartSave();await load();checkoutBox.innerHTML=alinTrackingResultHtml(numbers,msg);
-}catch(e){alert(e.message)}};
 
 // احتياطاً: إذا انفتح شراء مباشر بأي مكان، يحوله للسلة حتى لا تضيع أكواد التتبع
-window.openCheckout=function(kind,itemId){ addToCart(kind,itemId); openCart(); };
 
 
 /* ================= ALIN V45 OPTIONAL STUDENT ACCOUNT ================= */
@@ -1691,24 +1426,16 @@ window.showStudentOrders=function(){
 const renderStoreBeforeStudentAuth=window.renderStore;
 window.renderStore=function(){ renderStoreBeforeStudentAuth(); updateStudentAuthBar(); };
 
-// تعبئة بيانات الطالب تلقائياً إذا كان مسجل، بدون جعل التسجيل إجباري
-const openCartBeforeStudentAuth=window.openCart;
-window.openCart=function(){
-  openCartBeforeStudentAuth();
-  setTimeout(()=>{
-    const s=currentStudent(); if(!s)return;
-    const n=document.getElementById('studentName'), p=document.getElementById('studentPhone'), a=document.getElementById('deliveryAddress');
-    if(n&&!n.value)n.value=s.name||''; if(p&&!p.value)p.value=s.phone||''; if(a&&!a.value)a.value=s.address||'';
-  },50);
-};
-
-// ربط الطلب برقم حساب الطالب إذا كان مسجل، مع بقاء الطلب متاحاً للزائر
-const confirmCartBeforeStudentAuth=window.confirmCartCheckout;
-window.confirmCartCheckout=async function(){
-  const s=currentStudent();
-  await confirmCartBeforeStudentAuth();
-  try{ if(s) await audit('student_order','طلب من حساب طالب '+s.phone); }catch(e){}
-};
+// تعبئة بيانات الطالب وربط الطلب بالحساب من خلال أحداث السلة المركزية.
+document.addEventListener('alin:cart-rendered',()=>{
+  const s=typeof currentStudent==='function'?currentStudent():null;if(!s)return;
+  const n=document.getElementById('studentName'),p=document.getElementById('studentPhone'),a=document.getElementById('deliveryAddress');
+  if(n&&!n.value)n.value=s.name||'';if(p&&!p.value)p.value=s.phone||'';if(a&&!a.value)a.value=s.address||'';
+});
+document.addEventListener('alin:order-created',()=>{
+  const s=typeof currentStudent==='function'?currentStudent():null;
+  if(s&&typeof audit==='function')Promise.resolve(audit('student_order','طلب من حساب طالب '+s.phone)).catch(()=>{});
+});
 
 document.addEventListener('DOMContentLoaded', updateStudentAuthBar);
 
@@ -1729,17 +1456,10 @@ window.ALIN_VERSION='Alin V47 Full Check Fix';
 function alinSafe(id){ return document.getElementById(id); }
 function alinSearchText(){ return String(alinSafe('searchInput')?.value || '').trim().toLowerCase(); }
 function alinItemTitle(x){ return x.title || x.name || ''; }
-function alinOrderNo(){ return 'ALIN-' + new Date().toISOString().slice(2,10).replaceAll('-','') + '-' + Math.floor(1000 + Math.random()*9000); }
 function alinOpenLibraries(){ return (db.accounts?.libraries||[]).filter(x=>x.status==='active'); }
 function alinLibOpen(x){ try{return typeof libIsOpen==='function' ? libIsOpen(x) : x?.is_open!==false;}catch(e){return x?.is_open!==false;} }
 function alinLibraryOptions(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['alinLibraryOptions'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] alinLibraryOptions is not loaded yet');}
 window.libraryOptionsClean=alinLibraryOptions;
-window.showLibInfo=function(){
-  const select=alinSafe('libSelect'), box=alinSafe('libInfo'); if(!select||!box)return;
-  const lib=(db.accounts?.libraries||[]).find(x=>x.id===select.value);
-  if(!lib){ box.innerHTML=''; return; }
-  box.innerHTML=`<div class="library-one-line"><b>${esc(lib.name)}</b><span class="${alinLibOpen(lib)?'open-badge':'closed-badge'}">${alinLibOpen(lib)?'مفتوح':'مغلق'}</span><small>${esc(lib.area||'')} ${lib.landmark?'— '+esc(lib.landmark):''}</small></div>`;
-};
 
 window.setStoreType=async function(type){
   db.settings.storeType=type||'booklet';
@@ -1805,63 +1525,7 @@ window.uploadBooklet=async function(){
   }catch(e){ alert(e.message||'تعذر رفع الملزمة'); }
 };
 
-function alinCartHasProducts(){ return (cart||[]).some(x=>x.kind!=='booklet'); }
-function alinDeliveryFee(){ try{return typeof deliveryFee==='function'?deliveryFee():0;}catch(e){return 0;} }
 function alinCouriersOptions(){const fn=window.AlinCourierModules&&window.AlinCourierModules['alinCouriersOptions'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] alinCouriersOptions is not loaded yet');}
-window.toggleDeliveryFields=function(){
-  const f=document.querySelector('input[name="fulfillment"]:checked')?.value||'pickup';
-  const p=alinSafe('pickupFields'), d=alinSafe('deliveryFields');
-  if(p) p.classList.toggle('hidden', f!=='pickup');
-  if(d) d.classList.toggle('hidden', f!=='home_delivery');
-};
-function alinDeliveryChoiceHtml(){
-  if(alinCartHasProducts()){
-    return `<h3>طريقة التسليم</h3><div class="delivery-choice"><label><input type="radio" name="fulfillment" value="home_delivery" checked> عن طريق المندوب</label></div><div id="deliveryFields"><div class="form-grid"><input id="deliveryArea" placeholder="المنطقة"><input id="deliveryAddress" placeholder="العنوان الكامل"><input id="deliveryLandmark" placeholder="أقرب نقطة دالة"><select id="courierSelect"><option value="">تحديد المندوب من الإدارة</option>${alinCouriersOptions()}</select></div><div class="checkout-total">أجور التوصيل: <b>${money(alinDeliveryFee())} د.ع</b></div></div><p class="muted">القرطاسية والهدايا تسلّم عن طريق المندوب فقط.</p>`;
-  }
-  return `<h3>طريقة التسليم والدفع</h3><div class="delivery-choice"><label><input type="radio" name="fulfillment" value="pickup" checked onchange="toggleDeliveryFields()"> عن طريق المكتبة — الدفع للمكتبة</label><label><input type="radio" name="fulfillment" value="home_delivery" onchange="toggleDeliveryFields()"> عن طريق المندوب — الدفع للمندوب</label></div><div id="pickupFields"><select id="libSelect" onchange="showLibInfo()"><option value="">اختر مكتبة الاستلام</option>${alinLibraryOptions()}</select><div id="libInfo"></div></div><div id="deliveryFields" class="hidden"><div class="form-grid"><input id="deliveryArea" placeholder="المنطقة"><input id="deliveryAddress" placeholder="العنوان الكامل"><input id="deliveryLandmark" placeholder="أقرب نقطة دالة"><select id="courierSelect"><option value="">تحديد المندوب من الإدارة</option>${alinCouriersOptions()}</select></div><div class="checkout-total">أجور التوصيل: <b>${money(alinDeliveryFee())} د.ع</b></div></div>`;
-}
-function alinOrderExtra(){
-  const forced=alinCartHasProducts();
-  const f=forced?'home_delivery':(document.querySelector('input[name="fulfillment"]:checked')?.value||'pickup');
-  if(f==='pickup'){
-    const lib=alinSafe('libSelect')?.value||''; if(!lib) throw new Error('اختر مكتبة الاستلام');
-    return {fulfillment_type:'pickup',library_id:lib,courier_id:null,delivery_area:null,delivery_address:null,delivery_landmark:null,delivery_fee:0,payment_method:'cash_at_library',payment_status:'cod_pending'};
-  }
-  const area=(alinSafe('deliveryArea')?.value||'').trim(), addr=(alinSafe('deliveryAddress')?.value||'').trim(), land=(alinSafe('deliveryLandmark')?.value||'').trim();
-  if(!area||!addr||!land) throw new Error('أكمل بيانات التوصيل');
-  return {fulfillment_type:'home_delivery',library_id:null,courier_id:alinSafe('courierSelect')?.value||null,delivery_area:area,delivery_address:addr,delivery_landmark:land,delivery_fee:alinDeliveryFee(),payment_method:'cash_to_courier',payment_status:'cod_pending'};
-}
-window.openCart=function(){
-  checkoutItem={kind:'cart'};
-  const sub=(cart||[]).reduce((a,x)=>a+(+x.price||0)*(+x.qty||0),0);
-  checkoutBox.innerHTML=`<h2>سلة آلين</h2><div class="cart-list">${(cart||[]).map((x,i)=>`<div class="row"><div><b>${esc(x.title)}</b><small>${money(x.price)} د.ع × ${x.qty}</small></div><div class="row-actions"><button onclick="cartQty(${i},-1)">−</button><b>${x.qty}</b><button onclick="cartQty(${i},1)">+</button><button class="danger" onclick="cartRemove(${i})">حذف</button></div></div>`).join('')||emptyState('السلة فارغة')}</div>${cart.length?`<div class="checkout-total">مجموع المواد: <b>${money(sub)} د.ع</b></div><div class="coupon-box"><input id="couponInput" placeholder="كود الخصم"><button onclick="checkCoupon()">تطبيق</button></div><div id="couponMsg"></div><div class="form-grid"><input id="studentName" placeholder="اسم الطالب"><input id="studentPhone" placeholder="رقم الهاتف"></div>${alinDeliveryChoiceHtml()}<button onclick="confirmCartCheckout()">تأكيد الشراء</button>`:''}`;
-  checkoutModal.classList.remove('hidden');
-  try{ const s=typeof currentStudent==='function'?currentStudent():null; if(s){ if(studentName&&!studentName.value)studentName.value=s.name||''; if(studentPhone&&!studentPhone.value)studentPhone.value=s.phone||''; if(alinSafe('deliveryAddress')&&!deliveryAddress.value)deliveryAddress.value=s.address||''; } }catch(e){}
-};
-window.openCheckout=function(kind,itemId){ addToCart(kind,itemId); openCart(); };
-window.confirmCartCheckout=async function(){
-  try{
-    if(!cart.length) throw new Error('السلة فارغة');
-    const name=(alinSafe('studentName')?.value||'').trim(), phone=(alinSafe('studentPhone')?.value||'').trim();
-    if(!name||!phone) throw new Error('أكمل اسم الطالب ورقم الهاتف');
-    const baseExtra=alinOrderExtra();
-    const coupon=typeof validCoupon==='function' ? validCoupon(alinSafe('couponInput')?.value?.trim()||'') : null;
-    let deliveryAdded=false; const numbers=[];
-    for(const x of cart){
-      const product=x.kind==='booklet'?null:(db.products||[]).find(p=>p.id===x.id);
-      if(product && (+product.stock||0)<(+x.qty||1)) throw new Error('الكمية غير متوفرة: '+x.title);
-      const raw=(+x.price||0)*(+x.qty||1);
-      let discount=0; if(coupon) discount=coupon.discount_type==='fixed'?Math.min(raw,+coupon.discount_value||0):Math.round(raw*((+coupon.discount_value||0)/100));
-      const extra={...baseExtra}; if(extra.fulfillment_type==='home_delivery'){ extra.delivery_fee=deliveryAdded?0:alinDeliveryFee(); deliveryAdded=true; }
-      const total=raw-discount+(+extra.delivery_fee||0); const id=uid('O'), num=alinOrderNo(); numbers.push(num);
-      await insert('orders',{id,order_number:num,kind:x.kind,item_id:x.id,title:x.title,student_name:name,student_phone:phone,qty:+x.qty||1,unit_price:+x.price||0,total,discount,coupon_code:coupon?.code||null,status:'new',status_history:[{status:'new',at:new Date().toISOString()}],...extra});
-    }
-    if(coupon) try{ await update('coupons',{used_count:(+coupon.used_count||0)+1},{id:coupon.id}); }catch(e){}
-    await audit('order','إنشاء طلب من السلة مع كود تتبع');
-    const msg=baseExtra.fulfillment_type==='pickup'?'التسليم والدفع عن طريق المكتبة.':'التسليم والدفع عن طريق المندوب.';
-    cart=[]; cartSave(); await load(); checkoutBox.innerHTML=alinTrackingResultHtml(numbers,msg);
-  }catch(e){ alert(e.message||'تعذر إنشاء الطلب'); }
-};
 
 const alinAdminTabBeforeV47=window.adminTab;
 window.adminTab=function(t){
@@ -4812,19 +4476,14 @@ setTimeout(alinV84RefreshBadges,1200);
     const x=itemBy(kind,checkoutItem?.itemId||'');
     return scope===kind||scope===String(x?.type||x?.category||'');
   }
-  const baseOpen=window.openCheckout||openCheckout;
-  window.openCheckout=openCheckout=function(kind,itemId){
-    if(String(db.settings?.order_pause_scope||'') && (db.settings.order_pause_scope==='all'||db.settings.order_pause_scope===kind||db.settings.order_pause_scope===String(itemBy(kind,itemId)?.type||itemBy(kind,itemId)?.category||''))){
-      return alert(db.settings.order_pause_reason||'الطلبات متوقفة مؤقتاً');
-    }
-    baseOpen(kind,itemId);
-    setTimeout(()=>{
-      const box=document.getElementById('checkoutBox'); if(!box)return;
-      const key=`${kind}:${itemId}`;
-      if(!box.querySelector('.alin-v85-fav-action')) box.insertAdjacentHTML('afterbegin',`<button class="alin-v85-fav-action" onclick="alinV85ToggleFavorite('${kind}','${itemId}')">${favs().includes(key)?'♥ محفوظ بالمفضلة':'♡ أضف للمفضلة'}</button>`);
-      if(!box.querySelector('.alin-v85-related')) box.insertAdjacentHTML('beforeend',relatedHtml(kind,itemId));
-    },0);
-  };
+  document.addEventListener('alin:cart-rendered',event=>{
+    const kind=event.detail?.kind,itemId=event.detail?.id;
+    if(!kind||!itemId)return;
+    const box=document.getElementById('checkoutBox');if(!box)return;
+    const key=`${kind}:${itemId}`;
+    if(!box.querySelector('.alin-v85-fav-action'))box.insertAdjacentHTML('afterbegin',`<button class="alin-v85-fav-action" onclick="alinV85ToggleFavorite('${kind}','${itemId}')">${favs().includes(key)?'♥ محفوظ بالمفضلة':'♡ أضف للمفضلة'}</button>`);
+    if(!box.querySelector('.alin-v85-related'))box.insertAdjacentHTML('beforeend',relatedHtml(kind,itemId));
+  });
   function whatsappPhoneForOrder(o){
     const lib=(db.accounts?.libraries||[]).find(x=>String(x.id)===String(o?.library_id));
     return String(lib?.whatsapp||lib?.phone||lib?.mobile||db.settings?.whatsapp||'').replace(/\D/g,'');
@@ -4835,21 +4494,12 @@ setTimeout(alinV84RefreshBadges,1200);
     const msg=encodeURIComponent(`السلام عليكم، لدي طلب في منصة آلين\nرقم الطلب: ${o.order_number||o.id}\nالطلب: ${o.title||''}\nالاسم: ${o.student_name||''}`);
     window.open(`https://wa.me/${phone}?text=${msg}`,'_blank');
   };
-  const baseConfirm=window.confirmCheckout||confirmCheckout;
-  window.confirmCheckout=confirmCheckout=async function(){
-    const before=(db.orders||[]).map(x=>String(x.id));
-    await baseConfirm();
-    const o=(db.orders||[]).find(x=>!before.includes(String(x.id)))||(db.orders||[])[0];
-    const pay=document.getElementById('payMsg');
-    if(o&&pay&&!pay.querySelector('.alin-v85-wa')) pay.insertAdjacentHTML('beforeend',`<button class="alin-v85-wa" onclick="alinV85WhatsApp('${o.id}')">واتساب بخصوص الطلب</button>`);
-  };
-  const baseCartConfirm=window.confirmCartCheckout||confirmCartCheckout;
-  window.confirmCartCheckout=confirmCartCheckout=async function(){
-    const before=(db.orders||[]).map(x=>String(x.id)); await baseCartConfirm();
-    const created=(db.orders||[]).filter(x=>!before.includes(String(x.id)));
+  document.addEventListener('alin:order-created',event=>{
+    const numbers=Array.isArray(event.detail?.numbers)?event.detail.numbers:[];
+    const created=(db.orders||[]).filter(o=>numbers.includes(String(o.order_number||o.id)));
     const box=document.getElementById('checkoutBox');
-    if(created.length&&box)box.insertAdjacentHTML('beforeend',`<button class="alin-v85-wa" onclick="alinV85WhatsApp('${created[0].id}')">واتساب بخصوص الطلب</button>`);
-  };
+    if(created.length&&box&&!box.querySelector('.alin-v85-wa'))box.insertAdjacentHTML('beforeend',`<button class="alin-v85-wa" onclick="alinV85WhatsApp('${created[0].id}')">واتساب بخصوص الطلب</button>`);
+  });
   const baseRenderStore=window.renderStore||renderStore;
   window.renderStore=renderStore=function(){
     const r=baseRenderStore();

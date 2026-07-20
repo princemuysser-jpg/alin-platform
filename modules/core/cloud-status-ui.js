@@ -14,7 +14,7 @@
 
 ;
 
-/* ALIN 2.0.14 - hardened Supabase Auth and admin account adapter. */
+/* ALIN 2.0.15 - hardened Supabase Auth and admin account adapter. */
 (function(){
   'use strict';
   const ATTEMPT_KEY='alin_auth_attempts_v139',MAX_ATTEMPTS=5,LOCK_MS=10*60*1000;
@@ -194,6 +194,7 @@
       if(!/^\+?[0-9٠-٩]{7,15}$/.test(phone))throw new Error('اكتب رقم هاتف صحيح');
       const fulfillment=typeof alinOrderExtra==='function'?alinOrderExtra():{};
       const coupon=(document.getElementById('couponInput')?.value||'').trim();
+      const cartSnapshot=cart.map(item=>({...item}));
       const items=normalizeCheckoutItems(cart);
       if(typeof cartSave==='function')cartSave();
       const {data,error}=await c.rpc('alin_create_store_orders',{p_items:items,p_customer:{name,phone},p_fulfillment:fulfillment,p_coupon_code:coupon||null});
@@ -241,6 +242,7 @@
         });
         const close=document.createElement('button');close.type='button';close.className='alin-order-success__close';close.textContent='إغلاق';close.addEventListener('click',()=>window.closeCheckout?.());
         success.append(icon,h,note,codes,close);box.append(success);
+        document.dispatchEvent(new CustomEvent('alin:order-created',{detail:{numbers,fulfillment:fulfillment.fulfillment_type||fulfillment.delivery_type||'',items:cartSnapshot}}));
       }
     }catch(e){alert(e?.message||'تعذر إنشاء الطلب')}
     finally{checkoutPending=false;if(button){button.disabled=false;button.removeAttribute('aria-busy');button.textContent=button.dataset.originalText||'تأكيد الطلب'}}
@@ -284,7 +286,7 @@
     const {data,error}=await c.rpc('alin_repair_auth_links',{p_account_id:String(accountId)});
     if(error){
       const text=String(error.message||'');
-      if(/PGRST202|Could not find the function|schema cache/i.test(text))throw new Error('تحديث ربط الحسابات غير منفذ. شغّل ملف RUN_ON_SUPABASE_v2_0_14_COMPLETE.sql مرة واحدة');
+      if(/PGRST202|Could not find the function|schema cache/i.test(text))throw new Error('تحديث ربط الحسابات غير منفذ. شغّل ملف RUN_ON_SUPABASE_v2_0_15_COMPLETE.sql مرة واحدة');
       throw error;
     }
     return Number(data||0);
@@ -306,7 +308,6 @@
     if(!enabled()){window.ALIN_AUTH_MODE='disabled';finishAuthBoot();return}
     window.ALIN_AUTH_MODE='supabase';
     window.doLogin=async function(){try{msg('جارٍ التحقق...');await login();msg('')}catch(e){msg(e.message||'تعذر تسجيل الدخول')}finally{finishAuthBoot()}};
-    window.confirmCartCheckout=secureCheckout;
     window.addAccount=createAccountFromAdmin;
     const oldLogout=window.logout;
     window.logout=function(){
