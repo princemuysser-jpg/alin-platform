@@ -1,0 +1,29 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>ALIN cart routing test</title></head><body>
+<div id="login" class="hidden"></div><div id="app"></div><div id="loginMsg"></div>
+<input id="studentName" value="طالب اختبار"><input id="studentPhone" value="07701234567">
+<div id="checkoutBox"><button class="alin-cart-submit" onclick="confirmCartCheckout()">تأكيد الطلب الآن</button></div>
+<script>
+window.ALIN_CONFIG={authEnabled:true,authEmailDomain:'users.alin.local'};
+window.db={booklets:[{id:'B1',title:'ملزمة اختبار'}],products:[{id:'P1',name:'هدية اختبار',type:'gifts',stock:5,price:1000}]};
+var cart=[{kind:'gifts',id:'P1',title:'هدية اختبار',qty:1,price:1000}];
+window.__rpcCalls=[];window.__alerts=[];
+window.alert=m=>window.__alerts.push(String(m));
+window.cartSave=()=>{window.__cartSaved=JSON.parse(JSON.stringify(cart))};
+window.load=async()=>{};window.openPage=()=>{};window.closeCheckout=()=>{};
+window.alinOrderExtra=()=>({fulfillment_type:'home_delivery',delivery_type:'courier',delivery_area:'الحرية',delivery_address:'اختبار',delivery_landmark:'قرب المدرسة',delivery_fee:2000,payment_method:'cash_to_courier',payment_status:'cod_pending'});
+window.sb={
+  rpc:async(name,args)=>{window.__rpcCalls.push({name,args});return {data:[{order_number:'AL-TEST-01'}],error:null}},
+  auth:{getSession:async()=>({data:{session:null},error:null}),signOut:async()=>{},onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},
+  from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:null,error:null})})})})
+};
+</script>
+<script src="../modules/core/cloud-status-ui.js?v=2.0.14"></script>
+<script>
+window.addEventListener('load',async()=>{
+  await new Promise(r=>setTimeout(r,50));
+  await window.ALINAuth.secureCheckout();
+  document.body.dataset.done='1';
+  const out=document.createElement('pre');out.id='result';out.textContent=JSON.stringify({calls:window.__rpcCalls,alerts:window.__alerts,saved:window.__cartSaved,success:document.getElementById('checkoutBox').textContent.includes('تم استلام طلبك')});document.body.appendChild(out);
+});
+</script>
+</body></html>

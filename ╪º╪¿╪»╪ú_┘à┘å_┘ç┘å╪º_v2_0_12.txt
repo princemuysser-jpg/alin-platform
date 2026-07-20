@@ -1,6 +1,0 @@
-ALIN v2.0.12
-
-1) شغّل RUN_ON_SUPABASE_v2_0_12_COMPLETE.sql مرة واحدة في Supabase SQL Editor.
-2) شغّل CHECK_SUPABASE_READINESS_v2_0_12.sql.
-3) النتيجة الصحيحة: ALIN v2.0.12 readiness check passed.
-4) ارفع ملفات الموقع ثم افتح الموقع من جديد.

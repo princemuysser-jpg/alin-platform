@@ -1,0 +1,15 @@
+{
+  "version": "2.0.14-coupon-duplicate-fix",
+  "status": "passed",
+  "tested_at": "2026-07-20",
+  "syntax_files": 50,
+  "module_files": 41,
+  "release_checks": 75,
+  "coupon_checks": 3,
+  "coupon_cases": [
+    "duplicate code rejected before insert",
+    "double-click creates one coupon only",
+    "editing the existing coupon code is allowed"
+  ],
+  "sql_required_for_upgrade": false
+}

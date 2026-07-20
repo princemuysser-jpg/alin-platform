@@ -14,7 +14,7 @@
 
 ;
 
-/* ALIN 2.0.12 - hardened Supabase Auth and admin account adapter. */
+/* ALIN 2.0.14 - hardened Supabase Auth and admin account adapter. */
 (function(){
   'use strict';
   const ATTEMPT_KEY='alin_auth_attempts_v139',MAX_ATTEMPTS=5,LOCK_MS=10*60*1000;
@@ -152,6 +152,33 @@
     return restorePromise;
   }
 
+  function normalizeCheckoutItems(lines){
+    const booklets=Array.isArray(window.db?.booklets)?window.db.booklets:[];
+    const products=Array.isArray(window.db?.products)?window.db.products:[];
+    const same=(a,b)=>String(a??'')===String(b??'');
+    const findBooklet=id=>booklets.find(x=>same(x.id,id))||null;
+    const findProduct=id=>products.find(x=>same(x.id,id))||null;
+    const aliases={booklet:'booklet',booklets:'booklet','ملزمة':'booklet','ملازم':'booklet',product:'product',products:'product',stationery:'product',stationary:'product',gift:'product',gifts:'product',deal:'product',booklet_product:'product'};
+    return lines.map((line,index)=>{
+      let id=String(line?.id??'').trim();
+      let kind=String(line?.kind??'').trim().toLowerCase();
+      let booklet=findBooklet(id),product=findProduct(id);
+      // بعض الأكواد القديمة كانت تستدعي addToCart(id, kind) بالعكس.
+      if(!booklet&&!product&&kind){
+        const swappedBooklet=findBooklet(kind),swappedProduct=findProduct(kind);
+        if(swappedBooklet||swappedProduct){id=kind;kind=String(line?.id??'').trim().toLowerCase();booklet=swappedBooklet;product=swappedProduct}
+      }
+      const canonical=booklet?'booklet':product?'product':aliases[kind]||'';
+      if(!id||!canonical||(!booklet&&!product&&booklets.length+products.length>0)){
+        const title=String(line?.title||`العنصر ${index+1}`).trim();
+        throw new Error(`العنصر «${title}» لم يعد موجوداً في المتجر. احذفه من السلة وأضفه من جديد`);
+      }
+      // إصلاح السلة القديمة محلياً حتى لا يتكرر الخطأ في الطلب التالي.
+      line.id=id;line.kind=canonical;
+      return {kind:canonical,id,qty:Math.max(1,Math.min(100,Number(line?.qty)||1))};
+    });
+  }
+
   let checkoutPending=false;
   async function secureCheckout(){
     if(checkoutPending)return;
@@ -167,7 +194,8 @@
       if(!/^\+?[0-9٠-٩]{7,15}$/.test(phone))throw new Error('اكتب رقم هاتف صحيح');
       const fulfillment=typeof alinOrderExtra==='function'?alinOrderExtra():{};
       const coupon=(document.getElementById('couponInput')?.value||'').trim();
-      const items=cart.map(x=>({kind:String(x.kind||''),id:String(x.id||''),qty:Math.max(1,Math.min(100,Number(x.qty)||1))}));
+      const items=normalizeCheckoutItems(cart);
+      if(typeof cartSave==='function')cartSave();
       const {data,error}=await c.rpc('alin_create_store_orders',{p_items:items,p_customer:{name,phone},p_fulfillment:fulfillment,p_coupon_code:coupon||null});
       if(error)throw error;
       const numbers=Array.isArray(data)?data.map(x=>String(x.order_number||'')).filter(Boolean):[];
@@ -256,7 +284,7 @@
     const {data,error}=await c.rpc('alin_repair_auth_links',{p_account_id:String(accountId)});
     if(error){
       const text=String(error.message||'');
-      if(/PGRST202|Could not find the function|schema cache/i.test(text))throw new Error('تحديث ربط الحسابات غير منفذ. شغّل ملف RUN_ON_SUPABASE_v2_0_12_COMPLETE.sql مرة واحدة');
+      if(/PGRST202|Could not find the function|schema cache/i.test(text))throw new Error('تحديث ربط الحسابات غير منفذ. شغّل ملف RUN_ON_SUPABASE_v2_0_14_COMPLETE.sql مرة واحدة');
       throw error;
     }
     return Number(data||0);

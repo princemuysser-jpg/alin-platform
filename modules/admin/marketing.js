@@ -1,7 +1,7 @@
 // === admin/marketing.js ===
 /* ===== admin/js/admin-marketing-v140.js ===== */
 (function(){
-  let editingBannerId=null, editingCouponId=null;
+  let editingBannerId=null, editingCouponId=null, couponSaving=false;
   const E=v=>typeof esc==='function'?esc(v):String(v??'');
   const M=v=>typeof money==='function'?money(v):Number(v||0).toLocaleString('ar-IQ');
   const D=v=>{if(!v)return 'غير محدد';try{return new Date(v).toLocaleDateString('ar-IQ')}catch(_){return v}};
@@ -11,6 +11,9 @@
   const couponUsed=c=>Number(c.used_count??c.usage_count??0);
   const couponLimit=c=>Number(c.max_uses??c.usage_limit??0);
   const couponActive=c=>String(c.status||'active')==='active' && (!c.expires_at || new Date(c.expires_at)>=new Date());
+  const normalizeCouponCode=v=>String(v??'').trim().toUpperCase().replace(/\s+/g,'');
+  const duplicateCoupon=(rows,code,ignoreId=null)=>rows.find(c=>normalizeCouponCode(c.code)===code && String(c.id)!==String(ignoreId??''));
+  const couponDuplicateMessage='هذا كود الخصم موجود مسبقًا. اختره من القائمة واضغط تعديل بدل إضافته مرة ثانية.';
 
   function bannerPreviewSync(){
     const box=document.getElementById('v140BannerPreview');if(!box)return;
@@ -38,7 +41,7 @@
 
   window.renderCouponsAdminV140=function(){
     const rows=coupons(), active=rows.filter(couponActive).length, used=rows.reduce((a,c)=>a+couponUsed(c),0), expired=rows.filter(c=>c.expires_at&&new Date(c.expires_at)<new Date()).length;
-    adminContent.innerHTML=`<section class="admin-v140"><header class="admin-v140-head"><div><h2>العروض والكوبونات</h2><p>إنشاء أكواد خصم وتحديد القيمة، عدد الاستخدامات، القسم المستهدف وتاريخ الانتهاء.</p></div></header><div class="admin-v140-stats"><div class="admin-v140-stat"><span>${rows.length}</span><small>إجمالي الكوبونات</small></div><div class="admin-v140-stat"><span>${active}</span><small>نشطة</small></div><div class="admin-v140-stat"><span>${used}</span><small>مرات الاستخدام</small></div><div class="admin-v140-stat"><span>${expired}</span><small>منتهية</small></div></div><div class="admin-v140-grid"><article class="admin-v140-card"><h3>${editingCouponId?'تعديل الكوبون':'إضافة كوبون'}</h3><form class="admin-v140-form" onsubmit="return false"><label>كود الخصم<input id="v140CpCode" placeholder="ALIN20" maxlength="24"></label><div class="admin-v140-form-row"><label>نوع الخصم<select id="v140CpType"><option value="percent">نسبة مئوية</option><option value="fixed">مبلغ ثابت</option></select></label><label>قيمة الخصم<input id="v140CpValue" type="number" min="1"></label></div><div class="admin-v140-form-row"><label>عدد الاستخدامات<input id="v140CpLimit" type="number" min="0" placeholder="0 = بلا حد"></label><label>تاريخ الانتهاء<input id="v140CpExpiry" type="date"></label></div><label>يطبق على<select id="v140CpApplies"><option value="all">كل المتجر</option><option value="booklet">الملازم</option><option value="stationery">القرطاسية</option><option value="gift">الهدايا</option></select></label><label>الحالة<select id="v140CpStatus"><option value="active">نشط</option><option value="disabled">متوقف</option></select></label><div class="admin-v140-actions"><button onclick="saveCouponV140()">${editingCouponId?'حفظ التعديل':'إضافة الكوبون'}</button>${editingCouponId?'<button class="secondary" onclick="cancelCouponEditV140()">إلغاء</button>':''}</div></form></article><article class="admin-v140-card"><div class="admin-v140-toolbar"><h3>قائمة الكوبونات</h3><input id="v140CouponSearch" placeholder="بحث بالكود" oninput="filterCouponsV140()"></div><div id="v140CouponsList" class="admin-v140-list">${couponRowsHtml(rows)}</div></article></div></section>`;
+    adminContent.innerHTML=`<section class="admin-v140"><header class="admin-v140-head"><div><h2>العروض والكوبونات</h2><p>إنشاء أكواد خصم وتحديد القيمة، عدد الاستخدامات، القسم المستهدف وتاريخ الانتهاء.</p></div></header><div class="admin-v140-stats"><div class="admin-v140-stat"><span>${rows.length}</span><small>إجمالي الكوبونات</small></div><div class="admin-v140-stat"><span>${active}</span><small>نشطة</small></div><div class="admin-v140-stat"><span>${used}</span><small>مرات الاستخدام</small></div><div class="admin-v140-stat"><span>${expired}</span><small>منتهية</small></div></div><div class="admin-v140-grid"><article class="admin-v140-card"><h3>${editingCouponId?'تعديل الكوبون':'إضافة كوبون'}</h3><form class="admin-v140-form" onsubmit="return false"><label>كود الخصم<input id="v140CpCode" placeholder="ALIN20" maxlength="24"></label><div class="admin-v140-form-row"><label>نوع الخصم<select id="v140CpType"><option value="percent">نسبة مئوية</option><option value="fixed">مبلغ ثابت</option></select></label><label>قيمة الخصم<input id="v140CpValue" type="number" min="1"></label></div><div class="admin-v140-form-row"><label>عدد الاستخدامات<input id="v140CpLimit" type="number" min="0" placeholder="0 = بلا حد"></label><label>تاريخ الانتهاء<input id="v140CpExpiry" type="date"></label></div><label>يطبق على<select id="v140CpApplies"><option value="all">كل المتجر</option><option value="booklet">الملازم</option><option value="stationery">القرطاسية</option><option value="gift">الهدايا</option></select></label><label>الحالة<select id="v140CpStatus"><option value="active">نشط</option><option value="disabled">متوقف</option></select></label><div class="admin-v140-actions"><button id="v140CouponSaveBtn" onclick="saveCouponV140()">${editingCouponId?'حفظ التعديل':'إضافة الكوبون'}</button>${editingCouponId?'<button class="secondary" onclick="cancelCouponEditV140()">إلغاء</button>':''}</div></form></article><article class="admin-v140-card"><div class="admin-v140-toolbar"><h3>قائمة الكوبونات</h3><input id="v140CouponSearch" placeholder="بحث بالكود" oninput="filterCouponsV140()"></div><div id="v140CouponsList" class="admin-v140-list">${couponRowsHtml(rows)}</div></article></div></section>`;
     if(editingCouponId){const c=rows.find(x=>String(x.id)===String(editingCouponId));if(c){v140CpCode.value=c.code||'';v140CpType.value=c.discount_type||'percent';v140CpValue.value=c.discount_value||0;v140CpLimit.value=c.max_uses??c.usage_limit??0;v140CpExpiry.value=(c.expires_at||'').slice(0,10);v140CpApplies.value=c.applies_to||'all';v140CpStatus.value=c.status||'active'}}
   };
   function couponRowsHtml(rows){return rows.length?rows.map(c=>{const limit=couponLimit(c),used=couponUsed(c),active=couponActive(c);return `<div class="admin-v140-item coupon-v140-item" data-search="${E(c.code||'')}"><div><h4 class="coupon-code">${E(c.code)}</h4><p>${c.discount_type==='fixed'?M(c.discount_value)+' د.ع':M(c.discount_value)+'%'} خصم — ${E(c.applies_to||'كل المتجر')}</p><div class="admin-v140-meta"><span class="admin-v140-pill ${active?'active':'off'}">${active?'نشط':'متوقف/منتهي'}</span><span class="admin-v140-pill">استخدام ${used}/${limit||'∞'}</span><span class="admin-v140-pill">ينتهي ${D(c.expires_at)}</span></div></div><div class="admin-v140-item-actions"><button class="coupon-copy" onclick="copyCouponV140('${E(c.code)}')">نسخ</button><button class="secondary" onclick="editCouponV140('${E(c.id)}')">تعديل</button><button onclick="toggleCouponV140('${E(c.id)}','${String(c.status||'active')==='active'?'disabled':'active'}')">${String(c.status||'active')==='active'?'إيقاف':'تشغيل'}</button><button class="danger" onclick="deleteCouponV140('${E(c.id)}')">حذف</button></div></div>`}).join(''):'<div class="admin-v140-empty">لا توجد كوبونات</div>'}
@@ -46,7 +49,36 @@
   window.copyCouponV140=async code=>{try{await navigator.clipboard.writeText(code);toast('تم نسخ الكود')}catch(_){prompt('انسخ الكود',code)}};
   window.editCouponV140=id=>{editingCouponId=id;renderCouponsAdminV140();adminContent.scrollIntoView({behavior:'smooth'})};
   window.cancelCouponEditV140=()=>{editingCouponId=null;renderCouponsAdminV140()};
-  window.saveCouponV140=async function(){try{const code=v140CpCode.value.trim().toUpperCase(),value=Number(v140CpValue.value||0);if(!code||value<=0)throw Error('أكمل كود وقيمة الخصم');const payload={code,discount_type:v140CpType.value,discount_value:value,max_uses:Number(v140CpLimit.value||0),usage_limit:Number(v140CpLimit.value||0),expires_at:v140CpExpiry.value?new Date(v140CpExpiry.value+'T23:59:59').toISOString():null,applies_to:v140CpApplies.value,status:v140CpStatus.value};if(editingCouponId)await update('coupons',payload,{id:editingCouponId});else await insert('coupons',{id:uid('CP'),used_count:0,usage_count:0,...payload});if(typeof audit==='function')await audit('coupon',(editingCouponId?'تعديل':'إضافة')+' كوبون '+code);editingCouponId=null;await load();renderCouponsAdminV140();toast('تم حفظ الكوبون')}catch(e){alert(e.message)}};
+  window.saveCouponV140=async function(){
+    if(couponSaving)return;
+    const button=document.getElementById('v140CouponSaveBtn');
+    try{
+      couponSaving=true;
+      if(button){button.disabled=true;button.textContent='جارٍ الحفظ...'}
+      const code=normalizeCouponCode(v140CpCode.value),value=Number(v140CpValue.value||0);
+      v140CpCode.value=code;
+      if(!code||value<=0)throw Error('أكمل كود وقيمة الخصم');
+      if(!/^[\p{L}\p{N}_-]{2,24}$/u.test(code))throw Error('كود الخصم يقبل حروفًا وأرقامًا وشرطة فقط، بدون مسافات');
+      let currentRows=coupons();
+      try{if(typeof query==='function'){const fresh=await query('coupons');if(Array.isArray(fresh))currentRows=fresh}}catch(_){}
+      if(duplicateCoupon(currentRows,code,editingCouponId))throw Error(couponDuplicateMessage);
+      const payload={code,discount_type:v140CpType.value,discount_value:value,max_uses:Number(v140CpLimit.value||0),usage_limit:Number(v140CpLimit.value||0),expires_at:v140CpExpiry.value?new Date(v140CpExpiry.value+'T23:59:59').toISOString():null,applies_to:v140CpApplies.value,status:v140CpStatus.value};
+      if(editingCouponId)await update('coupons',payload,{id:editingCouponId});
+      else await insert('coupons',{id:uid('CP'),used_count:0,usage_count:0,...payload});
+      if(typeof audit==='function')await audit('coupon',(editingCouponId?'تعديل':'إضافة')+' كوبون '+code);
+      editingCouponId=null;
+      await load();
+      renderCouponsAdminV140();
+      toast('تم حفظ الكوبون');
+    }catch(e){
+      const message=String(e?.message||e||'تعذر حفظ الكوبون');
+      if(/coupons_code_key|duplicate key|23505/i.test(message))alert(couponDuplicateMessage);
+      else alert(message);
+    }finally{
+      couponSaving=false;
+      if(button&&document.body.contains(button)){button.disabled=false;button.textContent=editingCouponId?'حفظ التعديل':'إضافة الكوبون'}
+    }
+  };
   window.toggleCouponV140=async(id,status)=>{await update('coupons',{status},{id});await load();renderCouponsAdminV140()};
   window.deleteCouponV140=async id=>{if(!confirm('حذف الكوبون؟'))return;try{await removeRow('coupons',{id});await load();renderCouponsAdminV140();toast('تم حذف الكوبون')}catch(e){alert(e.message)}};
 

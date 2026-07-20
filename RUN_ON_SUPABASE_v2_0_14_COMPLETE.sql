@@ -1,4 +1,4 @@
--- منصة آلين v2.0.11 — تحديث Supabase المعتمد والقابل لإعادة التشغيل
+-- منصة آلين v2.0.14 — تحديث Supabase المعتمد والقابل لإعادة التشغيل
 -- شغّل هذا الملف من Supabase > SQL Editor بعد التأكد أن حساب المدير مربوط في accounts.auth_user_id. الملف قابل لإعادة التشغيل بأمان.
 
 begin;
@@ -249,7 +249,7 @@ using (
 notify pgrst, 'reload schema';
 commit;
 
--- ملاحظة: الأوامر التالية مضافة في v2.0.11 لتنظيف كلمات المرور القديمة وتأمين المندوبين.
+-- ملاحظة: الأوامر التالية مضافة في v2.0.14 لتنظيف كلمات المرور القديمة وتأمين المندوبين.
 -- إذا شُغّل الملف سابقاً، هذه الأوامر قابلة لإعادة التشغيل.
 
 -- يفضل وضعها قبل COMMIT، لذلك ننفذها في معاملة مستقلة آمنة.
@@ -327,7 +327,7 @@ commit;
 
 
 -- ============================================================
--- v2.0.11: إنشاء الطلبات من الخادم بدلاً من الكتابة المباشرة
+-- v2.0.14: إنشاء الطلبات من الخادم بدلاً من الكتابة المباشرة
 -- ============================================================
 begin;
 create extension if not exists pgcrypto;
@@ -378,21 +378,44 @@ begin
   for v_item in select value from jsonb_array_elements(p_items)
   loop
     v_index := v_index + 1;
-    v_kind := lower(coalesce(v_item->>'kind',''));
+    v_kind := lower(btrim(coalesce(v_item->>'kind','')));
     v_item_id := btrim(coalesce(v_item->>'id',''));
     v_qty := least(greatest(coalesce((v_item->>'qty')::integer,1),1),100);
-    if v_item_id='' or v_kind not in ('booklet','product','stationery','gift') then
+    if v_item_id='' then
       raise exception 'عنصر غير صالح في السلة';
     end if;
 
-    if v_kind='booklet' then
+    -- بعض الإصدارات القديمة خزنت نوع الهدية باسم gifts أو خزنت نوع المنتج داخل السلة.
+    -- المصدر الحقيقي يُحسم من معرّف العنصر في قاعدة البيانات، ولا نعتمد على نوع مرسل من المتصفح.
+    v_source := null;
+    if v_kind in ('booklet','booklets','booklet_product','ملزمة','ملازم') then
       execute 'select to_jsonb(x) from public.booklets x where x.id::text=$1 limit 1'
         into v_source using v_item_id;
-    else
+      if v_source is not null then v_kind := 'booklet'; end if;
+    end if;
+
+    if v_source is null then
       execute 'select to_jsonb(x) from public.products x where x.id::text=$1 limit 1 for update'
         into v_source using v_item_id;
+      if v_source is not null then
+        v_kind := case lower(coalesce(v_source->>'type',''))
+          when 'gift' then 'gift'
+          when 'gifts' then 'gift'
+          when 'stationery' then 'stationery'
+          when 'stationary' then 'stationery'
+          else 'product'
+        end;
+      end if;
     end if;
-    if v_source is null then raise exception 'العنصر المطلوب غير موجود'; end if;
+
+    -- معالجة سلة قديمة انعكس فيها نوع العنصر ومعرّفه.
+    if v_source is null and v_kind not in ('booklet','booklets','ملزمة','ملازم') then
+      execute 'select to_jsonb(x) from public.booklets x where x.id::text=$1 limit 1'
+        into v_source using v_item_id;
+      if v_source is not null then v_kind := 'booklet'; end if;
+    end if;
+
+    if v_source is null then raise exception 'العنصر المطلوب غير موجود أو حُذف من المتجر'; end if;
 
     if coalesce(v_source->>'is_hidden','false')='true' or coalesce(v_source->>'status','published') not in ('published','active','available') then
       raise exception 'العنصر غير متاح حالياً';
@@ -497,7 +520,7 @@ notify pgrst, 'reload schema';
 commit;
 
 -- ============================================================
--- v2.0.11: حماية الجداول الحساسة وسياسات RLS الموحدة
+-- v2.0.14: حماية الجداول الحساسة وسياسات RLS الموحدة
 -- ============================================================
 begin;
 
@@ -944,7 +967,7 @@ notify pgrst, 'reload schema';
 commit;
 
 -- ============================================================
--- v2.0.12: إصلاح نهائي لربط accounts مع Supabase Auth
+-- v2.0.14: إصلاح نهائي لربط accounts مع Supabase Auth
 -- السبب: مشغل حماية الحساب كان يعيد auth_user_id إلى قيمته القديمة
 -- عند التحديث من SQL Editor أو Service Role.
 -- ============================================================
@@ -1050,7 +1073,7 @@ declare
   v_repaired integer;
 begin
   v_repaired := public.alin_repair_auth_links(null);
-  raise notice 'ALIN v2.0.12 repaired auth links: %', v_repaired;
+  raise notice 'ALIN v2.0.14 repaired auth links: %', v_repaired;
 end
 $$;
 

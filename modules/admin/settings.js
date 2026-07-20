@@ -23,7 +23,7 @@
   function render(root){
     if(!root)return;root.className='panel admin-settings-v144';
     root.innerHTML=`
-      <div class="as144-head"><div><h2>إعدادات المنصة</h2><p>إدارة الهوية والأرباح والتوصيل والطلبات وحساب المدير من مكان واحد.</p></div><span class="as144-version">v2.0.12</span></div>
+      <div class="as144-head"><div><h2>إعدادات المنصة</h2><p>إدارة الهوية والأرباح والتوصيل والطلبات وحساب المدير من مكان واحد.</p></div><span class="as144-version">v2.0.14</span></div>
       <div class="as144-tabs" role="tablist">
         <button class="active" data-as144-tab="general">عام</button><button data-as144-tab="profits">الأرباح</button><button data-as144-tab="orders">الطلبات والتوصيل</button><button data-as144-tab="brand">الهوية والتواصل</button><button data-as144-tab="security">أمان المدير</button>
       </div>
