@@ -1,187 +1,58 @@
 // === library/dashboard.js ===
-/* ===== library/js/library-shell.js ===== */
-/* V113: stable library dashboard rendering */
+/* ALIN v2.0.9 — single library entry and dashboard runtime. */
 (function(){
+  'use strict';
   window.AlinLibraryModules=window.AlinLibraryModules||{};
-  const arr=v=>Array.isArray(v)?v:[];
-  const eq=(a,b)=>String(a??'')===String(b??'');
-  const safeEsc=v=>typeof esc==='function'?esc(v):String(v??'');
-  const safeMoney=v=>typeof money==='function'?money(v):Number(v||0).toLocaleString('ar-IQ');
-  const fallbackEmpty=t=>`<div class="empty">${safeEsc(t)}</div>`;
-  function libraryId(){
-    const libs=arr(window.db?.accounts?.libraries);
-    if(window.current?.role!=='library') return '';
-    const ids=[current.id,current.library_id,current.account_id,current.user_id].filter(Boolean);
-    let lib=libs.find(x=>ids.some(id=>eq(x.id,id)||eq(x.account_id,id)||eq(x.user_id,id)));
-    if(!lib&&current.username) lib=libs.find(x=>eq(x.username,current.username));
-    if(!lib&&current.name) lib=libs.find(x=>eq(x.name,current.name));
-    return String(lib?.id||current.id||'');
-  }
-  function isOpen(lib){
-    try{return typeof libIsOpen==='function'?!!libIsOpen(lib):!(lib?.is_open===false||String(lib?.is_open)==='false'||lib?.open_status==='closed')}catch(_){return true}
-  }
-  function libraryOrders(id){
-    return arr(window.db?.orders).filter(o=>eq(o.library_id,id)||eq(o.pickup_library_id,id)||eq(o.assigned_library_id,id));
-  }
 
   function openLibraryJoinPortal(){
     try{
-      if(typeof window.showLogin==='function'){
-        window.showLogin('library');
-        const loginSection=document.getElementById('login');
-        const appSection=document.getElementById('app');
-        if(loginSection) loginSection.classList.remove('hidden');
-        if(appSection) appSection.classList.add('hidden');
-        const form=document.getElementById('loginForm');
-        if(form) form.classList.remove('hidden');
-        const user=document.getElementById('loginU');
-        if(user) setTimeout(()=>user.focus(),0);
-        return;
-      }
-    }catch(e){ console.error('[Alin library login]',e); }
-    alert('تعذر فتح تسجيل دخول المكتبة. حدّث الصفحة وحاول مرة أخرى.');
-  }
-  function renderLibraryStable(){
-    const stats=document.getElementById('libraryStats'), permits=document.getElementById('libraryPermits'), history=document.getElementById('libraryHistory');
-    if(!stats||!permits||!history) return;
-    const id=libraryId();
-    const libs=arr(window.db?.accounts?.libraries);
-    const lib=libs.find(x=>eq(x.id,id));
-    const orders=libraryOrders(id);
-    const led=arr(window.db?.ledger).filter(x=>eq(x.library_id,id));
-    const notifications=arr(window.v19Notifications||window.db?.notifications).filter(n=>n.status!=='inactive'&&(['all','library'].includes(n.target_role||n.audience)));
-    stats.innerHTML=`<div><b>طلبات المكتبة</b><span>${orders.length}</span></div><div><b>الجديدة</b><span>${orders.filter(x=>['new','pending'].includes(x.status)).length}</span></div><div><b>الجاهزة</b><span>${orders.filter(x=>x.status==='ready').length}</span></div><div><b>المستحقات</b><span>${safeMoney(led.reduce((a,x)=>a+(+x.library||0),0))} د.ع</span></div>`;
-    const status=lib?`<div class="library-status-card ${isOpen(lib)?'open':'closed'}"><div><b>${safeEsc(lib.name||'المكتبة')}</b><small>${safeEsc([lib.area,lib.landmark].filter(Boolean).join(' — '))}</small></div><span class="${isOpen(lib)?'status-open':'status-closed'}">${isOpen(lib)?'مفتوح':'مغلق'}</span><div class="row-actions"><button onclick="setLibraryOpen(true)">فتح المكتبة</button><button class="warning" onclick="setLibraryOpen(false)">إغلاق المكتبة</button></div></div>`:`<div class="notice">تعذر تحديد حساب المكتبة الحالي. سجّل الخروج ثم ادخل بحساب المكتبة من جديد.</div>`;
-    const noticeHtml=notifications.map(n=>`<div class="notice"><b>${safeEsc(n.title||'إشعار')}</b><div>${safeEsc(n.message||n.text||'')}</div></div>`).join('');
-    const rows=orders.map(o=>{
-      const b=o.kind==='booklet'?arr(window.db?.booklets).find(x=>eq(x.id,o.item_id)):null;
-      return `<article class="library-order-card"><div class="library-order-main"><b>${safeEsc(o.order_number||o.id)} — ${safeEsc(o.title||'طلب')}</b><small>${safeEsc(o.student_name||'')} • ${safeEsc(o.student_phone||'')} • ×${o.qty||1} • ${safeMoney(o.total||0)} د.ع</small><div class="timeline">${arr(o.status_history).map(h=>`<span class="done">${safeEsc(h.status)}</span>`).join('')}</div></div><div class="row-actions">${b?.file_path?`<button onclick="openLibraryBookletPdf('${safeEsc(o.id)}')">طباعة</button>`:''}<button onclick="libraryOrderStatus('${safeEsc(o.id)}','processing')">استلام</button><button onclick="libraryOrderStatus('${safeEsc(o.id)}','ready')">جاهز</button><button onclick="libraryOrderStatus('${safeEsc(o.id)}','completed')">تسليم</button></div></article>`;
-    }).join('');
-    permits.innerHTML=status+noticeHtml+(rows||fallbackEmpty('لا توجد طلبات مرتبطة بهذه المكتبة'));
-    history.innerHTML=orders.filter(x=>x.status==='completed').map(o=>`<div class="row"><b>${safeEsc(o.order_number||o.id)}</b><span>${safeMoney(o.total||0)} د.ع</span></div>`).join('')||fallbackEmpty('لا يوجد سجل تسليم');
-  }
-  window.renderLibrary=renderLibraryStable;
-  window.openLibraryJoinPortal=openLibraryJoinPortal;
-  window.AlinLibraryModules.renderLibrary=renderLibraryStable;
-  window.AlinLibraryModules.openLibraryJoinPortal=openLibraryJoinPortal;
-  const oldOpen=window.openPage;
-  if(typeof oldOpen==='function') window.openPage=function(role){const r=oldOpen.apply(this,arguments);if(role==='library')setTimeout(renderLibraryStable,0);return r};
-  const oldLoad=window.load;
-  if(typeof oldLoad==='function') window.load=async function(){const r=await oldLoad.apply(this,arguments);if(window.current?.role==='library')renderLibraryStable();return r};
-  function boot(){if(window.current?.role==='library')setTimeout(renderLibraryStable,0)}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
-})();
-
-/* ===== library/js/library-entry-fix-v114.js ===== */
-/* V114: library entry bootstrap */
-(function(){
-  function openLibrary(){
-    if(typeof window.showLogin==='function'){
+      window.pendingRole='library';
+      if(typeof window.showLogin!=='function')throw new Error('login unavailable');
       window.showLogin('library');
       document.getElementById('login')?.classList.remove('hidden');
       document.getElementById('app')?.classList.add('hidden');
       document.getElementById('loginForm')?.classList.remove('hidden');
-      setTimeout(()=>document.getElementById('loginU')?.focus(),0);
-      return;
+      const user=document.getElementById('loginU');
+      const pass=document.getElementById('loginPass');
+      const msg=document.getElementById('loginMsg');
+      if(user){user.placeholder='اسم دخول المكتبة';setTimeout(()=>user.focus(),0)}
+      if(pass)pass.placeholder='الرمز السري للمكتبة';
+      if(msg){msg.textContent='دخول المكتبة';msg.dataset.role='library'}
+    }catch(error){
+      console.error('[ALIN library entry]',error);
+      alert('تعذر فتح دخول المكتبة. حدّث الصفحة وحاول مرة أخرى.');
     }
-    alert('تعذر فتح تسجيل دخول المكتبة.');
   }
-  window.AlinLibraryModules=window.AlinLibraryModules||{};
-  window.AlinLibraryModules.openLibraryJoinPortal=openLibrary;
-  window.openLibraryJoinPortal=openLibrary;
-  const oldOpen=window.openPage;
-  if(typeof oldOpen==='function'){
-    window.openPage=function(page){
-      const r=oldOpen.apply(this,arguments);
-      if(page==='library') setTimeout(()=>window.renderLibrary?.(),0);
-      return r;
-    };
-  }
-})();
 
-/* ===== library/js/library-complete-fix-v115.js ===== */
-/* V115: complete library entry and dashboard repair */
-(function(){
-  const getCurrent=()=>window.current||null;
-  const getDb=()=>window.db||{accounts:{libraries:[]},orders:[],ledger:[]};
-  function markLibraryLogin(){
-    const form=document.getElementById('loginForm');
-    const msg=document.getElementById('loginMsg');
-    if(form) form.classList.remove('hidden');
-    if(msg){msg.textContent='دخول المكتبة';msg.dataset.role='library';}
-    const u=document.getElementById('loginU');
-    if(u){u.placeholder='اسم دخول المكتبة';setTimeout(()=>u.focus(),0)}
-    const p=document.getElementById('loginPass');
-    if(p)p.placeholder='الرمز السري للمكتبة';
-  }
-  function openLibrary(){
-    try{
-      if(typeof window.showLogin!=='function') throw new Error('showLogin missing');
-      window.showLogin('library');
-      window.pendingRole='library';
-      document.getElementById('login')?.classList.remove('hidden');
-      document.getElementById('app')?.classList.add('hidden');
-      markLibraryLogin();
-    }catch(e){
-      console.error('[ALIN library open]',e);
-      alert('تعذر فتح دخول المكتبة. أعد تحميل الصفحة ثم حاول مرة أخرى.');
-    }
-  }
-  function renderWhenReady(){
-    const c=getCurrent();
-    if(c?.role!=='library') return;
+  function showLibraryPage(){
+    if(window.current?.role!=='library')return false;
+    const login=document.getElementById('login');
+    const app=document.getElementById('app');
     const page=document.getElementById('libraryPage');
-    if(page){
-      document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));
-      page.classList.remove('hidden');
-    }
-    try{window.AlinLibraryModules?.renderLibrary?.()}catch(e){console.error('[ALIN library render module]',e)}
-    try{if(typeof window.renderLibrary==='function')window.renderLibrary()}catch(e){console.error('[ALIN library render]',e)}
+    if(!app||!page)return false;
+    login?.classList.add('hidden');
+    app.classList.remove('hidden','store-mode');
+    document.querySelectorAll('.page').forEach(node=>node.classList.add('hidden'));
+    page.classList.remove('hidden');
+    const nav=document.getElementById('activeNav');
+    if(nav)nav.innerHTML='<button type="button">المكتبة</button>';
+    requestAnimationFrame(()=>window.AlinLibraryModules.renderLibrary?.());
+    return true;
   }
-  window.openLibraryJoinPortal=openLibrary;
-  window.AlinLibraryModules=window.AlinLibraryModules||{};
-  window.AlinLibraryModules.openLibraryJoinPortal=openLibrary;
 
-  const oldDoLogin=window.doLogin;
-  if(typeof oldDoLogin==='function'){
-    window.doLogin=async function(){
-      const role=window.pendingRole;
-      const r=await oldDoLogin.apply(this,arguments);
-      if(role==='library') setTimeout(renderWhenReady,50);
-      return r;
-    };
-  }
-  const oldOpenPage=window.openPage;
-  if(typeof oldOpenPage==='function'){
-    window.openPage=function(page){
-      const r=oldOpenPage.apply(this,arguments);
-      if(page==='library') setTimeout(renderWhenReady,30);
-      return r;
-    };
-  }
-  const oldLoad=window.load;
-  if(typeof oldLoad==='function'){
-    window.load=async function(){
-      const r=await oldLoad.apply(this,arguments);
-      if(getCurrent()?.role==='library') setTimeout(renderWhenReady,0);
-      return r;
-    };
-  }
-  document.addEventListener('click',e=>{
-    const b=e.target.closest('button');
-    if(!b)return;
-    const t=(b.textContent||'').trim();
-    if(t==='لوحة المكتبة'||t==='المكتبة'){
-      const oc=b.getAttribute('onclick')||'';
-      if(oc.includes('openLibraryJoinPortal')){e.preventDefault();openLibrary();}
-    }
-  },true);
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{if(getCurrent()?.role==='library')renderWhenReady()});
-  else if(getCurrent()?.role==='library')renderWhenReady();
+  window.openLibraryJoinPortal=openLibraryJoinPortal;
+  window.AlinLibraryModules.openLibraryJoinPortal=openLibraryJoinPortal;
+  window.AlinLibraryModules.showLibraryPage=showLibraryPage;
+  window.addEventListener('alin:auth-restored',event=>{
+    if(event.detail?.account?.role==='library')showLibraryPage();
+  });
+  window.addEventListener('alin:data-refreshed',()=>{
+    if(window.current?.role==='library')window.AlinLibraryModules.renderLibrary?.();
+  });
 })();
 
 /* ===== library/js/library-dashboard-v116.js ===== */
-/* V116 - organized library dashboard */
+/* ALIN v2.0.9 - organized library dashboard */
 (function(){
   window.AlinLibraryModules=window.AlinLibraryModules||{};
   const state={tab:'home',filter:'all',search:''};

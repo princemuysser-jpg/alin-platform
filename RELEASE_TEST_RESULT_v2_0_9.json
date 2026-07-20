@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "version": "2.0.9-session-restore",
+  "fix": "Library session restore and single dashboard runtime",
+  "tests": {
+    "javascript_syntax_files": 50,
+    "module_order": 41,
+    "release_checks": 72,
+    "accounts_auth_checks": 5,
+    "session_restore_checks": 8,
+    "finance_runtime_checks": 18
+  },
+  "sql_required": false
+}

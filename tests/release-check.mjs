@@ -6,7 +6,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const failures=[];
 const required=[
   'index.html','store-desktop.html','store-mobile.html','service-worker.js','VERSION',
-  'RUN_ON_SUPABASE_v2_0_8_COMPLETE.sql','CHECK_SUPABASE_READINESS_v2_0_8.sql',
+  'RUN_ON_SUPABASE_v2_0_9_COMPLETE.sql','CHECK_SUPABASE_READINESS_v2_0_9.sql',
   'modules/module-order.json','modules/core/config.js','modules/core/platform.js','modules/admin/orders.js',
   'store/banners.js','store/notifications.js','core/finance-runtime.js'
 ];
@@ -24,8 +24,8 @@ for(const stale of ['RUN_ON_SUPABASE_v2_0_1_COMPLETE.sql','CHECK_SUPABASE_READIN
   if(combined.includes(stale))failures.push(`stale:${stale}`);
 }
 
-const run=fs.readFileSync(path.join(root,'RUN_ON_SUPABASE_v2_0_8_COMPLETE.sql'),'utf8');
-const check=fs.readFileSync(path.join(root,'CHECK_SUPABASE_READINESS_v2_0_8.sql'),'utf8');
+const run=fs.readFileSync(path.join(root,'RUN_ON_SUPABASE_v2_0_9_COMPLETE.sql'),'utf8');
+const check=fs.readFileSync(path.join(root,'CHECK_SUPABASE_READINESS_v2_0_9.sql'),'utf8');
 if((run.match(/\bbegin\s*;/gi)||[]).length!==(run.match(/\bcommit\s*;/gi)||[]).length)failures.push('sql:transaction-count');
 for(const name of ['alin_current_account_id','alin_current_role','alin_is_admin','alin_create_store_orders','alin_validate_coupon','alin_track_order','alin_notification_visible','alin_order_visible','alin_protect_order_update']){
   if(!run.includes(name))failures.push(`sql:function:${name}`);
@@ -34,7 +34,7 @@ for(const name of ['alin_current_account_id','alin_current_role','alin_is_admin'
 for(const name of ['alin-files','banners_public_read','alin_files_public_read']){
   if(!run.includes(name)||!check.includes(name))failures.push(`sql:readiness:${name}`);
 }
-if(!check.includes('ALIN v2.0.8 readiness check passed.'))failures.push('check:success-message');
+if(!check.includes('ALIN v2.0.9 readiness check passed.'))failures.push('check:success-message');
 
 
 if(!run.includes('alin_v204_notifications_user_read'))failures.push('security:notifications-rls');
@@ -59,12 +59,12 @@ if(!resetFn.includes("createUser({")||!resetFn.includes("auth_user_id: authUserI
 
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  if(!html.includes('version-badge">v2.0.8'))failures.push(`version-badge:${htmlName}`);
+  if(!html.includes('version-badge">v2.0.9'))failures.push(`version-badge:${htmlName}`);
 }
 for(const obsolete of ['dist/js/shared.early.bundle.js','dist/js/shared.app.bundle.js','options.css']){if(fs.existsSync(path.join(root,obsolete)))failures.push(`obsolete:${obsolete}`)}
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  const positions=moduleFiles.map(rel=>html.indexOf(`./${rel}?v=2.0.8`));
+  const positions=moduleFiles.map(rel=>html.indexOf(`./${rel}?v=2.0.9`));
   if(positions.some(pos=>pos<0))failures.push(`modules:not-loaded:${htmlName}`);
   if(positions.some((pos,index)=>index>0&&pos<positions[index-1]))failures.push(`modules:wrong-order:${htmlName}`);
 }
@@ -75,7 +75,7 @@ for(const token of ['canonicalLedger','librarySummary','teacherSummary',"settlem
 }
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  if(!html.includes('core/finance-runtime.js?v=2.0.8'))failures.push(`finance-script:${htmlName}`);
+  if(!html.includes('core/finance-runtime.js?v=2.0.9'))failures.push(`finance-script:${htmlName}`);
 }
 
 for(const htmlName of ['index.html','store-desktop.html','store-mobile.html']){

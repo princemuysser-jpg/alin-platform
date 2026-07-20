@@ -98,6 +98,53 @@
     return account;
   }
 
+
+  let restorePromise=null;
+  function finishAuthBoot(){
+    try{document.documentElement?.removeAttribute?.('data-alin-auth-boot')}catch(_){}
+  }
+  function showSignedOut(){
+    if(window.current)return;
+    document.getElementById('app')?.classList.add('hidden');
+    document.getElementById('login')?.classList.remove('hidden');
+  }
+  function accountState(account,user){
+    return {role:account.role,id:account.id,name:account.name,username:account.username,auth_user_id:user.id};
+  }
+  async function restoreSession(){
+    if(!enabled()){finishAuthBoot();return false}
+    if(restorePromise)return restorePromise;
+    restorePromise=(async()=>{
+      const c=client();
+      if(!c?.auth){showSignedOut();return false}
+      const response=await c.auth.getSession();
+      const session=response?.data?.session||null;
+      if(response?.error||!session?.user){showSignedOut();return false}
+      const account=await accountForUser(session.user);
+      if(!account||account.status!=='active'){
+        try{await c.auth.signOut()}catch(_){}
+        window.current=null;showSignedOut();return false;
+      }
+      window.current=accountState(account,session.user);
+      try{window.AlinCloud?.loadCachedSnapshot?.()}catch(_){}
+      const target=account.role==='accountant'?'admin':account.role;
+      if(typeof window.openPage==='function')window.openPage(target);
+      if(account.role==='library')window.AlinLibraryModules?.showLibraryPage?.();
+      finishAuthBoot();
+      try{if(typeof window.load==='function')await window.load()}catch(error){console.warn('[ALIN session data refresh]',error)}
+      if(account.role==='library')window.AlinLibraryModules?.showLibraryPage?.();
+      if(account.role==='accountant')setTimeout(()=>{try{window.adminTab?.('finance')}catch(_){}},50);
+      window.dispatchEvent(new CustomEvent('alin:auth-restored',{detail:{account}}));
+      return true;
+    })().catch(error=>{
+      console.error('[ALIN auth restore]',error);
+      window.current=null;showSignedOut();return false;
+    }).finally(()=>{
+      finishAuthBoot();restorePromise=null;
+    });
+    return restorePromise;
+  }
+
   let checkoutPending=false;
   async function secureCheckout(){
     if(checkoutPending)return;
@@ -209,17 +256,18 @@
   async function deleteAccountFromAdmin(accountId){return invokeAdmin('admin-delete-account',{account_id:accountId})}
 
   function install(){
-    if(!enabled()){window.ALIN_AUTH_MODE='disabled';return}
+    if(!enabled()){window.ALIN_AUTH_MODE='disabled';finishAuthBoot();return}
     window.ALIN_AUTH_MODE='supabase';
-    window.doLogin=async function(){try{msg('جارٍ التحقق...');await login();msg('')}catch(e){msg(e.message||'تعذر تسجيل الدخول')}};
+    window.doLogin=async function(){try{msg('جارٍ التحقق...');await login();msg('')}catch(e){msg(e.message||'تعذر تسجيل الدخول')}finally{finishAuthBoot()}};
     window.confirmCartCheckout=secureCheckout;
     window.addAccount=createAccountFromAdmin;
     const oldLogout=window.logout;
-    window.logout=async function(){try{await client()?.auth?.signOut()}catch(_){};window.current=null;return typeof oldLogout==='function'?oldLogout.apply(this,arguments):location.reload()};
-    client()?.auth?.onAuthStateChange?.((event)=>{if(event==='SIGNED_OUT')window.current=null});
+    window.logout=async function(){try{await client()?.auth?.signOut()}catch(_){};window.current=null;finishAuthBoot();return typeof oldLogout==='function'?oldLogout.apply(this,arguments):location.reload()};
+    client()?.auth?.onAuthStateChange?.((event)=>{if(event==='SIGNED_OUT'){window.current=null;showSignedOut();finishAuthBoot()}});
+    restoreSession();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
-  window.ALINAuth=Object.freeze({enabled,emailFor,login,accountForUser,secureCheckout,createAccount,createAccountFromAdmin,updateAccountFromAdmin,resetPasswordFromAdmin,deleteAccountFromAdmin,ensureAdminSession:()=>adminSession(false)});
+  window.ALINAuth=Object.freeze({enabled,emailFor,login,restoreSession,accountForUser,secureCheckout,createAccount,createAccountFromAdmin,updateAccountFromAdmin,resetPasswordFromAdmin,deleteAccountFromAdmin,ensureAdminSession:()=>adminSession(false)});
 })();
 
 

@@ -1,5 +1,5 @@
--- ALIN v2.0.8 — فحص حماية Supabase للقراءة فقط
--- شغّله بعد RUN_ON_SUPABASE_v2_0_8_COMPLETE.sql. لا يغيّر أي بيانات.
+-- ALIN v2.0.9 — فحص حماية Supabase للقراءة فقط
+-- شغّله بعد RUN_ON_SUPABASE_v2_0_9_COMPLETE.sql. لا يغيّر أي بيانات.
 do $$
 declare
   missing text[] := '{}';
@@ -66,7 +66,7 @@ begin
   end if;
 
   if cardinality(missing)>0 then
-    raise exception 'ALIN v2.0.8 readiness failed. Missing: %',array_to_string(missing,', ');
+    raise exception 'ALIN v2.0.9 readiness failed. Missing: %',array_to_string(missing,', ');
   end if;
-  raise notice 'ALIN v2.0.8 readiness check passed.';
+  raise notice 'ALIN v2.0.9 readiness check passed.';
 end $$;
