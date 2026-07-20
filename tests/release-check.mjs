@@ -64,12 +64,12 @@ if(!sharedAdmin.includes('findAuthUserByEmail')||!sharedAdmin.includes('listUser
 
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  if(!html.includes('version-badge">v2.1.1'))failures.push(`version-badge:${htmlName}`);
+  if(!html.includes('version-badge">v2.1.2'))failures.push(`version-badge:${htmlName}`);
 }
 for(const obsolete of ['dist/js/shared.early.bundle.js','dist/js/shared.app.bundle.js','options.css']){if(fs.existsSync(path.join(root,obsolete)))failures.push(`obsolete:${obsolete}`)}
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  const positions=moduleFiles.map(rel=>html.indexOf(`./${rel}?v=2.1.1`));
+  const positions=moduleFiles.map(rel=>html.indexOf(`./${rel}?v=2.1.2`));
   if(positions.some(pos=>pos<0))failures.push(`modules:not-loaded:${htmlName}`);
   if(positions.some((pos,index)=>index>0&&pos<positions[index-1]))failures.push(`modules:wrong-order:${htmlName}`);
 }
@@ -80,7 +80,16 @@ for(const token of ['canonicalLedger','librarySummary','teacherSummary',"settlem
 }
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  if(!html.includes('core/finance-runtime.js?v=2.1.1'))failures.push(`finance-script:${htmlName}`);
+  if(!html.includes('core/finance-runtime.js?v=2.1.2'))failures.push(`finance-script:${htmlName}`);
+}
+
+const cartModule=fs.readFileSync(path.join(root,'modules/store/cart.js'),'utf8');
+const couponModule=fs.readFileSync(path.join(root,'modules/store/coupons.js'),'utf8');
+for(const token of ['cartSubtotalValue','cartDiscountRow','cartDiscountValue','cartFinalValue','renderCartPricing','cartPricing']){
+  if(!cartModule.includes(token))failures.push(`coupon-cart:${token}`);
+}
+for(const token of ['calculateCartDiscount','getApplied','ALIN_ACTIVE_COUPON','alin:coupon-changed']){
+  if(!couponModule.includes(token))failures.push(`coupon-service:${token}`);
 }
 
 for(const htmlName of ['index.html','store-desktop.html','store-mobile.html']){

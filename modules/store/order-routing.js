@@ -1,5 +1,5 @@
 // === modules/store/order-routing.js ===
-/* ALIN v2.1.1 — authoritative checkout routing and order creation. */
+/* ALIN v2.1.2 — authoritative checkout routing and order creation. */
 (function(){
   'use strict';
   const $=id=>document.getElementById(id);
@@ -50,7 +50,7 @@
     const snapshot=basket.map(item=>({...item}));
     const name=value('studentName'),phone=value('studentPhone');if(!name||!phone)throw new Error('أكمل اسم الطالب ورقم الهاتف');
     const route=alinOrderExtra();
-    const coupon=typeof window.validCoupon==='function'?window.validCoupon(value('couponInput')):null;
+    const coupon=window.AlinCoupons?.getApplied?.()||(typeof window.validCoupon==='function'?window.validCoupon(value('couponInput')):null);
     const numbers=[];let deliveryAdded=false;
     for(const line of basket){
       const product=line.kind==='booklet'?null:(window.db?.products||[]).find(item=>same(item.id,line.id));

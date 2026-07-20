@@ -1,4 +1,4 @@
-const VERSION='alin-v2.1.1-platform-cart-orders';
+const VERSION='alin-v2.1.2-coupon-cart-total';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[

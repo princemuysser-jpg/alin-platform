@@ -193,7 +193,7 @@
       if(name.length<2)throw new Error('اكتب اسم الطالب بصورة صحيحة');
       if(!/^\+?[0-9٠-٩]{7,15}$/.test(phone))throw new Error('اكتب رقم هاتف صحيح');
       const fulfillment=typeof alinOrderExtra==='function'?alinOrderExtra():{};
-      const coupon=(document.getElementById('couponInput')?.value||'').trim();
+      const coupon=(window.AlinCoupons?.getAppliedCode?.()||document.getElementById('couponInput')?.value||'').trim();
       const cartSnapshot=cart.map(item=>({...item}));
       const items=normalizeCheckoutItems(cart);
       if(typeof cartSave==='function')cartSave();

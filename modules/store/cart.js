@@ -1,5 +1,5 @@
 // === modules/store/cart.js ===
-/* ALIN v2.1.1 — authoritative cart module. No legacy wrappers. */
+/* ALIN v2.1.2 — authoritative cart module. No legacy wrappers. */
 (function(){
   'use strict';
 
@@ -64,6 +64,15 @@
 
   function cartCount(){return rows().reduce((sum,line)=>sum+Math.max(1,num(line.qty)),0)}
   function cartTotal(){return rows().reduce((sum,line)=>sum+num(line.price)*Math.max(1,num(line.qty)),0)}
+  function appliedCoupon(){return window.AlinCoupons?.getApplied?.()||null}
+  function cartPricing(){
+    const subtotal=cartTotal();
+    const coupon=appliedCoupon();
+    const discount=typeof window.AlinCoupons?.calculateCartDiscount==='function'
+      ? window.AlinCoupons.calculateCartDiscount(coupon,rows())
+      : rows().reduce((sum,line)=>sum+(typeof window.calculateCouponDiscount==='function'?window.calculateCouponDiscount(coupon,num(line.price)*Math.max(1,num(line.qty))):0),0);
+    return {subtotal,discount:Math.min(subtotal,Math.max(0,num(discount))),total:Math.max(0,subtotal-Math.max(0,num(discount))),coupon};
+  }
   function hasProducts(){return rows().some(line=>line.kind!=='booklet')}
   function activeLibraries(){return (window.db?.accounts?.libraries||[]).filter(item=>item.status==='active')}
   function libraryOpen(library){
@@ -82,17 +91,18 @@
   function dispatch(name,detail={}){document.dispatchEvent(new CustomEvent(name,{detail}))}
 
   function renderCartBadge(){
-    const count=cartCount();
+    const count=cartCount(),pricing=cartPricing();
     const ids=['cartCount','cartCountFab','desktopCartCount','mobileCartCount','mobileBottomCartCount'];
     ids.forEach(id=>{const element=$(id);if(!element)return;element.textContent=String(count);if('hidden'in element)element.hidden=!count});
     const summary=$('cartSummary');if(summary)summary.textContent=count?`${count} مادة في السلة`:'';
-    dispatch('alin:cart-changed',{count,total:cartTotal(),items:rows().map(item=>({...item}))});
+    dispatch('alin:cart-changed',{count,total:pricing.total,subtotal:pricing.subtotal,discount:pricing.discount,items:rows().map(item=>({...item}))});
     return count;
   }
 
   function cartSave(){
     normalizeCart();
     localStorage.setItem(STORAGE_KEY,JSON.stringify(rows()));
+    if(!rows().length&&window.AlinCoupons?.getAppliedCode?.())window.AlinCoupons.clear();
     renderCartBadge();
   }
 
@@ -152,12 +162,32 @@
 
   function itemIcon(kind){return kind==='booklet'?'📘':'🛍️'}
 
+  function renderCartPricing(){
+    const pricing=cartPricing();
+    const subtotalElement=$('cartSubtotalValue');
+    const discountElement=$('cartDiscountValue');
+    const discountRow=$('cartDiscountRow');
+    const finalElement=$('cartFinalValue');
+    const input=$('couponInput');
+    const message=$('couponMsg');
+    if(subtotalElement)subtotalElement.textContent=`${formatMoney(pricing.subtotal)} د.ع`;
+    if(discountElement)discountElement.textContent=`− ${formatMoney(pricing.discount)} د.ع`;
+    if(discountRow)discountRow.hidden=pricing.discount<=0;
+    if(finalElement)finalElement.textContent=`${formatMoney(pricing.total)} د.ع`;
+    if(input&&pricing.coupon&&!input.value)input.value=pricing.coupon.code||'';
+    if(message&&pricing.coupon&&pricing.discount>0&&!message.textContent){
+      message.textContent=`تم تطبيق كوبون ${pricing.coupon.code} — الخصم ${formatMoney(pricing.discount)} د.ع`;
+    }
+    dispatch('alin:cart-pricing',{subtotal:pricing.subtotal,discount:pricing.discount,total:pricing.total,coupon:pricing.coupon});
+    return pricing;
+  }
+
   function openCart(context={}){
     normalizeCart();
     const box=window.checkoutBox||$('checkoutBox'),modal=window.checkoutModal||$('checkoutModal');
     if(!box||!modal)return;
     window.checkoutItem={kind:'cart'};
-    const list=rows(),count=cartCount(),total=cartTotal();
+    const list=rows(),count=cartCount(),pricing=cartPricing(),total=pricing.subtotal;
     if(!list.length){
       box.innerHTML='<div class="alin-cart-shell"><div class="alin-cart-main"><div class="alin-cart-empty"><div class="alin-empty-icon">🛒</div><h3>السلة فارغة حالياً</h3><p>أضف ملازم أو قرطاسية أو هدايا ثم ارجع لإتمام الطلب.</p><button type="button" onclick="closeCheckout();document.getElementById(\'storeGrid\')?.scrollIntoView({behavior:\'smooth\'})">تصفح المتجر</button></div></div><aside class="alin-cart-side"><h3>ملخص الطلب</h3><div class="alin-summary-card"><div class="alin-summary-rows"><div><span>عدد المواد</span><b>0</b></div><div><span>الإجمالي</span><b>0 د.ع</b></div></div></div></aside></div>';
     }else{
@@ -165,11 +195,11 @@
         const source=line.kind==='booklet'?findBooklet(line.id):findProduct(line.id),image=imageFor(source),lineTotal=num(line.price)*num(line.qty);
         return `<article class="alin-cart-item"><div class="alin-cart-thumb">${image?`<img src="${escText(image)}" alt="${escText(line.title)}">`:`<span>${itemIcon(line.kind)}</span>`}</div><div class="alin-cart-info"><h3 class="alin-cart-title">${escText(line.title)}</h3><div class="alin-cart-meta"><span class="alin-cart-chip">${line.kind==='booklet'?'ملزمة':'منتج'}</span><span class="alin-cart-chip">سعر القطعة: ${formatMoney(line.price)} د.ع</span></div><div class="alin-cart-price">${formatMoney(lineTotal)} د.ع</div></div><div class="alin-cart-controls"><div class="alin-qty-box"><button type="button" aria-label="تقليل الكمية" onclick="cartQty(${index},-1)">−</button><b>${line.qty}</b><button type="button" aria-label="زيادة الكمية" onclick="cartQty(${index},1)">+</button></div><button type="button" class="alin-remove-btn" onclick="cartRemove(${index})">حذف من السلة</button></div></article>`;
       }).join('');
-      box.innerHTML=`<div class="alin-cart-shell"><section class="alin-cart-main"><div class="alin-cart-head"><div><h2>سلة آلين</h2><p>راجع المواد والكميات قبل تأكيد الطلب.</p></div><span class="alin-cart-badge">${count}</span></div><div class="alin-cart-list">${itemsHtml}</div></section><aside class="alin-cart-side"><h3>ملخص الطلب</h3><div class="alin-summary-card"><div class="alin-summary-rows"><div><span>عدد المواد</span><b>${count}</b></div><div><span>المجموع الفرعي</span><b>${formatMoney(total)} د.ع</b></div></div><div class="alin-summary-total"><div>الإجمالي النهائي</div><b>${formatMoney(total)} د.ع</b></div><div class="coupon-box"><input id="couponInput" placeholder="أدخل كود الخصم"><button type="button" onclick="checkCoupon()">تطبيق</button></div><div id="couponMsg"></div><div class="alin-cart-form"><h4>بيانات الطالب والاستلام</h4><div class="form-grid"><input id="studentName" placeholder="اسم الطالب الكامل"><input id="studentPhone" placeholder="رقم الهاتف"></div>${fulfillmentHtml()}</div><button type="button" class="alin-cart-submit" onclick="confirmCartCheckout()">تأكيد الطلب الآن</button></div></aside></div>`;
+      box.innerHTML=`<div class="alin-cart-shell"><section class="alin-cart-main"><div class="alin-cart-head"><div><h2>سلة آلين</h2><p>راجع المواد والكميات قبل تأكيد الطلب.</p></div><span class="alin-cart-badge">${count}</span></div><div class="alin-cart-list">${itemsHtml}</div></section><aside class="alin-cart-side"><h3>ملخص الطلب</h3><div class="alin-summary-card"><div class="alin-summary-rows"><div><span>عدد المواد</span><b>${count}</b></div><div><span>المجموع الفرعي</span><b id="cartSubtotalValue">${formatMoney(pricing.subtotal)} د.ع</b></div><div id="cartDiscountRow" ${pricing.discount>0?'':'hidden'}><span>خصم الكوبون</span><b id="cartDiscountValue">− ${formatMoney(pricing.discount)} د.ع</b></div></div><div class="alin-summary-total"><div>الإجمالي النهائي</div><b id="cartFinalValue">${formatMoney(pricing.total)} د.ع</b></div><div class="coupon-box"><input id="couponInput" value="${escText(pricing.coupon?.code||'')}" placeholder="أدخل كود الخصم"><button type="button" onclick="checkCoupon()">تطبيق</button></div><div id="couponMsg">${pricing.coupon&&pricing.discount>0?`تم تطبيق كوبون ${escText(pricing.coupon.code)} — الخصم ${formatMoney(pricing.discount)} د.ع`:''}</div><div class="alin-cart-form"><h4>بيانات الطالب والاستلام</h4><div class="form-grid"><input id="studentName" placeholder="اسم الطالب الكامل"><input id="studentPhone" placeholder="رقم الهاتف"></div>${fulfillmentHtml()}</div><button type="button" class="alin-cart-submit" onclick="confirmCartCheckout()">تأكيد الطلب الآن</button></div></aside></div>`;
     }
     modal.classList.remove('hidden');
     const close=modal.querySelector('.x');if(close){close.textContent='إغلاق';close.setAttribute('aria-label','إغلاق السلة')}
-    setTimeout(()=>{toggleDeliveryFields();showLibInfo();dispatch('alin:cart-rendered',{kind:context.kind||'',id:context.id||'',count,total})},0);
+    setTimeout(()=>{toggleDeliveryFields();showLibInfo();renderCartPricing();dispatch('alin:cart-rendered',{kind:context.kind||'',id:context.id||'',count,subtotal:pricing.subtotal,discount:pricing.discount,total:pricing.total})},0);
   }
 
   function openCheckout(kind,id){
@@ -188,9 +218,11 @@
     dispatch('alin:cart-closed');
   }
 
-  function updateTotal(){return cartTotal()}
+  function updateTotal(){return renderCartPricing().total}
 
-  Object.assign(window,{cartSave,renderCartBadge,addToCart,cartQty,cartRemove,openCart,openCheckout,closeCheckout,showLibInfo,toggleDeliveryFields,updateTotal,alinCartQty:cartQty,alinCartRemove:cartRemove,alinApplyCoupon:()=>window.checkCoupon?.()});
+  Object.assign(window,{cartSave,renderCartBadge,renderCartPricing,cartPricing,addToCart,cartQty,cartRemove,openCart,openCheckout,closeCheckout,showLibInfo,toggleDeliveryFields,updateTotal,alinCartQty:cartQty,alinCartRemove:cartRemove,alinApplyCoupon:()=>window.checkCoupon?.()});
+
+  document.addEventListener('alin:coupon-changed',()=>renderCartPricing());
 
   function install(){normalizeCart();cartSave()}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
