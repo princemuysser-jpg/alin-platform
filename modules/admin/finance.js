@@ -5,7 +5,7 @@
   const arr=value=>Array.isArray(value)?value:[];
   const num=value=>Number.isFinite(Number(value))?Number(value):0;
   const escv=value=>typeof window.esc==='function'?window.esc(value):String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  const moneyv=value=>typeof window.money==='function'?window.money(value):Math.round(num(value)).toLocaleString('ar-IQ');
+  const moneyv=value=>typeof window.money==='function'?window.money(value):Math.round(num(value)).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ');
   const finance=()=>window.AlinFinance;
   const database=()=>window.db||{};
 
@@ -64,7 +64,7 @@
     const t=totals();
     const debt=arr(database().accounts?.libraries).reduce((sum,row)=>sum+num(finance()?.librarySummary?.(row.id)?.remaining),0);
     root.innerHTML=`<section class="admin-v137-finance">
-      <header class="admin-v137-finance-head"><div><h2>المالية والتسويات</h2><p>مسار مالي واحد للطلبات المسلّمة، الأرباح، ذمم المكتبات وسندات التسديد.</p></div><span class="admin-v137-finance-date">${new Date().toLocaleDateString('ar-IQ')}</span></header>
+      <header class="admin-v137-finance-head"><div><h2>المالية والتسويات</h2><p>مسار مالي واحد للطلبات المسلّمة، الأرباح، ذمم المكتبات وسندات التسديد.</p></div><span class="admin-v137-finance-date">${new Date().toLocaleDateString(window.AlinI18n?.locale?.()||'ar-IQ')}</span></header>
       <section class="admin-v137-finance-metrics">
         <article class="admin-v137-finance-metric gold"><small>المبيعات المسلّمة</small><strong>${moneyv(t.sales)} د.ع</strong></article>
         <article class="admin-v137-finance-metric green"><small>ربح المنصة</small><strong>${moneyv(t.admin)} د.ع</strong></article>

@@ -23,7 +23,7 @@
     ];
   }
   function dateText(value){
-    try{return new Date(value).toLocaleString('ar-IQ')}
+    try{return new Date(value).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ')}
     catch(_){return ''}
   }
   function filteredRows(){

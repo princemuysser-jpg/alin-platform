@@ -1,13 +1,14 @@
-const VERSION='alin-v2.3.1-storefront-actions-live-stats';
+const VERSION='alin-v2.3.3-responsive-cart-light-default';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[
   './','./index.html','./store-desktop.html','./store-mobile.html',
   './manifest-desktop.webmanifest','./manifest-mobile.webmanifest',
   './dist/css/landing.bundle.css','./dist/css/desktop.bundle.css','./dist/css/mobile.bundle.css',
-  './styles/alin-tokens.css','./styles/alin-shared.css','./styles/alin-desktop.css','./styles/alin-mobile.css',
+  './styles/alin-tokens.css','./styles/alin-shared.css','./styles/alin-i18n.css','./styles/alin-desktop.css','./styles/alin-mobile.css',
   './dist/js/landing.bundle.js',
   './modules/core/config.js',
+  './modules/core/i18n.js',
   './modules/core/ui.js',
   './modules/core/platform.js',
   './modules/core/storage.js',

@@ -28,7 +28,7 @@
 
   function itemHtml(row){
     const read=service()?.isRead?.(row,context())??true;
-    return `<article class="${read?'read':'unread'}" data-notification-id="${escapeHtml(row.id)}"><span class="alin-notifications-v120__dot"></span><div><div class="alin-notifications-v120__title"><h3>${escapeHtml(row.title||'إشعار')}</h3>${read?'':'<b>جديد</b>'}</div><p>${escapeHtml(row.message||row.text||'')}</p><time>${escapeHtml(new Date(row.created_at||Date.now()).toLocaleString('ar-IQ'))}</time></div></article>`;
+    return `<article class="${read?'read':'unread'}" data-notification-id="${escapeHtml(row.id)}"><span class="alin-notifications-v120__dot"></span><div><div class="alin-notifications-v120__title"><h3>${escapeHtml(row.title||'إشعار')}</h3>${read?'':'<b>جديد</b>'}</div><p>${escapeHtml(row.message||row.text||'')}</p><time>${escapeHtml(new Date(row.created_at||Date.now()).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ'))}</time></div></article>`;
   }
 
   function open(){

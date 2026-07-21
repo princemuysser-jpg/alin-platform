@@ -115,7 +115,7 @@
     apply(coupon);
     const discount=cartDiscount(coupon,window.cart);
     if(message)message.textContent=discount>0
-      ? `تم تطبيق كوبون ${coupon.code} — الخصم ${typeof window.money==='function'?window.money(discount):discount.toLocaleString('ar-IQ')} د.ع`
+      ? `تم تطبيق كوبون ${coupon.code} — الخصم ${typeof window.money==='function'?window.money(discount):discount.toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ')} د.ع`
       : `تم تطبيق كوبون ${coupon.code}`;
     return coupon;
   }

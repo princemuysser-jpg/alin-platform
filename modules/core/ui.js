@@ -1,12 +1,12 @@
 // === core/ui.js ===
-/* ALIN v2.3.1 — authoritative shared UI helpers. */
+/* ALIN v2.3.3 — authoritative shared UI helpers. */
 (function(){
   'use strict';
 
   const escapeHtml=value=>String(value??'').replace(/[&<>'"]/g,char=>({
     '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'
   }[char]));
-  const formatMoney=value=>(Number(value)||0).toLocaleString('ar-IQ');
+  const formatMoney=value=>window.AlinI18n?.formatNumber?.(value)||((Number(value)||0).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ'));
   const createId=(prefix='ID')=>`${prefix}${Math.random().toString(16).slice(2,10)}${Date.now().toString(16).slice(-6)}`;
 
   function emptyState(text){return `<div class="empty">${escapeHtml(text)}</div>`}
@@ -15,7 +15,7 @@
     if(old)old.remove();
     const element=document.createElement('div');
     element.className=`toast${options.kind?` ${options.kind}`:''}`;
-    element.textContent=String(text||'');
+    element.textContent=window.AlinI18n?.t?.(String(text||''))||String(text||'');
     document.body.appendChild(element);
     setTimeout(()=>element.remove(),Number(options.duration)||2200);
     return element;

@@ -8,7 +8,7 @@
   const now=()=>new Date().toISOString();
   const db=()=>window.db||{};
   const api=name=>typeof window[name]==='function'?window[name]:null;
-  const money=value=>typeof window.money==='function'?window.money(value):Math.round(num(value)).toLocaleString('ar-IQ');
+  const money=value=>typeof window.money==='function'?window.money(value):Math.round(num(value)).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ');
   const delivered=value=>['completed','delivered','done','received','settled','تم التسليم'].includes(String(value||'').toLowerCase());
   const cancelled=value=>['cancelled','canceled','rejected','ملغي','إلغاء'].some(token=>String(value||'').toLowerCase().includes(token));
 

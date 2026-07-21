@@ -8,7 +8,7 @@
   const $=id=>document.getElementById(id);
   const num=value=>Number(value||0);
   const escText=value=>typeof window.esc==='function'?window.esc(value):String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  const formatMoney=value=>typeof window.money==='function'?window.money(value):num(value).toLocaleString('ar-IQ');
+  const formatMoney=value=>typeof window.money==='function'?window.money(value):num(value).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ');
   const same=(a,b)=>String(a??'')===String(b??'');
 
   function readStoredCart(){
@@ -204,9 +204,10 @@
         const source=line.kind==='booklet'?findBooklet(line.id):findProduct(line.id),image=imageFor(source),lineTotal=num(line.price)*num(line.qty);
         return `<article class="alin-cart-item"><div class="alin-cart-thumb">${image?`<img src="${escText(image)}" alt="${escText(line.title)}">`:`<span>${itemIcon(line.kind)}</span>`}</div><div class="alin-cart-info"><h3 class="alin-cart-title">${escText(line.title)}</h3><div class="alin-cart-meta"><span class="alin-cart-chip">${line.kind==='booklet'?'ملزمة':'منتج'}</span><span class="alin-cart-chip">سعر القطعة: ${formatMoney(line.price)} د.ع</span></div><div class="alin-cart-price">${formatMoney(lineTotal)} د.ع</div></div><div class="alin-cart-controls"><div class="alin-qty-box"><button type="button" aria-label="تقليل الكمية" onclick="cartQty(${index},-1)">−</button><b>${line.qty}</b><button type="button" aria-label="زيادة الكمية" onclick="cartQty(${index},1)">+</button></div><button type="button" class="alin-remove-btn" onclick="cartRemove(${index})">حذف من السلة</button></div></article>`;
       }).join('');
-      box.innerHTML=`<div class="alin-cart-shell"><section class="alin-cart-main"><div class="alin-cart-head"><div><h2>سلة آلين</h2><p>راجع المواد والكميات قبل تأكيد الطلب.</p></div><span class="alin-cart-badge">${count}</span></div><div class="alin-cart-list">${itemsHtml}</div></section><aside class="alin-cart-side"><h3>ملخص الطلب</h3><div class="alin-summary-card"><div class="alin-summary-rows"><div><span>عدد المواد</span><b>${count}</b></div><div><span>المجموع الفرعي</span><b id="cartSubtotalValue">${formatMoney(pricing.subtotal)} د.ع</b></div><div id="cartDiscountRow" ${pricing.discount>0?'':'hidden'}><span>خصم الكوبون</span><b id="cartDiscountValue">− ${formatMoney(pricing.discount)} د.ع</b></div></div><div class="alin-summary-total"><div>الإجمالي النهائي</div><b id="cartFinalValue">${formatMoney(pricing.total)} د.ع</b></div><div class="coupon-box"><input id="couponInput" value="${escText(pricing.coupon?.code||'')}" placeholder="أدخل كود الخصم"><button type="button" onclick="checkCoupon()">تطبيق</button></div><div id="couponMsg">${pricing.coupon&&pricing.discount>0?`تم تطبيق كوبون ${escText(pricing.coupon.code)} — الخصم ${formatMoney(pricing.discount)} د.ع`:''}</div><div class="alin-cart-form"><h4>بيانات الطالب والاستلام</h4><div class="form-grid"><input id="studentName" placeholder="اسم الطالب الكامل"><input id="studentPhone" placeholder="رقم الهاتف"></div>${fulfillmentHtml()}</div><button type="button" class="alin-cart-submit" onclick="confirmCartCheckout()">تأكيد الطلب الآن</button></div></aside></div>`;
+      box.innerHTML=`<div class="alin-cart-shell"><section class="alin-cart-main"><div class="alin-cart-head"><div><h2>سلة آلين</h2><p>راجع المواد والكميات قبل تأكيد الطلب.</p></div><span class="alin-cart-badge">${count}</span></div><div class="alin-cart-list">${itemsHtml}</div></section><aside class="alin-cart-side"><h3>ملخص الطلب</h3><div class="alin-cart-side-content"><div class="alin-summary-card"><div class="alin-summary-rows"><div><span>عدد المواد</span><b>${count}</b></div><div><span>المجموع الفرعي</span><b id="cartSubtotalValue">${formatMoney(pricing.subtotal)} د.ع</b></div><div id="cartDiscountRow" ${pricing.discount>0?'':'hidden'}><span>خصم الكوبون</span><b id="cartDiscountValue">− ${formatMoney(pricing.discount)} د.ع</b></div></div><div class="alin-summary-total"><div>الإجمالي النهائي</div><b id="cartFinalValue">${formatMoney(pricing.total)} د.ع</b></div><div class="coupon-box"><input id="couponInput" value="${escText(pricing.coupon?.code||'')}" placeholder="أدخل كود الخصم"><button type="button" onclick="checkCoupon()">تطبيق</button></div><div id="couponMsg">${pricing.coupon&&pricing.discount>0?`تم تطبيق كوبون ${escText(pricing.coupon.code)} — الخصم ${formatMoney(pricing.discount)} د.ع`:''}</div><div class="alin-cart-form"><h4>بيانات الطالب والاستلام</h4><div class="form-grid"><input id="studentName" placeholder="اسم الطالب الكامل"><input id="studentPhone" placeholder="رقم الهاتف"></div>${fulfillmentHtml()}</div></div><button type="button" class="alin-cart-submit" onclick="confirmCartCheckout()">تأكيد الطلب الآن</button></aside></div>`;
     }
     modal.classList.remove('hidden');
+    document.body?.classList.add('alin-cart-open');
     const close=modal.querySelector('.x');if(close){close.textContent='إغلاق';close.setAttribute('aria-label','إغلاق السلة')}
     setTimeout(()=>{toggleDeliveryFields();showLibInfo();renderCartPricing();dispatch('alin:cart-rendered',{kind:context.kind||'',id:context.id||'',count,subtotal:pricing.subtotal,discount:pricing.discount,total:pricing.total})},0);
   }
@@ -222,6 +223,7 @@
 
   function closeCheckout(){
     const modal=window.checkoutModal||$('checkoutModal');if(modal)modal.classList.add('hidden');
+    document.body?.classList.remove('alin-cart-open');
     window.checkoutItem=null;
     const close=modal?.querySelector('.x');if(close){close.textContent='×';close.setAttribute('aria-label','إغلاق')}
     dispatch('alin:cart-closed');

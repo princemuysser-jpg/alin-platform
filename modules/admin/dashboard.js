@@ -3,7 +3,7 @@
 
 (function(){
   const escv=v=>typeof esc==='function'?esc(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const moneyv=v=>typeof money==='function'?money(v):Number(v||0).toLocaleString('ar-IQ');
+  const moneyv=v=>typeof money==='function'?money(v):Number(v||0).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ');
   const arr=v=>Array.isArray(v)?v:[];
   const num=v=>Number(v||0);
   function database(){try{return window.db||db||{}}catch(_){return window.db||{}}}

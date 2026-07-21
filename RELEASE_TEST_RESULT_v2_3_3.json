@@ -1,0 +1,20 @@
+{
+  "version": "2.3.3-responsive-cart-light-default",
+  "status": "passed",
+  "database_change_required": false,
+  "scope": [
+    "responsive mobile and desktop checkout layout",
+    "confirmation button kept visible outside checkout detail scrolling",
+    "checkout modal layered above mobile navigation",
+    "mobile personalized stage section removed",
+    "light mode default with explicit dark mode choice",
+    "PWA and asset version refresh"
+  ],
+  "results": {
+    "javascript_files": 57,
+    "runtime_modules": 50,
+    "release_checks": 107,
+    "responsive_cart_theme_checks": 29
+  },
+  "browser_automation": "attempted with container Chromium but the process timed out in the container; layout ownership and behavior were verified by the full Node/static test suite"
+}

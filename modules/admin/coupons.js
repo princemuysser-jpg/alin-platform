@@ -8,11 +8,11 @@ function alinCouponAdminEscape(value){
   return typeof window.esc === 'function' ? window.esc(value) : String(value ?? '');
 }
 function alinCouponAdminMoney(value){
-  return typeof window.money === 'function' ? window.money(value) : Number(value || 0).toLocaleString('ar-IQ');
+  return typeof window.money === 'function' ? window.money(value) : Number(value || 0).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ');
 }
 function alinCouponAdminDate(value){
   if(!value) return 'غير محدد';
-  try{return new Date(value).toLocaleDateString('ar-IQ')}catch(_){return String(value)}
+  try{return new Date(value).toLocaleDateString(window.AlinI18n?.locale?.()||'ar-IQ')}catch(_){return String(value)}
 }
 function alinCouponAdminRows(){
   return Array.isArray(window.db?.coupons) ? window.db.coupons : [];

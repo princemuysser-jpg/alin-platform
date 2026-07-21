@@ -6,7 +6,7 @@
   if(!app)throw new Error('TeacherApp must load before teacher/dashboard.js');
 
   const escSafe=value=>typeof esc==='function'?esc(value):String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
-  const moneySafe=value=>typeof money==='function'?money(value):Number(value||0).toLocaleString('ar-IQ');
+  const moneySafe=value=>typeof money==='function'?money(value):Number(value||0).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ');
   const dateOnly=value=>String(value||'').slice(0,10);
   const monthOnly=value=>String(value||'').slice(0,7);
   const statusName=status=>({published:'منشورة',active:'منشورة',hidden:'مخفية',draft:'مسودة',pending:'قيد المراجعة',review:'قيد المراجعة',rejected:'مرفوضة',approved:'منشورة'}[String(status||'').toLowerCase()]||status||'غير محددة');

@@ -5,7 +5,7 @@
   const LANG_KEY = 'alin_language_v110';
   const THEME_KEY = 'alin_theme_v110';
   const validLanguages = ['ar', 'ku', 'en'];
-  const validThemes = ['light', 'dark', 'system'];
+  const validThemes = ['light', 'dark'];
   let lastFocus = null;
 
   const copy = {
@@ -68,8 +68,8 @@
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
   const language = () => validLanguages.includes(localStorage.getItem(LANG_KEY)) ? localStorage.getItem(LANG_KEY) : 'ar';
-  const themeMode = () => validThemes.includes(localStorage.getItem(THEME_KEY)) ? localStorage.getItem(THEME_KEY) : 'system';
-  const resolvedTheme = mode => mode === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode;
+  const themeMode = () => validThemes.includes(localStorage.getItem(THEME_KEY)) ? localStorage.getItem(THEME_KEY) : 'light';
+  const resolvedTheme = mode => mode === 'dark' ? 'dark' : 'light';
   const text = (selector, value) => { const el = $(selector); if (el) el.textContent = value; };
   const escapeHtml = value => String(value??'').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 
@@ -108,7 +108,7 @@
           </div></div></div>
         <div class="alin-setting-row"><span class="alin-option-icon">${icon('theme')}</span><div><b data-copy="appearance"></b>
           <div class="alin-segment" role="group" aria-label="Theme">
-            <button type="button" data-theme="light" data-copy="light"></button><button type="button" data-theme="dark" data-copy="dark"></button><button type="button" data-theme="system" data-copy="system"></button>
+            <button type="button" data-theme="light" data-copy="light"></button><button type="button" data-theme="dark" data-copy="dark"></button>
           </div></div></div>
       </section>
       <section class="alin-settings-section"><h3 data-copy="help"></h3>
@@ -223,7 +223,7 @@
   }
 
   function applyTheme(mode, notify) {
-    if (!validThemes.includes(mode)) mode = 'system';
+    if (!validThemes.includes(mode)) mode = 'light';
     localStorage.setItem(THEME_KEY, mode);
     const resolved = resolvedTheme(mode);
     document.documentElement.dataset.alinTheme = resolved;
@@ -381,9 +381,6 @@
   }
 
   document.addEventListener('keydown', trapKey);
-  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => {
-    if (themeMode() === 'system') applyTheme('system', false);
-  });
   document.addEventListener('DOMContentLoaded', () => {
     installUI();
     const mobileTrigger=$('[data-mobile-control="account"]');

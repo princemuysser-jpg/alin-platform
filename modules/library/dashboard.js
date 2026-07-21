@@ -59,7 +59,7 @@
   const arr=v=>Array.isArray(v)?v:[];
   const eq=(a,b)=>String(a??'')===String(b??'');
   const escx=v=>typeof esc==='function'?esc(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const moneyx=v=>typeof money==='function'?money(v):Number(v||0).toLocaleString('ar-IQ');
+  const moneyx=v=>typeof money==='function'?money(v):Number(v||0).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ');
   const currentUser=()=>window.current||null;
   const dbx=()=>window.db||{accounts:{libraries:[]},orders:[],ledger:[],notifications:[]};
   function getLibrary(){

@@ -2,7 +2,7 @@
 /* ===== admin/js/admin-reports-v143.js ===== */
 (function(){
   const escx=v=>typeof esc==='function'?esc(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const moneyx=v=>typeof money==='function'?money(v):Number(v||0).toLocaleString('ar-IQ');
+  const moneyx=v=>typeof money==='function'?money(v):Number(v||0).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ');
   const arr=v=>Array.isArray(v)?v:[];
   const num=v=>Number(v||0);
   const state={period:'month',from:'',to:'',kind:'all',q:''};

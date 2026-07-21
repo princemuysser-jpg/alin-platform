@@ -1,0 +1,9 @@
+/* ALIN v2.3.3 — global direction and language polish. */
+html[dir="ltr"] body{direction:ltr;text-align:left}
+html[dir="rtl"] body{direction:rtl;text-align:right}
+html[dir="ltr"] input,html[dir="ltr"] select,html[dir="ltr"] textarea{text-align:left}
+html[dir="rtl"] input,html[dir="rtl"] select,html[dir="rtl"] textarea{text-align:right}
+html[dir="ltr"] .admin-tabs,html[dir="ltr"] .teacher-tabs,html[dir="ltr"] .library-tabs,html[dir="ltr"] .courier-tabs{direction:ltr}
+html[dir="ltr"] .alin-option-chevron{transform:scaleX(-1)}
+html[data-alin-language="en"] [dir="rtl"]:not(.phone):not(.alin-contact-number){direction:ltr}
+html[data-alin-language="en"] .phone,html[data-alin-language="en"] [dir="ltr"]{direction:ltr}

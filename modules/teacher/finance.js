@@ -6,7 +6,7 @@
   const arr=value=>Array.isArray(value)?value:[];
   const same=(a,b)=>String(a??'')===String(b??'');
   const escv=value=>typeof window.esc==='function'?window.esc(value):String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  const moneyv=value=>typeof window.money==='function'?window.money(value):Math.round(Number(value)||0).toLocaleString('ar-IQ');
+  const moneyv=value=>typeof window.money==='function'?window.money(value):Math.round(Number(value)||0).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ');
   const dateOnly=value=>String(value||'').slice(0,10)||'-';
   const done=new Set(['delivered','completed','done','received','settled']);
   const cancelled=new Set(['cancelled','canceled','rejected']);

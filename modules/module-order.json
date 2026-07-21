@@ -1,6 +1,7 @@
 {
   "early": [
     "modules/core/config.js",
+    "modules/core/i18n.js",
     "modules/core/ui.js",
     "modules/core/platform.js",
     "modules/core/storage.js",

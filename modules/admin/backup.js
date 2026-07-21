@@ -1,8 +1,8 @@
 // === admin/backup.js ===
-/* ALIN v2.3.1 — authoritative backup owner. No admin router wrapping. */
+/* ALIN v2.3.3 — authoritative backup owner. No admin router wrapping. */
 (function(){
   'use strict';
-  const VERSION='2.3.1';
+  const VERSION='2.3.3';
   const LOG_KEY='alin_backup_log_v227';
   const RESTORABLE=['categories','products','booklets','banners','coupons'];
   let pending=null;
@@ -65,7 +65,7 @@
       <section class="admin-backup-summary"><article class="admin-backup-stat"><small>الطلبات</small><b>${rows(data.orders).length}</b></article><article class="admin-backup-stat"><small>الحسابات</small><b>${rows(data.accounts?.all).length}</b></article><article class="admin-backup-stat"><small>الملازم</small><b>${rows(data.booklets).length}</b></article><article class="admin-backup-stat"><small>المنتجات</small><b>${rows(data.products).length}</b></article></section>
       <section class="admin-backup-grid"><article class="admin-backup-card"><h3>إنشاء نسخة</h3><p>ينزّل ملف JSON من البيانات المحمّلة حاليًا من Supabase.</p><div class="admin-backup-actions"><button type="button" onclick="alinCreateBackup()">إنشاء وتنزيل النسخة</button></div></article>
       <article class="admin-backup-card"><h3>استعادة آمنة</h3><p>لا يتم المساس بالطلبات والحسابات والمالية أثناء الاستعادة.</p><div class="admin-backup-file"><input id="alinBackupFile" type="file" accept=".json,application/json" onchange="alinReadBackup(this.files[0])"><div id="alinBackupStatus" class="admin-backup-warning">لم يتم اختيار ملف.</div><div id="alinBackupPreview"></div><div class="admin-backup-actions"><button id="alinRestoreBtn" class="admin-backup-danger" disabled type="button" onclick="alinRestoreBackup()">استعادة الكتالوج والإعدادات</button></div></div></article></section>
-      <article class="admin-backup-card"><h3>سجل النسخ</h3><div class="admin-backup-log">${history.length?history.map(item=>`<article><div><b>${escv(item.name)}</b><small>${new Date(item.created_at).toLocaleString('ar-IQ')} — ${bytesLabel(item.size)}</small></div><span>${item.type==='restore'?'استعادة':'نسخة'}</span></article>`).join(''):'<p class="muted">لا توجد عمليات مسجلة بعد.</p>'}</div></article></section>`;
+      <article class="admin-backup-card"><h3>سجل النسخ</h3><div class="admin-backup-log">${history.length?history.map(item=>`<article><div><b>${escv(item.name)}</b><small>${new Date(item.created_at).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ')} — ${bytesLabel(item.size)}</small></div><span>${item.type==='restore'?'استعادة':'نسخة'}</span></article>`).join(''):'<p class="muted">لا توجد عمليات مسجلة بعد.</p>'}</div></article></section>`;
   }
   function alinCreateBackup(){
     try{const object=snapshot(),name=filename(),size=downloadObject(object,name);addLog(name,size);render();window.toast?.('تم إنشاء النسخة الاحتياطية')}catch(error){alert(error.message||'تعذر إنشاء النسخة')}

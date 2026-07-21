@@ -4,7 +4,7 @@
 
   const state={q:'',status:'all',grade:'all',subject:'all',teacher:'all'};
   const escv=value=>typeof window.esc==='function'?window.esc(value):String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  const moneyv=value=>typeof window.money==='function'?window.money(value):Number(value||0).toLocaleString('ar-IQ');
+  const moneyv=value=>typeof window.money==='function'?window.money(value):Number(value||0).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ');
   const books=()=>Array.isArray(window.db?.booklets)?window.db.booklets:[];
   const teachers=()=>Array.isArray(window.db?.accounts?.teachers)?window.db.accounts.teachers:[];
   const orders=()=>Array.isArray(window.db?.orders)?window.db.orders:[];

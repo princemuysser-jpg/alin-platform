@@ -83,3 +83,28 @@ body.store-desktop [data-desktop-control="cart"] small{
 }
 body.store-desktop .store-real-stats{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 body.store-desktop .store-real-stats>div:last-child{border-left:0!important}
+
+/* ALIN v2.3.3 — compact desktop checkout with fixed confirmation area. */
+body.store-desktop.alin-cart-open{overflow:hidden!important}
+body.store-desktop.alin-cart-open #checkoutModal{z-index:12000!important;padding:12px!important;overflow:hidden!important}
+body.store-desktop.alin-cart-open #checkoutModal .modal-card{
+  width:min(1040px,calc(100vw - 24px))!important;max-width:1040px!important;
+  height:min(760px,calc(100dvh - 24px))!important;max-height:calc(100dvh - 24px)!important;
+  display:flex!important;flex-direction:column!important;overflow:hidden!important;padding:14px!important;border-radius:24px!important
+}
+body.store-desktop.alin-cart-open #checkoutModal .x{
+  position:relative!important;top:auto!important;left:auto!important;float:none!important;
+  flex:0 0 38px!important;align-self:flex-start!important;height:38px!important;margin:0 0 8px!important
+}
+body.store-desktop.alin-cart-open #checkoutBox{flex:1 1 auto!important;min-height:0!important;overflow:auto!important}
+body.store-desktop.alin-cart-open #checkoutBox .alin-cart-shell{height:100%!important;gap:12px!important;grid-template-columns:minmax(0,1fr) 330px!important}
+body.store-desktop.alin-cart-open #checkoutBox .alin-cart-main{padding:14px!important;overflow:auto!important;border-radius:19px!important}
+body.store-desktop.alin-cart-open #checkoutBox .alin-cart-side{
+  height:100%!important;max-height:none!important;padding:14px!important;display:flex!important;flex-direction:column!important;
+  overflow:hidden!important;position:relative!important;top:auto!important;border-radius:19px!important
+}
+body.store-desktop.alin-cart-open #checkoutBox .alin-cart-side>h3{flex:0 0 auto!important;margin:0 0 8px!important;font-size:18px!important}
+body.store-desktop.alin-cart-open #checkoutBox .alin-cart-side-content{flex:1 1 auto!important;min-height:0!important;overflow:auto!important;padding-inline-end:3px!important;scrollbar-width:thin}
+body.store-desktop.alin-cart-open #checkoutBox .alin-cart-submit{flex:0 0 46px!important;height:46px!important;margin:9px 0 0!important}
+body.store-desktop.alin-cart-open #checkoutBox .alin-cart-head{margin-bottom:10px!important}
+body.store-desktop.alin-cart-open #checkoutBox .alin-cart-item{padding:9px!important}

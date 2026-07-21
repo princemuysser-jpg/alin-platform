@@ -1,5 +1,5 @@
 // === store/student-auth.js ===
-/* ALIN v2.3.1 — optional student account owner. */
+/* ALIN v2.3.3 — optional student account owner. */
 (function(){
   'use strict';
   const ACCOUNTS_KEY='ALIN_STUDENT_ACCOUNTS_V2';

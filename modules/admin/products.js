@@ -4,7 +4,7 @@
 
   const state={q:'',type:'',status:'',stock:'',sort:'newest'};
   const escv=value=>typeof window.esc==='function'?window.esc(value):String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  const moneyv=value=>typeof window.money==='function'?window.money(value):Number(value||0).toLocaleString('ar-IQ');
+  const moneyv=value=>typeof window.money==='function'?window.money(value):Number(value||0).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ');
   const products=()=>Array.isArray(window.db?.products)?window.db.products:[];
   const categories=()=>Array.isArray(window.db?.categories)?window.db.categories:[];
   const orders=()=>Array.isArray(window.db?.orders)?window.db.orders:[];

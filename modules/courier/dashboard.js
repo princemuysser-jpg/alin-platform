@@ -6,7 +6,7 @@
   const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
   const arr=v=>Array.isArray(v)?v:[];
   const escv=v=>typeof esc==='function'?esc(v):String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const moneyv=v=>typeof money==='function'?money(v):Number(v||0).toLocaleString('ar-IQ');
+  const moneyv=v=>typeof money==='function'?money(v):Number(v||0).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ');
   const now=()=>new Date().toISOString();
   const notify=m=>typeof toast==='function'?toast(m):alert(m);
   const currentAccount=()=>{try{return window.current||current||null}catch(_){return window.current||null}};
@@ -97,7 +97,7 @@
   function mapLink(o){const lat=o.delivery_latitude||o.delivery_lat||o.latitude,lng=o.delivery_longitude||o.delivery_lng||o.longitude;return o.delivery_location_url||o.delivery_map_url||o.gps_url||(lat&&lng?`https://maps.google.com/?q=${lat},${lng}`:'')}
   function phoneLink(p){p=String(p||'').replace(/\D/g,'');return p?`tel:+${p.startsWith('964')?p:'964'+p.replace(/^0/,'')}`:'#'}
   function waLink(p){p=String(p||'').replace(/\D/g,'');return p?`https://wa.me/${p.startsWith('964')?p:'964'+p.replace(/^0/,'')}`:'#'}
-  function fmtDate(v){if(!v)return'—';try{return new Date(v).toLocaleString('ar-IQ')}catch(_){return String(v)}}
+  function fmtDate(v){if(!v)return'—';try{return new Date(v).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ')}catch(_){return String(v)}}
   function matchingCouriers(area){const target=window.alinNormalizeDeliveryArea(area);return allCouriers().filter(c=>c.status!=='inactive'&&areasOf(c).some(name=>window.alinNormalizeDeliveryArea(name)===target)).sort((a,b)=>activeLoad(a)-activeLoad(b))}
   function activeCouriers(){return allCouriers().filter(c=>c.status!=='inactive')}
   function alinCouriersOptions(){return activeCouriers().map(c=>`<option value="${escv(c.id)}">${escv(c.name||'مندوب')}${areasOf(c).length?' — '+escv(areasOf(c).join('، ')):''}</option>`).join('')}

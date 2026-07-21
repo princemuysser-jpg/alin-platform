@@ -7,7 +7,7 @@ const failures=[];
 const required=[
   'index.html','store-desktop.html','store-mobile.html','service-worker.js','VERSION',
   'RUN_ON_SUPABASE_v2_1_8_COMPLETE.sql','CHECK_SUPABASE_READINESS_v2_1_8.sql',
-  'modules/module-order.json','modules/core/config.js','modules/core/ui.js','modules/core/platform.js','modules/core/storage.js','modules/core/navigation.js','modules/core/notifications.js','modules/store/student-auth.js','modules/admin/orders.js',
+  'modules/module-order.json','modules/core/config.js','modules/core/i18n.js','modules/core/ui.js','modules/core/platform.js','modules/core/storage.js','modules/core/navigation.js','modules/core/notifications.js','modules/store/student-auth.js','modules/admin/orders.js',
   'store/banners.js','store/notifications.js','core/finance-runtime.js'
 ];
 for(const rel of required){if(!fs.existsSync(path.join(root,rel)))failures.push(`missing:${rel}`)}
@@ -44,7 +44,7 @@ if(!run.includes('alin_public_accounts')||!run.includes('alin_public_settings'))
 const moduleOrder=JSON.parse(fs.readFileSync(path.join(root,'modules/module-order.json'),'utf8'));
 const moduleFiles=[...moduleOrder.early,...moduleOrder.app];
 const appBundle=moduleFiles.map(rel=>fs.readFileSync(path.join(root,rel),'utf8')).join('\n');
-if(moduleOrder.early.length!==16||moduleOrder.app.length!==33)failures.push('modules:unexpected-count');
+if(moduleOrder.early.length!==17||moduleOrder.app.length!==33)failures.push('modules:unexpected-count');
 for(const rel of moduleFiles){if(!fs.existsSync(path.join(root,rel)))failures.push(`modules:missing:${rel}`)}
 if(!appBundle.includes("c.rpc('alin_track_order'"))failures.push('app:secure-tracking-rpc');
 if(!appBundle.includes('alin-copy-tracking')||!appBundle.includes('navigator.clipboard?.writeText')||!appBundle.includes('document.execCommand(\'copy\')'))failures.push('checkout:tracking-copy');
@@ -89,12 +89,12 @@ if(!run.includes("'status','assignment_status','updated_at','accepted_at','picke
 
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  if(!html.includes('version-badge">v2.3.1'))failures.push(`version-badge:${htmlName}`);
+  if(!html.includes('version-badge">v2.3.3'))failures.push(`version-badge:${htmlName}`);
 }
 for(const obsolete of ['dist/js/shared.early.bundle.js','dist/js/shared.app.bundle.js','options.css']){if(fs.existsSync(path.join(root,obsolete)))failures.push(`obsolete:${obsolete}`)}
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  const positions=moduleFiles.map(rel=>html.indexOf(`./${rel}?v=2.3.1`));
+  const positions=moduleFiles.map(rel=>html.indexOf(`./${rel}?v=2.3.3`));
   if(positions.some(pos=>pos<0))failures.push(`modules:not-loaded:${htmlName}`);
   if(positions.some((pos,index)=>index>0&&pos<positions[index-1]))failures.push(`modules:wrong-order:${htmlName}`);
 }
@@ -102,6 +102,7 @@ for(const htmlName of ['store-desktop.html','store-mobile.html']){
 
 const serviceWorker=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
 if(!serviceWorker.includes("'./modules/core/navigation.js'"))failures.push('pwa:navigation-not-cached');
+if(!serviceWorker.includes("'./modules/core/i18n.js'")||!serviceWorker.includes("'./styles/alin-i18n.css'"))failures.push('pwa:i18n-not-cached');
 
 const financeRuntime=fs.readFileSync(path.join(root,'core/finance-runtime.js'),'utf8');
 for(const token of ['canonicalLedger','librarySummary','teacherSummary',"settlement_status:'pending'","settlement_status:'settled'"]){
@@ -109,7 +110,7 @@ for(const token of ['canonicalLedger','librarySummary','teacherSummary',"settlem
 }
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  if(!html.includes('core/finance-runtime.js?v=2.3.1'))failures.push(`finance-script:${htmlName}`);
+  if(!html.includes('core/finance-runtime.js?v=2.3.3'))failures.push(`finance-script:${htmlName}`);
 }
 
 const cartModule=fs.readFileSync(path.join(root,'modules/store/cart.js'),'utf8');

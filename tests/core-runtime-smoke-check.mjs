@@ -18,7 +18,7 @@ vm.runInNewContext(config,context,{filename:'config.js'});
 vm.runInNewContext(ui,context,{filename:'ui.js'});
 vm.runInNewContext(platform,context,{filename:'platform.js'});
 const failures=[];const check=(value,label)=>{if(!value)failures.push(label)};
-check(context.ALIN_CONFIG.version==='2.3.1','config-version');
+check(context.ALIN_CONFIG.version==='2.3.3','config-version');
 check(typeof context.esc==='function'&&context.esc('<')==='&lt;','ui-escape');
 check(typeof context.init==='function'&&context.init()===true,'runtime-init');
 check(context.created?.url===context.ALIN_CONFIG.supabaseUrl,'runtime-central-url');
