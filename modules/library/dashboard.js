@@ -99,9 +99,25 @@
   function notificationsView(){const ns=notifications();return `<section class="library-v116-panel"><div class="library-v116-toolbar"><h3>إشعارات المكتبة</h3><button onclick="AlinLibraryV116.markAllRead()">تحديد الكل كمقروء</button></div><div class="library-v116-list">${ns.map(n=>`<article class="library-v116-notification ${n.read_at?'':'unread'}"><b>${escx(n.title||'إشعار')}</b><p>${escx(n.message||n.text||'')}</p><small>${escx(n.created_at||'')}</small></article>`).join('')||'<div class="library-v116-empty">لا توجد إشعارات</div>'}</div></section>`}
   function settingsView(){const l=getLibrary()||{};return `<section class="library-v116-panel"><h3>إعدادات المكتبة</h3><div class="library-v116-settings"><div class="library-v116-field"><small>اسم المكتبة</small><b>${escx(l.name||'—')}</b></div><div class="library-v116-field"><small>المنطقة</small><b>${escx(l.area||'—')}</b></div><div class="library-v116-field"><small>أقرب نقطة دالة</small><b>${escx(l.landmark||'—')}</b></div><div class="library-v116-field"><small>واتساب</small><b>${escx(l.whatsapp||l.phone||'—')}</b></div><div class="library-v116-field"><small>اسم الدخول</small><b>${escx(l.username||currentUser()?.username||'—')}</b></div><div class="library-v116-field"><small>حالة المكتبة</small><b>${isOpen(l)?'مفتوحة':'مغلقة'}</b></div><div class="library-v116-settings-actions"><button onclick="AlinLibraryV116.toggleOpen()">${isOpen(l)?'إغلاق المكتبة':'فتح المكتبة'}</button><button class="secondary" onclick="alert('تغيير كلمة المرور يكون من إدارة الحسابات حالياً')">تغيير كلمة المرور</button><button class="logout" onclick="logout()">تسجيل الخروج</button></div></div></section>`}
   function render(){if(currentUser()?.role!=='library')return;updateHeader();document.querySelectorAll('.library-v116-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.libraryTab===state.tab));const c=document.getElementById('libraryV116Content');if(!c)return;c.innerHTML=state.tab==='orders'?ordersView():state.tab==='finance'?financeView():state.tab==='notifications'?notificationsView():state.tab==='settings'?settingsView():home()}
-  async function toggleOpen(){const lib=getLibrary();if(!lib)return alert('تعذر تحديد حساب المكتبة');const open=!isOpen(lib);try{if(typeof update==='function')await update('libraries',{is_open:open,open_status:open?'open':'closed'},{id:lib.id});lib.is_open=open;lib.open_status=open?'open':'closed';if(typeof audit==='function')await audit('library',open?'فتح المكتبة':'إغلاق المكتبة');if(typeof load==='function')await load();render()}catch(e){console.error(e);alert('تعذر تحديث حالة المكتبة') }}
-  async function setStatus(id,status){try{if(typeof libraryOrderStatus==='function')await libraryOrderStatus(id,status);if(typeof load==='function')await load();render()}catch(e){console.error(e);alert('تعذر تحديث حالة الطلب')}}
-  async function cancel(id){const reason=prompt('اكتب سبب الإلغاء');if(!reason)return;try{if(typeof update==='function')await update('orders',{status:'cancelled',cancel_reason:reason},{id});if(typeof audit==='function')await audit('order','المكتبة ألغت الطلب '+id+' — '+reason);if(typeof load==='function')await load();render()}catch(e){console.error(e);alert('تعذر إلغاء الطلب')}}
+  async function toggleOpen(){const lib=getLibrary();if(!lib)return alert('تعذر تحديد حساب المكتبة');const open=!isOpen(lib);try{if(typeof update==='function')await update('accounts',{is_open:open,open_status:open?'open':'closed'},{id:lib.id});lib.is_open=open;lib.open_status=open?'open':'closed';if(typeof audit==='function')await audit('library',open?'فتح المكتبة':'إغلاق المكتبة');if(typeof load==='function')await load();render()}catch(e){console.error(e);alert('تعذر تحديث حالة المكتبة') }}
+  async function setStatus(id,status){
+    try{
+      const action=window.AlinLibraryModules?.libraryOrderStatus||window.libraryOrderStatus;
+      if(typeof action!=='function')throw new Error('خدمة تحديث الطلب غير جاهزة');
+      await action(id,status);
+      render();
+    }catch(error){console.error(error);alert(error?.message||'تعذر تحديث حالة الطلب')}
+  }
+  async function cancel(id){
+    const reason=prompt('اكتب سبب الإلغاء');
+    if(!reason)return;
+    try{
+      const action=window.AlinLibraryModules?.cancelLibraryOrder||window.cancelLibraryOrder;
+      if(typeof action!=='function')throw new Error('خدمة إلغاء الطلب غير جاهزة');
+      await action(id,reason);
+      render();
+    }catch(error){console.error(error);alert(error?.message||'تعذر إلغاء الطلب')}
+  }
   function details(id){const o=orders().find(x=>eq(x.id,id));if(!o)return;const html=`<h2>تفاصيل الطلب</h2><div class="library-v116-list"><div class="library-v116-row"><b>رقم الطلب</b><span>${escx(o.order_number||o.id)}</span></div><div class="library-v116-row"><b>الطالب</b><span>${escx(o.student_name||'—')}</span></div><div class="library-v116-row"><b>الهاتف</b><span>${escx(o.student_phone||'—')}</span></div><div class="library-v116-row"><b>الطلب</b><span>${escx(o.title||'—')}</span></div><div class="library-v116-row"><b>الكمية</b><span>${o.qty||1}</span></div><div class="library-v116-row"><b>المبلغ</b><span>${moneyx(o.total||0)} د.ع</span></div><div class="library-v116-row"><b>الملاحظات</b><span>${escx(o.notes||o.note||'لا توجد')}</span></div></div>`;if(window.checkoutBox&&window.checkoutModal){checkoutBox.innerHTML=html;checkoutModal.classList.remove('hidden')}}
   function markAllRead(){notifications().forEach(n=>n.read_at=n.read_at||new Date().toISOString());render()}
   window.AlinLibraryV116={render,toggleOpen,setStatus,cancel,details,filter:k=>{state.filter=k;render()},search:q=>{state.search=q;render()},markAllRead};

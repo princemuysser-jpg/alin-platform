@@ -1,64 +1,107 @@
 // === teacher/shell.js ===
-/* ===== teacher/js/teacher-shell.js ===== */
-/* V111: actual teacher code moved from core/js/platform-legacy.js */
-window.AlinTeacherModules=window.AlinTeacherModules||{};
-function renderTeacher(){ if(!window.teacherStats||!db.ledger)return; const teacherId=current?.role==='teacher'?current.id:(db.accounts.teachers[0]?.id||''); const books=db.booklets.filter(x=>x.teacher_id===teacherId), ledger=db.ledger.filter(x=>x.teacher_id===teacherId); teacherStats.innerHTML=`<div><b>الملازم</b><span>${books.length}</span></div><div><b>المبيعات</b><span>${ledger.length}</span></div><div><b>الرصيد</b><span>${money(ledger.reduce((a,x)=>a+(+x.teacher||0),0))} د.ع</span></div>`; teacherBooks.innerHTML=books.map(x=>`<div class="row"><b>${x.title}</b><span class="status">${x.status}</span></div>`).join('')||'لا توجد ملازم'; teacherSales.innerHTML=ledger.map(x=>`<div class="row"><b>${x.order_id}</b><span>${money(x.teacher)} د.ع</span></div>`).join('')||'لا توجد مبيعات'; }
+/* ALIN v2.2.2 — authoritative teacher runtime. No wrapper chains. */
+(function(){
+  'use strict';
 
-renderTeacher=function(){if(!window.teacherStats)return;const id=current?.role==='teacher'?current.id:'';const books=db.booklets.filter(x=>x.teacher_id===id),led=db.ledger.filter(x=>x.teacher_id===id),bookIds=new Set(books.map(x=>x.id)),orders=db.orders.filter(x=>bookIds.has(x.item_id));const notices=v19Notifications.filter(n=>n.status==='active'&&((n.target_role||n.audience)==='all'||(n.target_role||n.audience)==='teacher'));teacherStats.innerHTML=`<div><b>ملازمي</b><span>${books.length}</span></div><div><b>الطلبات</b><span>${orders.length}</span></div><div><b>النسخ المطلوبة</b><span>${orders.reduce((a,x)=>a+(+x.qty||0),0)}</span></div><div><b>المستحقات</b><span>${money(led.reduce((a,x)=>a+(+x.teacher||0),0))} د.ع</span></div>`;teacherBooks.innerHTML=notices.map(n=>`<div class="notice"><b>${esc(n.title)}</b><div>${esc(n.message||n.text||'')}</div></div>`).join('')+books.map(x=>`<div class="row"><b>${esc(x.title)}</b><span class="status">${esc(x.status)}</span></div>`).join('');teacherSales.innerHTML=orders.map(x=>`<div class="row"><div><b>${esc(x.order_number||x.id)}</b><small>${esc(x.title)} × ${x.qty}</small></div><span>${money(x.total)} د.ع</span></div>`).join('')||emptyState('لا توجد مبيعات');}
+  const modules=window.AlinTeacherModules=window.AlinTeacherModules||{};
+  const tabs=new Map();
+  let active=String(window.activeTeacherTab||'dashboard');
+  let chromeRenderer=null;
 
-renderTeacher=function(){
-  if(!window.teacherStats || !window.teacherContent)return;
-  const {id,teacher,books,orders,ledger,payouts,requests}=teacherData();
-  const today=new Date().toISOString().slice(0,10), month=today.slice(0,7);
-  const due=ledger.reduce((a,x)=>a+(+x.teacher||0),0), paid=teacherAccountPaid(id), remaining=Math.max(0,due-paid);
-  const notices=(v19Notifications||[]).filter(n=>n.status==='active'&&((n.target_role||n.audience)==='all'||(n.target_role||n.audience)==='teacher'));
-  teacherStats.innerHTML=`<div><b>الملازم</b><span>${books.length}</span></div><div><b>طلبات اليوم</b><span>${orders.filter(x=>(x.created_at||'').slice(0,10)===today).length}</span></div><div><b>النسخ المباعة</b><span>${orders.reduce((a,x)=>a+(+x.qty||0),0)}</span></div><div><b>المتبقي</b><span>${money(remaining)} د.ع</span></div>`;
-  let html='';
-  if(notices.length) html += notices.map(n=>`<div class="notice"><b>${esc(n.title)}</b><div>${esc(n.message||n.text||'')}</div></div>`).join('');
-  if(activeTeacherTab==='dashboard'){
-    html += `<h3>الرئيسية</h3><div class="stats"><div><b>أرباح مستحقة</b><span>${money(due)} د.ع</span></div><div><b>مدفوع</b><span>${money(paid)} د.ع</span></div><div><b>هذا الشهر</b><span>${orders.filter(x=>(x.created_at||'').slice(0,7)===month).length}</span></div><div><b>أكثر ملزمة</b><span>${bestTeacherBook(books,orders)}</span></div></div>`;
-  } else if(activeTeacherTab==='booklets'){
-    html += `<h3>ملازمي المصممة من الإدارة</h3>${books.map(b=>{const qty=orders.filter(o=>o.item_id===b.id).reduce((a,o)=>a+(+o.qty||0),0);return `<div class="row"><div><b>${esc(b.title)}</b><small>${esc(b.subject||'')} — ${esc(b.grade||'')} — ${money(b.price)} د.ع — ${qty} نسخة</small></div><div class="row-actions">${b.file_path?`<button onclick="openTeacherPdf('${b.id}')">مشاهدة الملزمة</button>`:''}<span class="status">${esc(b.status||'')}</span></div></div>`}).join('')||emptyState('لا توجد ملازم')}`;
-  } else if(activeTeacherTab==='orders'){
-    html += `<h3>طلبات ملازمي</h3>${orders.map(o=>`<div class="row"><div><b>${esc(o.order_number||o.id)} — ${esc(o.title)}</b><small>العدد ${o.qty} • المكتبة: ${esc((db.accounts.libraries.find(l=>l.id===o.library_id)||{}).name||'-')} • الحالة: ${esc(o.status||'')}</small></div><span>${money(o.total)} د.ع</span></div>`).join('')||emptyState('لا توجد طلبات')}`;
-  } else if(activeTeacherTab==='finance'){
-    html += `<h3>الأرباح والمستحقات</h3><div class="stats"><div><b>الإجمالي</b><span>${money(due)} د.ع</span></div><div><b>المدفوع</b><span>${money(paid)} د.ع</span></div><div><b>المتبقي</b><span>${money(remaining)} د.ع</span></div></div><div class="form-grid"><input id="tFrom" type="date"><input id="tTo" type="date"><button onclick="printTeacherStatement()">طباعة كشف حساب</button><input id="teacherWithdrawAmount" type="number" placeholder="مبلغ السحب"><button onclick="requestWithdraw('teacher')">طلب سحب</button></div>${ledger.map(x=>`<div class="row"><b>${esc(x.order_id)}</b><span>${money(x.teacher)} د.ع</span></div>`).join('')||emptyState('لا توجد أرباح مسجلة')}`;
-  } else if(activeTeacherTab==='requests'){
-    html += `<h3>طلب إضافة ملزمة</h3><p>ارفع طلب الملزمة للإدارة. الإدارة تصممها وتراجعها ثم ترفع النسخة النهائية في صفحة المدرس للمشاهدة فقط.</p><form id="teacherRequestForm" class="form-grid"><input name="title" placeholder="اسم الملزمة"><input name="subject" placeholder="المادة"><input name="grade" placeholder="المرحلة/الصف"><textarea name="note" placeholder="تفاصيل إضافية للإدارة"></textarea><label>ملف أولي اختياري PDF<input name="source" type="file" accept=".pdf"></label><button type="button" onclick="sendTeacherBookRequest()">إرسال الطلب</button></form><h3>طلباتي</h3>${requests.map(r=>`<div class="row"><div><b>${esc(r.title)}</b><small>${esc(r.subject||'')} — ${esc(r.grade||'')} — ${esc(r.status||'')}</small></div></div>`).join('')||emptyState('لا توجد طلبات')}`;
-  } else if(activeTeacherTab==='profile'){
-    html += `<h3>ملف المدرس</h3><div class="form-grid"><input id="tpPhone" value="${esc(teacher.phone||'')}" placeholder="رقم الهاتف"><input id="tpSpecialty" value="${esc(teacher.specialty||'')}" placeholder="الاختصاص"><textarea id="tpBio" placeholder="نبذة قصيرة">${esc(teacher.bio||'')}</textarea><label>الصورة الشخصية<input id="tpAvatar" type="file" accept="image/*"></label><button onclick="saveTeacherProfile()">حفظ الملف</button></div><p class="print-only-note">الاسم وربط الملازم يتحكم بهما المدير فقط.</p>`;
+  const arr=value=>Array.isArray(value)?value:[];
+  const same=(a,b)=>String(a??'')===String(b??'');
+
+  function data(){
+    const database=window.db||{};
+    const account=window.current||{};
+    const id=account.role==='teacher'?String(account.id||''):'';
+    const teacher=arr(database.accounts?.teachers).find(row=>same(row.id,id))||account||{};
+    const books=arr(database.booklets).filter(row=>same(row.teacher_id,id));
+    const bookIds=new Set(books.map(row=>String(row.id)));
+    const orders=arr(database.orders).filter(row=>row.kind==='booklet'&&bookIds.has(String(row.item_id||row.booklet_id||'')));
+    const ledger=arr(database.ledger).filter(row=>same(row.teacher_id,id));
+    const payouts=[
+      ...arr(database.teacherPayouts).filter(row=>same(row.teacher_id,id)),
+      ...arr(database.withdrawals).filter(row=>row.role==='teacher'&&same(row.account_id||row.user_id,id))
+    ];
+    const requests=arr(database.teacherRequests||database.teacher_requests).filter(row=>same(row.teacher_id,id));
+    const notifications=arr(window.v19Notifications||database.notifications).filter(row=>{
+      if(String(row.status||'active').toLowerCase()==='deleted')return false;
+      const role=String(row.target_role||row.audience||'all').toLowerCase();
+      const target=String(row.target_id||row.teacher_id||row.account_id||'');
+      return ['all','teacher','teachers'].includes(role)||same(target,id);
+    });
+    return {id,teacher,books,bookIds,orders,ledger,payouts,requests,notifications};
   }
-  teacherContent.innerHTML=html;
-};
 
-function teacherData(){
-  const id=current?.role==='teacher'?current.id:'';
-  const teacher=db.accounts.teachers.find(x=>x.id===id)||{};
-  const books=db.booklets.filter(x=>x.teacher_id===id);
-  const bookIds=new Set(books.map(x=>x.id));
-  const orders=db.orders.filter(x=>x.kind==='booklet' && bookIds.has(x.item_id));
-  const ledger=db.ledger.filter(x=>x.teacher_id===id);
-  const payouts=(db.teacherPayouts||[]).filter(x=>x.teacher_id===id);
-  const requests=(db.teacherRequests||[]).filter(x=>x.teacher_id===id);
-  return {id,teacher,books,bookIds,orders,ledger,payouts,requests};
-}
+  function markActive(){
+    document.querySelectorAll('#teacherPage .teacher-tabs button').forEach(button=>{
+      const inline=button.getAttribute('onclick')||'';
+      const target=button.dataset.teacherTab||(inline.match(/teacherTab\('([^']+)'\)/)||[])[1]||'';
+      button.classList.toggle('active-teacher-tab',target===active);
+    });
+  }
 
-function teacherTab(tab){ activeTeacherTab=tab; renderTeacher(); }
+  function registerTab(name,renderer){
+    if(!name||typeof renderer!=='function')throw new Error('Teacher tab requires a name and renderer');
+    tabs.set(String(name),renderer);
+    if(window.current?.role==='teacher'&&active===String(name))queueMicrotask(render);
+  }
 
-async function saveTeacherProfile(){
-  try{
-    const avatar=tpAvatar.files&&tpAvatar.files[0]?await uploadFile('teachers',tpAvatar.files[0],{type:'image'}):(teacherData().teacher.avatar_path||'');
-    await update('accounts',{phone:tpPhone.value.trim(),specialty:tpSpecialty.value.trim(),bio:tpBio.value.trim(),avatar_path:avatar},{id:current.id});
-    await audit('teacher','تحديث ملف مدرس'); await load(); toast('تم حفظ ملف المدرس');
-  }catch(e){alert(e.message)}
-}
+  function registerChrome(renderer){
+    chromeRenderer=typeof renderer==='function'?renderer:null;
+  }
 
-function teacherObj(id){ return (db.accounts?.teachers||[]).find(x=>x.id===id)||{}; }
-window.AlinTeacherModules['renderTeacher']=typeof renderTeacher==='function'?renderTeacher:window['renderTeacher'];window['renderTeacher']=window.AlinTeacherModules['renderTeacher'];
-window.AlinTeacherModules['teacherData']=typeof teacherData==='function'?teacherData:window['teacherData'];window['teacherData']=window.AlinTeacherModules['teacherData'];
-window.AlinTeacherModules['teacherTab']=typeof teacherTab==='function'?teacherTab:window['teacherTab'];window['teacherTab']=window.AlinTeacherModules['teacherTab'];
-window.AlinTeacherModules['saveTeacherProfile']=typeof saveTeacherProfile==='function'?saveTeacherProfile:window['saveTeacherProfile'];window['saveTeacherProfile']=window.AlinTeacherModules['saveTeacherProfile'];
-window.AlinTeacherModules['teacherObj']=typeof teacherObj==='function'?teacherObj:window['teacherObj'];window['teacherObj']=window.AlinTeacherModules['teacherObj'];
+  function setTab(name){
+    active=String(name||'dashboard');
+    window.activeTeacherTab=active;
+    render();
+  }
 
+  function render(){
+    if(window.current?.role!=='teacher')return false;
+    const host=document.getElementById('teacherContent');
+    if(!host)return false;
+    const context=data();
+    try{chromeRenderer?.(context,active)}catch(error){console.error('[ALIN teacher chrome]',error)}
+    const renderer=tabs.get(active)||tabs.get('dashboard');
+    if(!renderer){
+      host.innerHTML='<div class="empty">جاري تجهيز صفحة المدرس...</div>';
+      markActive();
+      return false;
+    }
+    try{
+      renderer(context);
+      markActive();
+      window.dispatchEvent(new CustomEvent('alin:teacher-rendered',{detail:{tab:active}}));
+      return true;
+    }catch(error){
+      console.error('[ALIN teacher render]',error);
+      host.innerHTML='<div class="empty">تعذر عرض هذا القسم. حدّث الصفحة وحاول مرة أخرى.</div>';
+      markActive();
+      return false;
+    }
+  }
 
-;
+  function teacherObj(id){
+    return arr(window.db?.accounts?.teachers).find(row=>same(row.id,id))||{};
+  }
+
+  const app={tabs,registerTab,registerChrome,setTab,render,data,get active(){return active}};
+  window.TeacherApp=app;
+  window.renderTeacher=render;
+  window.teacherTab=setTab;
+  window.teacherData=data;
+  window.teacherObj=teacherObj;
+  modules.renderTeacher=render;
+  modules.teacherTab=setTab;
+  modules.teacherData=data;
+  modules.teacherObj=teacherObj;
+
+  window.addEventListener('alin:auth-restored',event=>{
+    if(event.detail?.account?.role==='teacher')requestAnimationFrame(render);
+  });
+  window.addEventListener('alin:data-refreshed',()=>{
+    if(window.current?.role==='teacher')requestAnimationFrame(render);
+  });
+})();

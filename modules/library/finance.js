@@ -231,25 +231,6 @@ window.AlinLibraryModules['alinV67LibrarySettlementRows']=typeof alinV67LibraryS
     if(typeof renderFinanceAdmin==='function')renderFinanceAdmin();
   }
 
-  async function completeLibraryOrder(id,status){
-    const o=arr(dbx().orders).find(x=>eq(x.id,id));if(!o)return;
-    const hist=[...(o.status_history||[]),{status,at:new Date().toISOString()}];
-    const basic={status,status_history:hist};
-    if(['completed','delivered','تم التسليم'].includes(status))basic.payment_status='paid';
-    if(typeof update==='function')await update('orders',basic,{id});
-    Object.assign(o,basic);
-    if(['completed','delivered','تم التسليم'].includes(status)){
-      try{
-        if(typeof window.alinV57SettleOrder==='function')await window.alinV57SettleOrder(o);
-        else if(typeof ensureOrderFinancials==='function')await ensureOrderFinancials(o);
-      }catch(e){console.error('financial settlement failed',e)}
-      const optional={cash_collected_by:'library',cash_collected_at:new Date().toISOString(),library_cash_collected:n(o.total)};
-      try{if(typeof update==='function')await update('orders',optional,{id});Object.assign(o,optional)}catch(_){ }
-    }
-    if(typeof audit==='function')await audit('order',`المكتبة حدثت الطلب ${o.order_number||id} إلى ${status}`);
-    if(typeof load==='function')await load();
-    if(typeof renderLibrary==='function')renderLibrary();
-  }
 
   function adminSection(){
     const libs=arr(dbx().accounts?.libraries);
@@ -266,9 +247,7 @@ window.AlinLibraryModules['alinV67LibrarySettlementRows']=typeof alinV67LibraryS
   }
 
   window.AlinV120Finance={summary,settle:settleLibrary};
-  window.libraryOrderStatus=completeLibraryOrder;
   window.AlinLibraryModules=window.AlinLibraryModules||{};
-  window.AlinLibraryModules.libraryOrderStatus=completeLibraryOrder;
 })();
 
 /* ===== library/js/library-finance-v121.js ===== */

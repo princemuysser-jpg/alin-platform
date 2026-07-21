@@ -211,18 +211,10 @@
   // إبقاء الاسم السابق فقط للتوافق مع أي استدعاء قائم، بدون نظام إشعارات ثانٍ.
   window.TeacherV155=window.TeacherNotifications;
 
-  const previousTeacherTab=window.teacherTab;
-  window.teacherTab=function(tab){
-    ensureTab();
-    if(tab==='notifications'){
-      render();
-      return;
-    }
-    return typeof previousTeacherTab==='function'?previousTeacherTab(tab):undefined;
-  };
-
+  if(!window.TeacherApp)throw new Error('TeacherApp must load before teacher/notifications.js');
+  window.TeacherApp.registerTab('notifications',()=>render());
   window.AlinTeacherModules=window.AlinTeacherModules||{};
-  window.AlinTeacherModules.teacherTab=window.teacherTab;
+  window.AlinTeacherModules.renderNotifications=render;
 
   function init(){
     ensureTab();

@@ -49,10 +49,10 @@
     renderPublishing();
     const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||''};set('v150Title',r.title);set('v150Subject',r.subject);set('v150Grade',r.grade);set('v150Note',r.note);document.getElementById('v150Title')?.focus();
   };
-  const previousTab=window.teacherTab,previousRender=window.renderTeacher;let active='';
-  window.teacherTab=function(tab){active=tab||'dashboard';if(active==='requests'){renderPublishing();document.querySelectorAll('#teacherPage .teacher-tabs button').forEach(b=>b.classList.toggle('active-teacher-tab',(b.getAttribute('onclick')||'').includes("'requests'")));return}return typeof previousTab==='function'?previousTab(active):undefined};
-  window.renderTeacher=function(){const result=typeof previousRender==='function'?previousRender():undefined;if(active==='requests')renderPublishing();return result};
-  window.AlinTeacherModules=window.AlinTeacherModules||{};window.AlinTeacherModules.renderPublishingV150=renderPublishing;
+  if(!window.TeacherApp)throw new Error('TeacherApp must load before teacher/publishing.js');
+  window.TeacherApp.registerTab('requests',()=>renderPublishing());
+  window.AlinTeacherModules=window.AlinTeacherModules||{};
+  window.AlinTeacherModules.renderPublishingV150=renderPublishing;
 })();
 
 /* ===== teacher/js/teacher-review-v152.js ===== */
@@ -104,18 +104,15 @@
   }
   window.alinV152AdminFilter=function(){const q=(document.getElementById('v152AdminSearch')?.value||'').toLowerCase(),s=document.getElementById('v152AdminStatus')?.value||'',t=document.getElementById('v152AdminTeacher')?.value||'';document.querySelectorAll('#v152AdminList>div').forEach(x=>x.hidden=!!((q&&!x.dataset.q.includes(q))||(s&&x.dataset.status!==s)||(t&&x.dataset.teacher!==t)))};
   window.alinV152AdminDecision=async function(id,status){const note=document.getElementById('v152AdminNote-'+id)?.value.trim()||'';if(['changes_requested','rejected'].includes(status)&&!note)return alert('اكتب ملاحظة أو سبب واضح للمدرس');try{await update('teacher_requests',{status,admin_note:note,reviewed_at:new Date().toISOString(),reviewed_by:cur().name||cur().username||'admin',updated_at:new Date().toISOString()},{id});if(typeof audit==='function')await audit('teacher_request',`تحديث طلب ${id} إلى ${status}`);if(typeof load==='function')await load();renderAdminReview();if(typeof toast==='function')toast('تم تحديث حالة الطلب')}catch(e){console.warn(e);alert(e.message||'تعذر تحديث الطلب')}};
-  const oldTeacherTab=window.teacherTab;let activeTeacher='';
-  window.teacherTab=function(tab){
-    activeTeacher=tab||'dashboard';
-    document.querySelectorAll('#teacherPage .teacher-tabs button').forEach(b=>b.classList.toggle('active-teacher-tab',(b.getAttribute('onclick')||'').includes("'"+activeTeacher+"'")));
-    if(activeTeacher==='review'||activeTeacher==='publishing'||activeTeacher==='publication'){
-      renderTeacherReview();
-      return;
-    }
-    return typeof oldTeacherTab==='function'?oldTeacherTab(activeTeacher):undefined;
-  };
+  if(!window.TeacherApp)throw new Error('TeacherApp must load before teacher/publishing.js');
+  window.TeacherApp.registerTab('review',()=>renderTeacherReview());
+  window.TeacherApp.registerTab('publishing',()=>renderTeacherReview());
+  window.TeacherApp.registerTab('publication',()=>renderTeacherReview());
   window.renderTeacherRequestsAdmin=renderAdminReview;
-  window.AlinTeacherModules=window.AlinTeacherModules||{};window.AlinTeacherModules.renderReviewV152=renderTeacherReview;window.AlinTeacherModules.renderAdminReviewV152=renderAdminReview;
+  window.AlinTeacherModules=window.AlinTeacherModules||{};
+  window.AlinTeacherModules.renderTeacherRequestsAdmin=renderAdminReview;
+  window.AlinTeacherModules.renderReviewV152=renderTeacherReview;
+  window.AlinTeacherModules.renderAdminReviewV152=renderAdminReview;
 })();
 
 

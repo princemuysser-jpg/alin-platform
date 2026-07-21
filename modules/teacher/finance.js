@@ -6,7 +6,7 @@ function teacherAccountPaid(id){ return (db.teacherPayouts||[]).filter(x=>x.teac
 
 function printTeacherStatement(){
   const {teacher,ledger}=teacherData();
-  const from=tFrom.value, to=tTo.value;
+  const from=document.getElementById('tFrom')?.value||'', to=document.getElementById('tTo')?.value||'';
   const rows=ledger.filter(x=>(!from||(x.created_at||'').slice(0,10)>=from)&&(!to||(x.created_at||'').slice(0,10)<=to));
   checkoutBox.innerHTML=`<div class="receipt"><h2>كشف حساب المدرس</h2><p>${esc(teacher.name||current.name)}</p>${rows.map(x=>`<div class="receipt-line"><b>${esc(x.order_id)}</b><span>${money(x.teacher)} د.ع</span></div>`).join('')}<h3>المجموع: ${money(rows.reduce((a,x)=>a+(+x.teacher||0),0))} د.ع</h3></div><div class="row-actions no-print"><button onclick="window.print()">طباعة</button><button class="secondary" onclick="closeCheckout()">إغلاق</button></div>`;
   checkoutModal.classList.remove('hidden');
@@ -71,13 +71,10 @@ window.AlinTeacherModules['alinV67SumTeacherBalances']=typeof alinV67SumTeacherB
     const csv='\ufeff'+lines.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='teacher-finance.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   };
-  const previousTab=window.teacherTab;
-  window.teacherTab=function(tab){
-    if(tab==='orders'){window.__teacherV154Tab='orders';renderOrders();document.querySelectorAll('#teacherPage .teacher-tabs button').forEach(b=>b.classList.toggle('active-teacher-tab',(b.getAttribute('onclick')||'').includes("'orders'")));return}
-    if(tab==='finance'){window.__teacherV154Tab='finance';renderFinance();document.querySelectorAll('#teacherPage .teacher-tabs button').forEach(b=>b.classList.toggle('active-teacher-tab',(b.getAttribute('onclick')||'').includes("'finance'")));return}
-    window.__teacherV154Tab=tab;return typeof previousTab==='function'?previousTab(tab):undefined;
-  };
-  window.AlinTeacherModules=window.AlinTeacherModules||{};window.AlinTeacherModules.teacherTab=window.teacherTab;
+  if(!window.TeacherApp)throw new Error('TeacherApp must load before teacher/finance.js');
+  window.TeacherApp.registerTab('orders',()=>renderOrders());
+  window.TeacherApp.registerTab('finance',()=>renderFinance());
+  window.TeacherFinanceV154={renderOrders,renderFinance,data};
 })();
 
 

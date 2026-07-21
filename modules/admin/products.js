@@ -1,4 +1,4 @@
-// ALIN Admin Products & Categories — single implementation (v2.1.9)
+// ALIN Admin Products & Categories — single implementation (v2.2.2)
 (function(){
   'use strict';
 

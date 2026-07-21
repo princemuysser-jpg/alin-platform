@@ -27,7 +27,7 @@ async function sendTeacherBookRequest(){
       status:'new'
     });
     await audit('teacher_request','رفع ملف Word لطلب ملزمة من '+current.name);
-    await load(); activeTeacherTab='requests'; renderTeacher(); toast('تم إرسال ملف Word للإدارة للمراجعة');
+    await load(); teacherTab('requests'); toast('تم إرسال ملف Word للإدارة للمراجعة');
   }catch(e){
     console.warn('teacher request error', e);
     if(isMissingTableError(e,'teacher_requests')){
@@ -60,11 +60,6 @@ function alinBookletTeacher(b){ return teacherName(b.teacher_id); }
 
 function alinV72TeacherName(item){
   return (db.accounts?.teachers||[]).find(t=>t.id===item.teacher_id)?.name||'';
-}
-
-function renderTeacherRequestsAdmin(){
-  const list=db.teacherRequests||[];
-  adminContent.innerHTML=`<h2>طلبات المدرسين للملازم</h2>${list.map(r=>`<div class="row"><div><b>${esc(r.title)}</b><small>${esc(r.teacher_name||teacherName(r.teacher_id))} — ${esc(r.subject||'')} — ${esc(r.grade||'')} — ${esc(r.status||'')}</small><p>${esc(r.note||'')}</p></div><div class="row-actions">${r.source_file_path?`<button onclick="openTeacherRequestSource('${r.id}')">عرض الملف الأولي</button>`:''}<button onclick="teacherRequestStatus('${r.id}','designing')">قيد التصميم</button><button onclick="teacherRequestStatus('${r.id}','ready')">جاهزة</button><button class="danger" onclick="teacherRequestStatus('${r.id}','rejected')">رفض</button></div></div>`).join('')||emptyState('لا توجد طلبات')}`;
 }
 
 async function teacherRequestStatus(id,status){ await update('teacher_requests',{status},{id}); await audit('teacher_request','تحديث طلب مدرس '+id+' إلى '+status); await load(); renderTeacherRequestsAdmin(); }
@@ -105,9 +100,52 @@ window.AlinTeacherModules['teacherPhoneForBooklet']=typeof teacherPhoneForBookle
 window.AlinTeacherModules['teacherImageForBooklet']=typeof teacherImageForBooklet==='function'?teacherImageForBooklet:window['teacherImageForBooklet'];window['teacherImageForBooklet']=window.AlinTeacherModules['teacherImageForBooklet'];
 window.AlinTeacherModules['alinBookletTeacher']=typeof alinBookletTeacher==='function'?alinBookletTeacher:window['alinBookletTeacher'];window['alinBookletTeacher']=window.AlinTeacherModules['alinBookletTeacher'];
 window.AlinTeacherModules['alinV72TeacherName']=typeof alinV72TeacherName==='function'?alinV72TeacherName:window['alinV72TeacherName'];window['alinV72TeacherName']=window.AlinTeacherModules['alinV72TeacherName'];
-window.AlinTeacherModules['renderTeacherRequestsAdmin']=typeof renderTeacherRequestsAdmin==='function'?renderTeacherRequestsAdmin:window['renderTeacherRequestsAdmin'];window['renderTeacherRequestsAdmin']=window.AlinTeacherModules['renderTeacherRequestsAdmin'];
 window.AlinTeacherModules['teacherRequestStatus']=typeof teacherRequestStatus==='function'?teacherRequestStatus:window['teacherRequestStatus'];window['teacherRequestStatus']=window.AlinTeacherModules['teacherRequestStatus'];
 window.AlinTeacherModules['openTeacherRequestSource']=typeof openTeacherRequestSource==='function'?openTeacherRequestSource:window['openTeacherRequestSource'];window['openTeacherRequestSource']=window.AlinTeacherModules['openTeacherRequestSource'];
+
+async function approveTeacherBooklet(id){
+  const booklet=(db.booklets||[]).find(row=>String(row.id)===String(id));
+  if(!booklet)throw new Error('الملزمة غير موجودة');
+  const payload={teacher_approved:true,teacher_approved_at:new Date().toISOString(),publish_status:'approved',status:booklet.status==='published'?'published':'approved',updated_at:new Date().toISOString()};
+  await update('booklets',payload,{id:booklet.id});
+  Object.assign(booklet,payload);
+  if(typeof audit==='function')await audit('booklet','موافقة المدرس على نشر '+(booklet.title||booklet.id));
+  if(typeof load==='function')await load();
+  teacherTab('booklets');
+  if(typeof toast==='function')toast('تم إرسال الموافقة إلى الإدارة');
+}
+
+async function publishTeacherBooklet(id){
+  const booklet=(db.booklets||[]).find(row=>String(row.id)===String(id));
+  if(!booklet)throw new Error('الملزمة غير موجودة');
+  if(!booklet.teacher_approved&&!confirm('المدرس لم يوافق بعد. هل تريد النشر رغم ذلك؟'))return;
+  const payload={status:'published',publish_status:'published',published_at:new Date().toISOString(),updated_at:new Date().toISOString()};
+  await update('booklets',payload,{id:booklet.id});
+  Object.assign(booklet,payload);
+  if(typeof audit==='function')await audit('booklet','نشر ملزمة '+(booklet.title||booklet.id));
+  if(typeof load==='function')await load();
+  if(typeof renderTeacherRequestsAdmin==='function')renderTeacherRequestsAdmin();
+}
+
+async function unpublishTeacherBooklet(id){
+  const booklet=(db.booklets||[]).find(row=>String(row.id)===String(id));
+  if(!booklet)throw new Error('الملزمة غير موجودة');
+  const payload={status:'hidden',publish_status:'hidden',updated_at:new Date().toISOString()};
+  await update('booklets',payload,{id:booklet.id});
+  Object.assign(booklet,payload);
+  if(typeof audit==='function')await audit('booklet','إخفاء ملزمة '+(booklet.title||booklet.id));
+  if(typeof load==='function')await load();
+}
+
+window.approveTeacherBooklet=approveTeacherBooklet;
+window.alinTeacherApproveBookletV56=approveTeacherBooklet;
+window.publishTeacherBooklet=publishTeacherBooklet;
+window.alinAdminPublishBookletV56=publishTeacherBooklet;
+window.unpublishTeacherBooklet=unpublishTeacherBooklet;
+window.alinUnpublishBookletV56=unpublishTeacherBooklet;
+window.AlinTeacherModules.approveTeacherBooklet=approveTeacherBooklet;
+window.AlinTeacherModules.publishTeacherBooklet=publishTeacherBooklet;
+window.AlinTeacherModules.unpublishTeacherBooklet=unpublishTeacherBooklet;
 
 
 ;

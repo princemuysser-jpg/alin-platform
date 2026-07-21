@@ -35,9 +35,11 @@
     if(p.length<4)return alert('كلمة المرور يجب أن تكون 4 أحرف أو أرقام على الأقل');if(p!==p2)return alert('كلمتا المرور غير متطابقتين');
     try{const client=window.sb||(window.AlinCloud&&window.AlinCloud.client?.());if(!client?.auth)throw new Error('خدمة الدخول الآمن غير متاحة');const {error}=await client.auth.updateUser({password:p});if(error)throw error;if(typeof audit==='function')await audit('teacher_security','تغيير كلمة مرور المدرس');document.getElementById('v156NewPassword').value='';document.getElementById('v156ConfirmPassword').value='';if(typeof toast==='function')toast('تم تغيير كلمة المرور')}catch(e){alert('تعذر تغيير كلمة المرور: '+e.message)}
   };
-  const oldTab=window.teacherTab;
-  window.teacherTab=function(tab){if(tab==='profile'){window.activeTeacherTab='profile';document.querySelectorAll('#teacherPage .teacher-tabs button').forEach(b=>b.classList.toggle('active-teacher-tab',(b.getAttribute('onclick')||'').includes("'profile'")));render();return;}return typeof oldTab==='function'?oldTab(tab):undefined};
-  window.AlinTeacherModules=window.AlinTeacherModules||{};window.AlinTeacherModules.teacherTab=window.teacherTab;window.renderTeacherProfileV156=render;
+  if(!window.TeacherApp)throw new Error('TeacherApp must load before teacher/profile.js');
+  window.TeacherApp.registerTab('profile',()=>render());
+  window.AlinTeacherModules=window.AlinTeacherModules||{};
+  window.AlinTeacherModules.renderProfile=render;
+  window.renderTeacherProfileV156=render;
 })();
 
 

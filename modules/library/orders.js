@@ -1,53 +1,101 @@
 // === library/orders.js ===
-/* ===== library/js/orders.js ===== */
-/* V111: actual library code moved from core/js/platform-legacy.js */
-window.AlinLibraryModules=window.AlinLibraryModules||{};
-async function libraryOrderStatus(id,status){const o=db.orders.find(x=>x.id===id);const h=[...(o?.status_history||[]),{status,at:new Date().toISOString()}];await update('orders',{status,status_history:h},{id});await audit('order','المكتبة حدثت '+id+' إلى '+status);await load()}
+/* ALIN v2.2.2 — authoritative library order workflow. */
+(function(){
+  'use strict';
+  const modules=window.AlinLibraryModules=window.AlinLibraryModules||{};
+  const allowed={
+    new:['processing','cancelled'],
+    pending:['processing','cancelled'],
+    accepted:['processing','cancelled'],
+    processing:['ready','cancelled'],
+    printing:['ready','cancelled'],
+    ready:['completed','delivered','cancelled'],
+    completed:[],
+    delivered:[],
+    cancelled:[],
+    canceled:[]
+  };
+  const normalize=status=>String(status||'new').toLowerCase()==='canceled'?'cancelled':String(status||'new').toLowerCase();
 
-libraryOrderStatus=async function(id,status){
-  const o=db.orders.find(x=>x.id===id); if(!o)return;
-  if(['processing','ready','completed'].includes(status)) await ensureOrderFinancials(o);
-  const h=[...(o.status_history||[]),{status,at:new Date().toISOString()}];
-  await update('orders',{status,status_history:h},{id});
-  await audit('order','المكتبة حدثت '+id+' إلى '+status);
-  await load();
-};
-
-libraryOrderStatus=async function(id,status){
-  const o=db.orders.find(x=>x.id===id); if(!o)return;
-  const h=[...(o.status_history||[]),{status,at:new Date().toISOString()}];
-  await update('orders',{status,status_history:h},{id});
-  o.status=status; o.status_history=h;
-  if(status==='completed') await ensureOrderFinancials(o);
-  await audit('order','المكتبة غيرت حالة الطلب '+(o.order_number||id)+' إلى '+status); await load(); renderLibrary();
-};
-
-async function openLibraryBookletPdf(orderId){
-  const o=(db.orders||[]).find(x=>x.id===orderId);
-  if(!o || o.kind!=='booklet') return alert('هذا الطلب لا يحتوي ملزمة PDF');
-  const b=(db.booklets||[]).find(x=>x.id===o.item_id);
-  if(!b?.file_path) return alert('لا يوجد ملف PDF لهذه الملزمة');
-  const cleanUrl=mediaUrl(b.file_path);
-  checkoutBox.innerHTML=`<h2>PDF الملزمة للمكتبة</h2><div class="print-only-note">جاري فحص رابط الملف...</div><div class="pdf-viewer loading-box">انتظر قليلاً</div><div class="row-actions no-print"><button class="secondary" onclick="closeCheckout()">إغلاق</button></div>`;
-  checkoutModal.classList.remove('hidden');
-  const ok=await checkPublicFile(cleanUrl);
-  if(!ok){
-    checkoutBox.innerHTML=`<h2>ملف الملزمة غير متاح</h2><div class="print-only-note">رابط الملف القديم غير صالح أو الملف غير مرفوع داخل alin-files. احذف الملزمة من لوحة المدير وارفع ملف PDF الحقيقي من جديد.</div><div class="empty">لن تظهر رسالة Bucket not found بعد الآن، لكن يجب إعادة رفع الملف الصحيح.</div><div class="row-actions no-print"><button class="secondary" onclick="closeCheckout()">إغلاق</button></div>`;
-    return;
+  function findOrder(id){return (window.db?.orders||[]).find(row=>String(row.id)===String(id));}
+  function currentLibraryId(){return String(window.current?.role==='library'?(window.current.id||window.current.library_id||''):'');}
+  function ownsOrder(order){
+    const id=currentLibraryId();
+    if(!id)return false;
+    return [order?.library_id,order?.pickup_library_id,order?.assigned_library_id].some(value=>String(value||'')===id);
   }
-  const url=cleanUrl+'#toolbar=0&navpanes=0&scrollbar=1';
-  checkoutBox.innerHTML=`<h2>PDF الملزمة للمكتبة</h2><div class="print-only-note">هذا الملف يظهر للمكتبة فقط لغرض الطباعة. لا يظهر في المتجر للطالب.</div><div class="pdf-viewer"><iframe id="pdfFrame" src="${url}" oncontextmenu="return false"></iframe></div><div class="row-actions no-print"><button onclick="printPdfFrame()">طباعة</button><button class="secondary" onclick="closeCheckout()">إغلاق</button></div>`;
-}
+  function canMove(from,to){
+    const source=normalize(from),target=normalize(to);
+    return source===target||Boolean(allowed[source]?.includes(target));
+  }
 
-function selectedLibraryLine(){ const lib=db.accounts.libraries.find(x=>x.id===libSelect?.value); if(!lib){libInfo.innerHTML='';return;} libInfo.innerHTML=`<div class="library-one-line"><b>${esc(lib.name)}</b><span class="${libIsOpen(lib)?'open-badge':'closed-badge'}">${libIsOpen(lib)?'مفتوح':'مغلق'}</span><small>${esc(lib.area||'')} ${lib.landmark?'— '+esc(lib.landmark):''}</small></div>`; }
+  async function libraryOrderStatus(id,status){
+    const order=findOrder(id);
+    if(!order)throw new Error('الطلب غير موجود');
+    if(window.current?.role==='library'&&!ownsOrder(order))throw new Error('هذا الطلب غير مسند إلى مكتبتك');
+    const target=normalize(status),source=normalize(order.status);
+    if(!canMove(source,target))throw new Error('لا يمكن نقل الطلب من '+source+' إلى '+target);
+    if(source===target)return order;
 
-function alinLibraryOptions(){
-  return alinOpenLibraries().map(x=>`<option value="${x.id}" ${alinLibOpen(x)?'':'disabled'}>${esc(x.name)} - ${alinLibOpen(x)?'مفتوح':'مغلق'}</option>`).join('');
-}
-window.AlinLibraryModules['libraryOrderStatus']=typeof libraryOrderStatus==='function'?libraryOrderStatus:window['libraryOrderStatus'];window['libraryOrderStatus']=window.AlinLibraryModules['libraryOrderStatus'];
-window.AlinLibraryModules['openLibraryBookletPdf']=typeof openLibraryBookletPdf==='function'?openLibraryBookletPdf:window['openLibraryBookletPdf'];window['openLibraryBookletPdf']=window.AlinLibraryModules['openLibraryBookletPdf'];
-window.AlinLibraryModules['selectedLibraryLine']=typeof selectedLibraryLine==='function'?selectedLibraryLine:window['selectedLibraryLine'];window['selectedLibraryLine']=window.AlinLibraryModules['selectedLibraryLine'];
-window.AlinLibraryModules['alinLibraryOptions']=typeof alinLibraryOptions==='function'?alinLibraryOptions:window['alinLibraryOptions'];window['alinLibraryOptions']=window.AlinLibraryModules['alinLibraryOptions'];
+    const now=new Date().toISOString();
+    const history=[...(Array.isArray(order.status_history)?order.status_history:[]),{status:target,at:now,by:window.current?.id||'library'}];
+    const payload={status:target,status_history:history,updated_at:now};
+    if(target==='processing')payload.processing_at=now;
+    if(target==='ready')payload.ready_at=now;
+    if(['completed','delivered'].includes(target)){
+      payload.completed_at=order.completed_at||now;
+      payload.delivered_at=order.delivered_at||now;
+      payload.payment_status='paid';
+    }
+    if(target==='cancelled')payload.cancelled_at=now;
 
+    await update('orders',payload,{id:order.id});
+    Object.assign(order,payload);
+    if(['completed','delivered'].includes(target)&&typeof ensureOrderFinancials==='function')await ensureOrderFinancials(order);
+    if(typeof audit==='function')await audit('order',`المكتبة حدثت الطلب ${order.order_number||order.id} من ${source} إلى ${target}`);
+    if(typeof load==='function')await load();
+    else modules.renderLibrary?.();
+    return order;
+  }
 
-;
+  async function cancelLibraryOrder(id,reason){
+    const text=String(reason||'').trim();
+    if(!text)throw new Error('اكتب سبب الإلغاء');
+    const order=findOrder(id);
+    if(!order)throw new Error('الطلب غير موجود');
+    const now=new Date().toISOString();
+    const history=[...(Array.isArray(order.status_history)?order.status_history:[]),{status:'cancelled',at:now,by:window.current?.id||'library',reason:text}];
+    const payload={status:'cancelled',cancel_reason:text,cancelled_at:now,status_history:history,updated_at:now};
+    await update('orders',payload,{id:order.id});
+    Object.assign(order,payload);
+    if(typeof audit==='function')await audit('order',`المكتبة ألغت الطلب ${order.order_number||order.id}: ${text}`);
+    if(typeof load==='function')await load();
+    else modules.renderLibrary?.();
+  }
+
+  function selectedLibraryLine(){
+    const select=document.getElementById('libSelect');
+    const info=document.getElementById('libInfo');
+    if(!select||!info)return;
+    const library=(window.db?.accounts?.libraries||[]).find(row=>String(row.id)===String(select.value));
+    if(!library){info.innerHTML='';return;}
+    const open=typeof libIsOpen==='function'?libIsOpen(library):library.is_open!==false;
+    const escape=value=>typeof esc==='function'?esc(value):String(value??'');
+    info.innerHTML=`<div class="library-one-line"><b>${escape(library.name)}</b><span class="${open?'open-badge':'closed-badge'}">${open?'مفتوح':'مغلق'}</span><small>${escape(library.area||'')}${library.landmark?' — '+escape(library.landmark):''}</small></div>`;
+  }
+
+  function alinLibraryOptions(){
+    const libraries=typeof alinOpenLibraries==='function'?alinOpenLibraries():(window.db?.accounts?.libraries||[]).filter(row=>row.status!=='disabled'&&row.is_open!==false);
+    const escape=value=>typeof esc==='function'?esc(value):String(value??'');
+    return libraries.map(row=>`<option value="${escape(row.id)}">${escape(row.name)} - مفتوح</option>`).join('');
+  }
+
+  window.libraryOrderStatus=libraryOrderStatus;
+  window.cancelLibraryOrder=cancelLibraryOrder;
+  window.selectedLibraryLine=selectedLibraryLine;
+  window.alinLibraryOptions=alinLibraryOptions;
+  modules.libraryOrderStatus=libraryOrderStatus;
+  modules.cancelLibraryOrder=cancelLibraryOrder;
+  modules.selectedLibraryLine=selectedLibraryLine;
+  modules.alinLibraryOptions=alinLibraryOptions;
+})();

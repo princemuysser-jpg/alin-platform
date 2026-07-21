@@ -1,0 +1,20 @@
+{
+  "version": "2.2.2-stable-library-teacher-extraction",
+  "result": "passed",
+  "scope": "platform.js library and teacher extraction",
+  "syntax_files": 53,
+  "modules": 44,
+  "module_bytes": 899573,
+  "release_checks": 93,
+  "library_extraction_checks": 19,
+  "teacher_extraction_checks": 28,
+  "platform_bytes_before": 361589,
+  "platform_bytes_after": 311292,
+  "sql_required": false,
+  "notes": [
+    "Library order workflow has a single implementation.",
+    "Teacher navigation has a single runtime registry.",
+    "No renderTeacher, teacherTab, renderLibrary, libraryOrderStatus or PDF-print implementation remains in platform.js.",
+    "All npm test checks passed."
+  ]
+}

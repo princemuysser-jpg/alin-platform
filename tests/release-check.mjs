@@ -89,12 +89,12 @@ if(!run.includes("'status','assignment_status','updated_at','accepted_at','picke
 
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  if(!html.includes('version-badge">v2.1.9'))failures.push(`version-badge:${htmlName}`);
+  if(!html.includes('version-badge">v2.2.2'))failures.push(`version-badge:${htmlName}`);
 }
 for(const obsolete of ['dist/js/shared.early.bundle.js','dist/js/shared.app.bundle.js','options.css']){if(fs.existsSync(path.join(root,obsolete)))failures.push(`obsolete:${obsolete}`)}
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  const positions=moduleFiles.map(rel=>html.indexOf(`./${rel}?v=2.1.9`));
+  const positions=moduleFiles.map(rel=>html.indexOf(`./${rel}?v=2.2.2`));
   if(positions.some(pos=>pos<0))failures.push(`modules:not-loaded:${htmlName}`);
   if(positions.some((pos,index)=>index>0&&pos<positions[index-1]))failures.push(`modules:wrong-order:${htmlName}`);
 }
@@ -109,7 +109,7 @@ for(const token of ['canonicalLedger','librarySummary','teacherSummary',"settlem
 }
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  if(!html.includes('core/finance-runtime.js?v=2.1.9'))failures.push(`finance-script:${htmlName}`);
+  if(!html.includes('core/finance-runtime.js?v=2.2.2'))failures.push(`finance-script:${htmlName}`);
 }
 
 const cartModule=fs.readFileSync(path.join(root,'modules/store/cart.js'),'utf8');
@@ -120,6 +120,17 @@ for(const token of ['cartSubtotalValue','cartDiscountRow','cartDiscountValue','c
 for(const token of ['calculateCartDiscount','getApplied','ALIN_ACTIVE_COUPON','alin:coupon-changed']){
   if(!couponModule.includes(token))failures.push(`coupon-service:${token}`);
 }
+
+const adminOrdersModule=fs.readFileSync(path.join(root,'modules/admin/orders.js'),'utf8');
+const platformModule=fs.readFileSync(path.join(root,'modules/core/platform.js'),'utf8');
+for(const token of ['window.renderOrdersAdmin=render','window.adminOrderStatus=changeStatus','window.adminOrderAssign=assign','status_history','assignment_status','assigned_at','deductStockOnce','matchingCouriers','adminOrdersExport']){
+  if(!adminOrdersModule.includes(token))failures.push(`admin-orders:${token}`);
+}
+if(/(?:oldTab|baseAdminTab|wrapped=function|window\.adminTab\s*=)/.test(adminOrdersModule))failures.push('admin-orders:tab-wrapper');
+for(const pattern of [/function\s+renderOrdersAdmin\s*\(/,/(?:window\.)?renderOrdersAdmin\s*=\s*(?:renderOrdersAdmin\s*=\s*)?function/,/function\s+orderStatus\s*\(/,/(?:window\.)?orderStatus\s*=\s*(?:orderStatus\s*=\s*)?(?:async\s+)?function/,/alinV71RenderOrdersAdminBase/]){
+  if(pattern.test(platformModule))failures.push(`platform:legacy-orders:${pattern}`);
+}
+if(Buffer.byteLength(platformModule,'utf8')>=370000)failures.push('platform:orders-extraction-size');
 
 for(const htmlName of ['index.html','store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');

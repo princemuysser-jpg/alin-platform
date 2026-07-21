@@ -195,8 +195,10 @@ function renderStore(){
   storeGrid.innerHTML=list.map(x=>`<article class="card"><div class="cover">${x.cover?`<img src="${mediaUrl(x.cover)}">`:(x.subject||'منتج')}</div><h3>${x.title}</h3>${x.teacher?`<p>${x.teacher}</p>`:''}<p>${x.grade||x.subject||''}</p>${x.stock!==null?`<p>المخزون: ${x.stock}</p>`:''}<div class="price">${money(x.price)} د.ع</div><button onclick="openCheckout('${x.kind}','${x.id}')">إتمام الشراء</button></article>`).join('')||'لا توجد مواد';
 }
 
-function renderTeacher(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['renderTeacher'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] renderTeacher is not loaded yet');}
-function renderLibrary(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['renderLibrary'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] renderLibrary is not loaded yet');}
+
+
+
+
 function openProtected(id){ const p=db.permits.find(x=>x.id===id); const b=db.booklets.find(x=>x.id===p?.booklet_id); if(!b?.file_path)return alert('لا يوجد ملف PDF'); window.open(mediaUrl(b.file_path),'_blank'); }
 async function usePermit(id){ const p=db.permits.find(x=>x.id===id); if(!p || p.used>=p.qty)return alert('إذن النسخ منتهي'); const used=(+p.used||0)+1; await update('permits',{used,status:used>=p.qty?'done':'active'},{id}); await audit('copy','استخدام إذن نسخة '+id); await load(); }
 async function requestWithdraw(role){ try{ const amount=+(role==='teacher'?teacherWithdrawAmount.value:libraryWithdrawAmount.value); if(amount<=0)throw new Error('المبلغ غير صحيح'); await insert('withdrawals',{id:uid('W'),role,account_id:current.id,amount,status:'pending'}); await audit('withdrawal','طلب سحب '+role); await load(); alert('تم إرسال الطلب'); }catch(e){ alert(e.message); } }
@@ -211,18 +213,10 @@ async function addAccount(){ if(window.ALINAuth?.createAccountFromAdmin)return w
 
 
 
-function renderOrdersAdmin(){ adminContent.innerHTML='<h2>الطلبات</h2>'+db.orders.map(x=>`<div class="row"><div><b>${x.title} × ${x.qty}</b><small>${x.student_name} — ${x.payment_status}</small></div>${x.payment_status==='payment_pending'?`<button onclick="devPay('${x.id}')">تأكيد دفع تطويري</button>`:''}</div>`).join(''); }
-async function devPay(id){
-  const o=db.orders.find(x=>x.id===id); if(!o)return;
-  const b=db.booklets.find(x=>x.id===o.item_id);
-  const alin=Math.round((+o.total)*0.30), teacher=Math.round((+o.total)*0.50), library=(+o.total)-alin-teacher;
-  await update('orders',{status:'paid',payment_status:'paid',payment_ref:'DEV-'+uid('PAY')},{id});
-  if(o.kind==='booklet'){
-    await insert('permits',{id:uid('P'),order_id:id,booklet_id:o.item_id,library_id:o.library_id,qty:o.qty,used:0,status:'active'});
-    await insert('ledger',{id:uid('LG'),order_id:id,alin,teacher,teacher_id:b?.teacher_id||'',library,library_id:o.library_id,settlement_status:'unsettled'});
-  }
-  await audit('payment','تأكيد دفع تطويري للطلب '+id); await load(); renderOrdersAdmin();
-}
+
+/* platform step 5: removed legacy renderOrdersAdmin; authoritative code is modules/admin/orders.js */
+
+/* platform step 5: removed legacy devPay; authoritative code is modules/admin/orders.js */
 
 function renderFinanceAdmin(){ adminContent.innerHTML=`<h2>الدفتر المالي</h2>${db.ledger.map(x=>`<div class="row"><div><b>${x.order_id}</b><small>آلين ${money(x.alin)} — مدرس ${money(x.teacher)} — مكتبة ${money(x.library)}</small></div><span>${x.settlement_status}</span></div>`).join('')}<h3>طلبات السحب</h3>${db.withdrawals.map(x=>`<div class="row"><div><b>${x.role} — ${money(x.amount)} د.ع</b><small>${x.status}</small></div><div class="row-actions"><button onclick="withdrawStatus('${x.id}','approved')">موافقة</button><button onclick="withdrawStatus('${x.id}','paid')">تم الدفع</button><button class="danger" onclick="withdrawStatus('${x.id}','rejected')">رفض</button></div></div>`).join('')}`; }
 async function withdrawStatus(id,status){ await update('withdrawals',{status},{id}); await audit('withdrawal','تحديث طلب سحب '+id); await load(); renderFinanceAdmin(); }
@@ -232,7 +226,7 @@ async function addAd(){ await insert('banners',{id:uid('AD'),title:adTitle.value
 async function toggleAd(id,active){ await update('banners',{active:active?0:1},{id}); await load(); renderAdsAdmin(); }
 
 function renderSettingsAdmin(){ adminContent.innerHTML=`<h2>إعدادات المنصة</h2><div class="form-grid"><input id="platformNameInput" value="آلين" placeholder="اسم المنصة"><input id="platformPhoneInput" value="" placeholder="رقم الهاتف"><button onclick="saveSystemSettings()">حفظ</button></div><div id="systemMsg"></div>`; }
-function renderAll(){ renderStore(); renderTeacher(); renderLibrary(); adminStatsRender(); if(window.adminContent&&!adminContent.innerHTML)adminTab('accounts'); }
+function renderAll(){ renderStore(); window.renderTeacher?.(); window.renderLibrary?.(); adminStatsRender(); if(window.adminContent&&!adminContent.innerHTML)adminTab('accounts'); }
 document.addEventListener('DOMContentLoaded', load);
 /* ================= ALIN V18 UPGRADE ================= */
 let activeAdminTab = 'accounts';
@@ -263,8 +257,10 @@ renderAdsAdmin = function(){ adminContent.innerHTML=`<h2>اللوحة الإعل
 async function editAd(id){ const x=db.banners.find(a=>a.id===id); if(!x)return; const title=prompt('عنوان الإعلان',x.title||''); if(title===null)return; const text=prompt('نص الإعلان',x.text||''); if(text===null)return; await update('banners',{title:title.trim(),text:text.trim()},{id}); await load(); renderAdsAdmin(); toast('تم تعديل الإعلان'); }
 async function deleteAd(id){ if(!confirm('حذف الإعلان؟'))return; try{await removeRow('banners',{id}); await load(); renderAdsAdmin(); toast('تم حذف الإعلان')}catch(e){alert(e.message)} }
 
-renderOrdersAdmin = function(){ const statusLabel={payment_pending:'بانتظار الدفع',paid:'مدفوع',processing:'قيد التجهيز',ready:'جاهز',completed:'مكتمل',cancelled:'ملغي'}; adminContent.innerHTML='<h2>الطلبات</h2>'+(db.orders.length?db.orders.map(x=>`<div class="row"><div><b>${esc(x.title)} × ${x.qty}</b><small>${esc(x.student_name)} — ${esc(x.student_phone||'')} — ${money(x.total)} د.ع — ${statusLabel[x.status]||statusLabel[x.payment_status]||esc(x.status||'')}</small></div><div class="row-actions">${x.payment_status==='payment_pending'?`<button onclick="devPay('${x.id}')">تأكيد الدفع</button>`:''}${x.payment_status==='paid'?`<button class="secondary" onclick="orderStatus('${x.id}','processing')">تجهيز</button><button onclick="orderStatus('${x.id}','ready')">جاهز</button><button onclick="orderStatus('${x.id}','completed')">مكتمل</button>`:''}<button class="danger" onclick="orderStatus('${x.id}','cancelled')">إلغاء</button></div></div>`).join(''):emptyState('لا توجد طلبات')); }
-async function orderStatus(id,status){ await update('orders',{status},{id}); await audit('order','تحديث الطلب '+id+' إلى '+status); await load(); renderOrdersAdmin(); toast('تم تحديث الطلب'); }
+
+/* platform step 5: removed legacy renderOrdersAdmin; authoritative code is modules/admin/orders.js */
+
+/* platform step 5: removed legacy orderStatus; authoritative code is modules/admin/orders.js */
 
 
 /* ================= ALIN V19 NOTIFICATIONS ================= */
@@ -305,11 +301,16 @@ async function deleteNotification(id){
 }
 
 adminStatsRender=function(){if(!window.adminStats)return;const today=new Date().toISOString().slice(0,10),month=today.slice(0,7),todayOrders=db.orders.filter(x=>(x.created_at||'').slice(0,10)===today),monthOrders=db.orders.filter(x=>(x.created_at||'').slice(0,7)===month),low=db.products.filter(x=>+x.stock<=+(x.low_stock_limit||db.settings.low_stock_default||5));adminStats.innerHTML=`<div><b>طلبات اليوم</b><span>${todayOrders.length}</span></div><div><b>مبيعات الشهر</b><span>${money(monthOrders.reduce((a,x)=>a+(+x.total||0),0))} د.ع</span></div><div><b>طلبات الشهر</b><span>${monthOrders.length}</span></div><div><b>مخزون منخفض</b><span>${low.length}</span><small class="metric-note">${low.slice(0,2).map(x=>esc(x.name)).join('، ')}</small></div>`;}
-function renderTeacher(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['renderTeacher'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] renderTeacher is not loaded yet');}
-function renderLibrary(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['renderLibrary'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] renderLibrary is not loaded yet');}
-function libraryOrderStatus(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['libraryOrderStatus'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] libraryOrderStatus is not loaded yet');}
-renderOrdersAdmin=function(){const labels={new:'جديد',payment_pending:'بانتظار الدفع',processing:'قيد التجهيز',ready:'جاهز',completed:'تم التسليم',cancelled:'ملغي'};adminContent.innerHTML='<h2>الطلبات</h2>'+(db.orders.length?db.orders.map(x=>`<div class="row"><div><b>${esc(x.order_number||x.id)} — ${esc(x.title)} × ${x.qty}</b><small>${esc(x.student_name)} — ${money(x.total)} د.ع — ${labels[x.status]||esc(x.status||'')}</small><div class="timeline">${(x.status_history||[]).map(h=>`<span class="done">${labels[h.status]||esc(h.status)}</span>`).join('')}</div></div><div class="row-actions"><button onclick="orderStatus('${x.id}','processing')">تجهيز</button><button onclick="orderStatus('${x.id}','ready')">جاهز</button><button onclick="orderStatus('${x.id}','completed')">تسليم</button><button class="danger" onclick="orderStatus('${x.id}','cancelled')">إلغاء</button></div></div>`).join(''):emptyState('لا توجد طلبات'));}
-orderStatus=async function(id,status){const o=db.orders.find(x=>x.id===id);const h=[...(o?.status_history||[]),{status,at:new Date().toISOString()}];await update('orders',{status,status_history:h},{id});if(status==='processing'&&o&&o.kind!=='booklet'){const p=db.products.find(x=>x.id===o.item_id);if(p&&!(o.status_history||[]).some(x=>x.status==='processing'))await update('products',{stock:Math.max(0,+p.stock-(+o.qty||0))},{id:p.id});}await audit('order','تحديث الطلب '+id+' إلى '+status);await load();renderOrdersAdmin();toast('تم تحديث الطلب');}
+
+
+
+
+
+
+
+/* platform step 5: removed legacy renderOrdersAdmin; authoritative code is modules/admin/orders.js */
+
+/* platform step 5: removed legacy orderStatus; authoritative code is modules/admin/orders.js */
 renderSettingsAdmin=function(){adminContent.innerHTML=`<h2>إعدادات المنصة</h2><div class="form-grid"><input id="platformName" value="${esc(db.settings.platform_name||'منصة آلين')}" placeholder="اسم المنصة"><input id="platformPhone" value="${esc(db.settings.platform_phone||'')}" placeholder="رقم الهاتف"><input id="heroTitle" value="${esc(db.settings.hero_title||'')}" placeholder="عنوان الواجهة"><input id="heroText" value="${esc(db.settings.hero_text||'')}" placeholder="نص الواجهة"><input id="lowStockDefault" type="number" value="${esc(db.settings.low_stock_default||'5')}" placeholder="حد المخزون المنخفض"><button onclick="savePlatformSettings()">حفظ الإعدادات</button></div><div class="settings-preview"><b>معاينة</b><h3>${esc(db.settings.hero_title||'')}</h3><p>${esc(db.settings.hero_text||'')}</p></div>`;}
 async function savePlatformSettings(){const vals={platform_name:platformName.value.trim(),platform_phone:platformPhone.value.trim(),hero_title:heroTitle.value.trim(),hero_text:heroText.value.trim(),low_stock_default:lowStockDefault.value||'5'};for(const [key,value] of Object.entries(vals))await sb.from('settings').upsert({key,value});await audit('settings','تحديث إعدادات المنصة');await load();renderSettingsAdmin();toast('تم حفظ الإعدادات')}
 
@@ -325,7 +326,8 @@ applyBrand = function(){
   const badge=document.querySelector('.version-badge'); if(badge) badge.textContent='منصة آلين';
 };
 
-function libraryOptionsHtml(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['libraryOptionsHtml'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] libraryOptionsHtml is not loaded yet');}
+
+
 function librariesVisibleList(){
   return `<div class="lib-list">${activeLibraries().map(x=>`<div class="lib-choice ${libIsOpen(x)?'open':'closed'}"><b>${esc(x.name)}</b>${libIsOpen(x)?'<span class="open-badge">مفتوح</span>':'<span class="closed-badge">مغلق</span>'}<small>${esc(x.area||'')} — ${esc(x.landmark||'')}</small>${!libIsOpen(x)?`<small>${esc(x.open_note||'لا يستقبل طلبات حالياً')}</small>`:''}</div>`).join('')}</div>`;
 }
@@ -334,9 +336,11 @@ function librariesVisibleList(){
 
 
 
-function renderLibrary(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['renderLibrary'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] renderLibrary is not loaded yet');}
 
-function setLibraryOpen(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['setLibraryOpen'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] setLibraryOpen is not loaded yet');}
+
+
+
+
 
 async function ensureOrderFinancials(o){
   if(!o || db.ledger.some(x=>x.order_id===o.id)) return;
@@ -349,14 +353,13 @@ async function ensureOrderFinancials(o){
   await insert('ledger',{id:uid('LG'),order_id:o.id,alin,teacher,teacher_id,library,library_id:o.library_id,settlement_status:'unsettled'});
 }
 
-function libraryOrderStatus(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['libraryOrderStatus'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] libraryOrderStatus is not loaded yet');}
 
-const v21OldOrderStatus = orderStatus;
-orderStatus=async function(id,status){
-  const o=db.orders.find(x=>x.id===id);
-  if(o && ['processing','ready','completed'].includes(status)) await ensureOrderFinancials(o);
-  return v21OldOrderStatus(id,status);
-};
+
+
+/* platform step 5: removed legacy v21 order alias; authoritative code is modules/admin/orders.js */
+
+
+/* platform step 5: removed legacy orderStatus; authoritative code is modules/admin/orders.js */
 
 function openOrderPdf(orderId){
   const o=db.orders.find(x=>x.id===orderId); const b=db.booklets.find(x=>x.id===o?.item_id);
@@ -411,29 +414,42 @@ load = async function(){
 };
 document.addEventListener('DOMContentLoaded', function(){ setTimeout(load,150); });
 
-function teacherData(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['teacherData'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] teacherData is not loaded yet');}
-function teacherTab(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['teacherTab'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] teacherTab is not loaded yet');}
-function bestTeacherBook(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['bestTeacherBook'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] bestTeacherBook is not loaded yet');}
-function teacherAccountPaid(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['teacherAccountPaid'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] teacherAccountPaid is not loaded yet');}
 
-function renderTeacher(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['renderTeacher'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] renderTeacher is not loaded yet');}
+
+
+
+
+
+
+
+
+
+
 
 function isMissingTableError(e, tableName){
   const msg=String(e?.message||e||'');
   return msg.includes(tableName) && (msg.includes('Could not find the table') || msg.includes('schema cache') || msg.includes('does not exist'));
 }
 
-function sendTeacherBookRequest(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['sendTeacherBookRequest'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] sendTeacherBookRequest is not loaded yet');}
-function saveTeacherProfile(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['saveTeacherProfile'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] saveTeacherProfile is not loaded yet');}
-function openTeacherPdf(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['openTeacherPdf'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] openTeacherPdf is not loaded yet');}
-function printTeacherStatement(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['printTeacherStatement'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] printTeacherStatement is not loaded yet');}
+
+
+
+
+
+
+
+
 
 const v22AdminTab = adminTab;
 adminTab=function(t){ window.activeAdminTab=t; if(t==='teacherRequests')return renderTeacherRequestsAdmin(); return v22AdminTab(t); };
-function renderTeacherRequestsAdmin(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['renderTeacherRequestsAdmin'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] renderTeacherRequestsAdmin is not loaded yet');}
-function teacherRequestStatus(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['teacherRequestStatus'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] teacherRequestStatus is not loaded yet');}
-function openTeacherRequestSource(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['openTeacherRequestSource'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] openTeacherRequestSource is not loaded yet');}
-function addTeacherPayoutPrompt(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['addTeacherPayoutPrompt'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] addTeacherPayoutPrompt is not loaded yet');}
+
+
+
+
+
+
+
+
 
 const v22RenderFinanceAdmin = renderFinanceAdmin;
 renderFinanceAdmin=function(){
@@ -444,9 +460,12 @@ renderFinanceAdmin=function(){
 
 /* ================= ALIN V23 MALZAMA STORE DISPLAY ================= */
 const ALIN_VERSION = 'V23 Malzama';
-function teacherObj(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['teacherObj'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] teacherObj is not loaded yet');}
-function teacherPhoneForBooklet(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['teacherPhoneForBooklet'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] teacherPhoneForBooklet is not loaded yet');}
-function teacherImageForBooklet(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['teacherImageForBooklet'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] teacherImageForBooklet is not loaded yet');}
+
+
+
+
+
+
 
 storeItems=function(){
   if(db.settings.storeType==='booklet'){
@@ -498,9 +517,11 @@ async function uploadBookletV23(){
   }catch(e){ alert(e.message); }
 }
 
-function openLibraryBookletPdf(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['openLibraryBookletPdf'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] openLibraryBookletPdf is not loaded yet');}
 
-function renderLibrary(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['renderLibrary'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] renderLibrary is not loaded yet');}
+
+
+
+
 
 function printOrderReceipt(orderId){
   const o=(db.orders||[]).find(x=>x.id===orderId); if(!o)return;
@@ -537,7 +558,8 @@ ensureOrderFinancials=async function(o){
   await insert('financial_entries',{id:uid('FE'),order_id:o.id,order_number:o.order_number||o.id,entry_type:'sale',kind:o.kind,item_id:o.item_id,title:o.title,qty:+o.qty||1,gross:+o.total||0,platform_amount:d.platform,teacher_amount:d.teacher,library_amount:d.library,teacher_id:d.teacher_id,library_id:o.library_id||'',distribution_mode:d.mode,distribution_snapshot:d.snapshot,note:'تسوية تلقائية عند تم التسليم'});
   if(o.kind==='booklet'&&!db.permits.some(p=>p.order_id===o.id)) await insert('permits',{id:uid('P'),order_id:o.id,booklet_id:o.item_id,library_id:o.library_id,qty:o.qty,used:0,status:'active'});
 };
-function libraryOrderStatus(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['libraryOrderStatus'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] libraryOrderStatus is not loaded yet');}
+
+
 async function saveBookDistribution(id){
   const mode=document.getElementById('distMode_'+id).value, teacher=+document.getElementById('tShare_'+id).value||0, library=+document.getElementById('lShare_'+id).value||0;
   if(mode==='percent'&&teacher+library>100)return alert('مجموع النسب لا يجوز أن يتجاوز 100%');
@@ -589,10 +611,14 @@ function libDebt(id){
   return {owed,paid,remaining:owed-paid};
 }
 function settlementNo(){return 'RC-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+Math.random().toString(36).slice(2,7).toUpperCase();}
-function recordLibrarySettlement(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['recordLibrarySettlement'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] recordLibrarySettlement is not loaded yet');}
-function reverseLibrarySettlement(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['reverseLibrarySettlement'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] reverseLibrarySettlement is not loaded yet');}
-function printLibrarySettlement(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['printLibrarySettlement'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] printLibrarySettlement is not loaded yet');}
-function settlementRowsForLibrary(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['settlementRowsForLibrary'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] settlementRowsForLibrary is not loaded yet');}
+
+
+
+
+
+
+
+
 const v25OldRenderFinanceAdmin=renderFinanceAdmin;
 renderFinanceAdmin=function(){
   v25OldRenderFinanceAdmin();
@@ -602,9 +628,12 @@ renderFinanceAdmin=function(){
   html+=`<h3>سندات قبض التسويات</h3>`+(librarySettlements.slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')).map(s=>{const l=(db.accounts.libraries||[]).find(x=>x.id===s.library_id)||{};return `<div class="row"><div><b>${esc(s.receipt_number)} — ${esc(l.name||'')}</b><small>${money(s.amount)} د.ع — ${esc(s.payment_method||'')} — ${esc(s.status||'')}</small></div><div class="row-actions"><button class="secondary" onclick="printLibrarySettlement('${s.id}')">طباعة سند</button>${s.status==='received'?`<button class="danger" onclick="reverseLibrarySettlement('${s.id}')">قيد عكسي</button>`:''}</div></div>`}).join('')||emptyState('لا توجد تسويات'));
   adminContent.innerHTML=html;
 };
-function printLibraryStatement(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['printLibraryStatement'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] printLibraryStatement is not loaded yet');}
-const v25OldRenderLibrary=renderLibrary;
-function renderLibrary(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['renderLibrary'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] renderLibrary is not loaded yet');}
+
+
+
+
+
+
 adminStatsRender=function(){ if(!window.adminStats)return; const platform=financialEntries.reduce((a,x)=>a+(+x.platform_amount||0),0); const totalDebt=(db.accounts.libraries||[]).reduce((a,l)=>a+libDebt(l.id).remaining,0); adminStats.innerHTML=`<div><b>الحسابات</b><span>${db.accounts.teachers.length+db.accounts.libraries.length}</span></div><div><b>الملازم</b><span>${db.booklets.length}</span></div><div><b>الطلبات</b><span>${db.orders.length}</span></div><div><b>متبقي التسويات</b><span>${money(totalDebt)} د.ع</span></div><div><b>صافي حصة آلين</b><span>${money(platform)} د.ع</span></div>`; };
 
 // ===== V26 Manual Mastercard Payment =====
@@ -616,11 +645,17 @@ function manualPayInfoHtml(){
 function toggleManualPay(){const v=document.querySelector('input[name="payMethod"]:checked')?.value; document.getElementById('manualPayBox')?.classList.toggle('hidden',v!=='manual_mastercard');}
 
 
-function viewPaymentReceipt(id){const o=db.orders.find(x=>x.id===id);if(!o?.payment_receipt_path)return alert('لا يوجد وصل');const url=mediaUrl(o.payment_receipt_path);checkoutBox.innerHTML=`<h2>وصل التحويل</h2><div class="pdf-viewer"><iframe src="${url}"></iframe></div><div class="row-actions"><button onclick="approveManualPayment('${id}')">تأكيد الدفع</button><button class="danger" onclick="rejectManualPayment('${id}')">رفض الوصل</button><button class="secondary" onclick="closeCheckout()">إغلاق</button></div>`;checkoutModal.classList.remove('hidden');}
-async function approveManualPayment(id){await update('orders',{payment_status:'paid',status:'paid',payment_ref:'MAN-'+Date.now()},{id});await audit('payment','تأكيد تحويل يدوي للطلب '+id);await load();closeCheckout();renderOrdersAdmin();}
-async function rejectManualPayment(id){await update('orders',{payment_status:'receipt_rejected',status:'new'},{id});await audit('payment','رفض وصل تحويل للطلب '+id);await load();closeCheckout();renderOrdersAdmin();}
-const _renderOrdersAdminV25=renderOrdersAdmin;
-renderOrdersAdmin=function(){const labels={new:'جديد',paid:'مدفوع',processing:'قيد التجهيز',ready:'جاهز',completed:'تم التسليم',cancelled:'ملغي'};adminContent.innerHTML='<h2>الطلبات</h2>'+(db.orders.length?db.orders.map(x=>`<div class="row"><div><b>${esc(x.order_number||x.id)} — ${esc(x.title)} × ${x.qty}</b><small>${esc(x.student_name)} — ${money(x.total)} د.ع — ${labels[x.status]||esc(x.status||'')} — ${x.payment_status==='manual_review'?'وصل ماستر بانتظار المراجعة':x.payment_status==='cash_on_delivery'?'دفع عند الاستلام':x.payment_status==='paid'?'مدفوع':esc(x.payment_status||'')}</small></div><div class="row-actions">${x.payment_status==='manual_review'?`<button onclick="viewPaymentReceipt('${x.id}')">مراجعة الوصل</button>`:''}${x.payment_status==='paid'||x.payment_status==='cash_on_delivery'?`<button onclick="orderStatus('${x.id}','processing')">تجهيز</button><button onclick="orderStatus('${x.id}','ready')">جاهز</button><button onclick="orderStatus('${x.id}','completed')">تسليم</button>`:''}<button class="danger" onclick="orderStatus('${x.id}','cancelled')">إلغاء</button></div></div>`).join(''):emptyState('لا توجد طلبات'));}
+
+/* platform step 5: removed legacy viewPaymentReceipt; authoritative code is modules/admin/orders.js */
+
+/* platform step 5: removed legacy approveManualPayment; authoritative code is modules/admin/orders.js */
+
+/* platform step 5: removed legacy rejectManualPayment; authoritative code is modules/admin/orders.js */
+
+/* platform step 5: removed legacy v25 order alias; authoritative code is modules/admin/orders.js */
+
+
+/* platform step 5: removed legacy renderOrdersAdmin; authoritative code is modules/admin/orders.js */
 
 const _renderSettingsAdminV26=renderSettingsAdmin;
 renderSettingsAdmin=function(){_renderSettingsAdminV26();adminContent.innerHTML+=`<h3>الدفع اليدوي بالماستر كارد</h3><div class="form-grid"><input id="manualCardNumber" value="${esc(db.settings.manual_card_number||'')}" placeholder="رقم البطاقة أو رقم التحويل"><input id="manualCardHolder" value="${esc(db.settings.manual_card_holder||'')}" placeholder="اسم صاحب البطاقة"></div><button onclick="saveManualCardSettings()">حفظ بيانات الدفع</button><p><small>هذه البيانات تظهر للطالب لغرض التحويل اليدوي فقط. لا يتم طلب رقم بطاقة الطالب أو CVV داخل المنصة.</small></p>`;}
@@ -786,9 +821,12 @@ load = async function(){
 function deliveryFee(){ return +(db?.settings?.delivery_fee||0); }
 function activeCouriers(){const fn=window.AlinCourierModules&&window.AlinCourierModules['activeCouriers'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] activeCouriers is not loaded yet');}
 
-function openLibraryJoinPortal(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['openLibraryJoinPortal'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] openLibraryJoinPortal is not loaded yet');}
-function getLibraryGps(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['getLibraryGps'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] getLibraryGps is not loaded yet');}
-function submitLibraryJoinRequest(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['submitLibraryJoinRequest'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] submitLibraryJoinRequest is not loaded yet');}
+
+
+
+
+
+
 
 const _adminTabV29 = adminTab;
 adminTab = function(t){
@@ -797,9 +835,12 @@ adminTab = function(t){
   if(t==='courierSettlements') return renderCourierSettlementsAdmin();
   return _adminTabV29(t);
 };
-function renderLibraryRequestsAdmin(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['renderLibraryRequestsAdmin'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] renderLibraryRequestsAdmin is not loaded yet');}
-function approveLibraryRequest(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['approveLibraryRequest'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] approveLibraryRequest is not loaded yet');}
-function rejectLibraryRequest(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['rejectLibraryRequest'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] rejectLibraryRequest is not loaded yet');}
+
+
+
+
+
+
 function renderCouriersAdmin(){const fn=window.AlinCourierModules&&window.AlinCourierModules['renderCouriersAdmin'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] renderCouriersAdmin is not loaded yet');}
 function addCourier(){const fn=window.AlinCourierModules&&window.AlinCourierModules['addCourier'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] addCourier is not loaded yet');}
 function toggleCourier(){const fn=window.AlinCourierModules&&window.AlinCourierModules['toggleCourier'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] toggleCourier is not loaded yet');}
@@ -807,11 +848,10 @@ function renderCourierSettlementsAdmin(){const fn=window.AlinCourierModules&&win
 function assignCourier(){const fn=window.AlinCourierModules&&window.AlinCourierModules['assignCourier'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] assignCourier is not loaded yet');}
 function courierOrderStatus(){const fn=window.AlinCourierModules&&window.AlinCourierModules['courierOrderStatus'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] courierOrderStatus is not loaded yet');}
 
-const _renderOrdersAdminV29 = renderOrdersAdmin;
-renderOrdersAdmin = function(){
-  const labels={pickup:'استلام من المكتبة',home_delivery:'توصيل للبيت'};
-  adminContent.innerHTML='<h2>الطلبات</h2>'+(db.orders.length?db.orders.map(x=>`<div class="row"><div><b>${esc(x.title)} × ${x.qty}</b><small>${esc(x.student_name)} — ${esc(x.student_phone||'')} — ${money(x.total)} د.ع — ${labels[x.fulfillment_type]||'استلام'} — ${esc(x.status||'')}</small></div><div class="row-actions">${x.fulfillment_type==='home_delivery'?`<button onclick="adminTab('courierSettlements')">إدارة التوصيل</button>`:''}<button onclick="orderStatus('${x.id}','processing')">تجهيز</button><button onclick="orderStatus('${x.id}','ready')">جاهز</button><button onclick="orderStatus('${x.id}','completed')">تم التسليم</button><button class="danger" onclick="orderStatus('${x.id}','cancelled')">إلغاء</button></div></div>`).join(''):emptyState('لا توجد طلبات'));
-};
+/* platform step 5: removed legacy v29 order alias; authoritative code is modules/admin/orders.js */
+
+
+/* platform step 5: removed legacy renderOrdersAdmin; authoritative code is modules/admin/orders.js */
 const _renderSettingsV29 = renderSettingsAdmin;
 renderSettingsAdmin = function(){
   _renderSettingsV29();
@@ -957,10 +997,8 @@ window.trackOrder=function(){
     renderCartBadge();
   };
     
-  window.renderOrdersAdmin=function(){
-    const orders=db.orders||[];
-    adminContent.innerHTML='<h2>الطلبات وتتبعها</h2>'+(orders.length?orders.map(x=>`<div class="row"><div><b>${esc(orderNo(x))} — ${esc(x.title)} × ${x.qty}</b><small>${esc(x.student_name)} — ${esc(x.student_phone||'')} — ${money(x.total)} د.ع — ${statusLabels[x.status]||esc(x.status||'')}</small><div class="timeline">${(x.status_history||[]).map(h=>`<span class="done">${statusLabels[h.status]||esc(h.status)}</span>`).join('')}</div></div><div class="row-actions"><button onclick="orderStatus('${x.id}','processing')">تجهيز</button><button onclick="orderStatus('${x.id}','ready')">جاهز</button><button onclick="orderStatus('${x.id}','out_delivery')">خرج للتوصيل</button><button onclick="orderStatus('${x.id}','completed')">تسليم</button><button class="secondary" onclick="printReceipt('${x.id}')">وصل / QR</button><button class="danger" onclick="orderStatus('${x.id}','cancelled')">إلغاء</button></div></div>`).join(''):emptyState('لا توجد طلبات'));
-  };
+  
+/* platform step 5: removed legacy renderOrdersAdmin; authoritative code is modules/admin/orders.js */
 
   window.renderFinanceAdmin=function(){
     const orders=db.orders||[], led=db.ledger||[]; const total=orders.reduce((a,x)=>a+(+x.total||0),0); const platform=led.reduce((a,x)=>a+(+x.alin||0),0); const teachers=led.reduce((a,x)=>a+(+x.teacher||0),0); const libraries=led.reduce((a,x)=>a+(+x.library||0),0); const delivery=orders.filter(x=>x.fulfillment_type==='home_delivery').length;
@@ -1071,8 +1109,10 @@ window.renderStore=function(){
 
 
 
-function libraryOptionsClean(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['libraryOptionsClean'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] libraryOptionsClean is not loaded yet');}
-function selectedLibraryLine(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['selectedLibraryLine'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] selectedLibraryLine is not loaded yet');}
+
+
+
+
 window.showLibInfo=selectedLibraryLine;
 
 
@@ -1112,28 +1152,22 @@ window.maybeCreateFinancialEntry=async function(id){
   o.status='completed'; o.payment_status='paid';
   if(typeof ensureOrderFinancials==='function') await ensureOrderFinancials(o);
 };
-window.orderStatus=async function(id,status){
-  const o=(db.orders||[]).find(x=>x.id===id); if(!o)return;
-  const h=[...(o.status_history||[]),{status,at:new Date().toISOString()}];
-  await update('orders',{status,payment_status:status==='completed'?'paid':(o.payment_status||'cod_pending'),status_history:h},{id});
-  o.status=status; o.status_history=h; if(status==='completed') await maybeCreateFinancialEntry(id);
-  await audit('order','تحديث الطلب '+(o.order_number||id)+' إلى '+status); await load(); renderOrdersAdmin(); toast('تم تحديث الطلب');
-};
+
+/* platform step 5: removed legacy orderStatus; authoritative code is modules/admin/orders.js */
 function recordCourierSettlementForOrder(){const fn=window.AlinCourierModules&&window.AlinCourierModules['recordCourierSettlementForOrder'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] recordCourierSettlementForOrder is not loaded yet');}
 window.renderCourierSettlementsAdmin=function(){
   const deliveryOrders=(db.orders||[]).filter(o=>o.fulfillment_type==='home_delivery');
   adminContent.innerHTML='<h2>تسويات المندوبين</h2><p class="muted">كل طلب توصيل يظهر هنا. المندوب يستلم المبلغ من الطالب ثم يسلم للإدارة بسند تسوية.</p>'+deliveryOrders.map(o=>`<div class="row"><div><b>${esc(o.order_number||o.id)} — ${esc(o.title)}</b><small>الطالب: ${esc(o.student_name)} • ${esc(o.delivery_area||'')} — ${esc(o.delivery_landmark||'')} • المبلغ ${money(o.total)} د.ع • الحالة ${esc(o.status||'')}</small></div><div class="row-actions"><select id="assign_${o.id}"><option value="">مندوب</option>${couriers.map(c=>`<option value="${c.id}" ${o.courier_id===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select><button onclick="assignCourier('${o.id}')">حفظ</button><button onclick="courierOrderStatus('${o.id}','out_for_delivery')">قيد التوصيل</button><button onclick="courierOrderStatus('${o.id}','completed')">تم التسليم</button><button onclick="recordCourierSettlementForOrder('${o.id}')">تسجيل تسوية</button></div></div>`).join('')+(deliveryOrders.length?'':'لا توجد طلبات توصيل')+'<h3>سندات تسوية المندوبين</h3>'+(courierSettlements.map(s=>`<div class="row"><div><b>${esc(s.receipt_number)}</b><small>${esc((couriers.find(c=>c.id===s.courier_id)||{}).name||'مندوب')} — ${esc(s.payment_method||'')}</small></div><span>${money(s.amount)} د.ع</span></div>`).join('')||emptyState('لا توجد تسويات'));
 };
-window.renderOrdersAdmin=function(){
-  const labels={pickup:'عن طريق المكتبة',home_delivery:'عن طريق المندوب'};
-  adminContent.innerHTML='<h2>الطلبات</h2>'+(db.orders.length?db.orders.map(x=>`<div class="row"><div><b>${esc(x.order_number||x.id)} — ${esc(x.title)} × ${x.qty}</b><small>${esc(x.student_name)} — ${esc(x.student_phone||'')} — ${money(x.total)} د.ع — ${labels[x.fulfillment_type]||'استلام'} — ${esc(x.status||'')}</small></div><div class="row-actions">${x.fulfillment_type==='home_delivery'?`<button onclick="adminTab('courierSettlements')">تسويات المندوب</button>`:`<button onclick="adminTab('finance')">تسويات المكتبة</button>`}<button onclick="orderStatus('${x.id}','processing')">تجهيز</button><button onclick="orderStatus('${x.id}','ready')">جاهز</button><button onclick="orderStatus('${x.id}','completed')">تم التسليم</button><button class="danger" onclick="orderStatus('${x.id}','cancelled')">إلغاء</button></div></div>`).join(''):emptyState('لا توجد طلبات'));
-};
+
+/* platform step 5: removed legacy renderOrdersAdmin; authoritative code is modules/admin/orders.js */
 
 
 /* ================= ALIN V43 ADMIN BOOKLETS NO SECTION + STORE SEARCH ================= */
 window.ALIN_VERSION='Alin V43 Store Search No Booklet Section';
 function alinStoreSearchText(){ return String(document.getElementById('searchInput')?.value||'').trim().toLowerCase(); }
-function alinBookletTeacher(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['alinBookletTeacher'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] alinBookletTeacher is not loaded yet');}
+
+
 window.storeItems=function(){
   if(db.settings.storeType==='booklet'){
     const q=alinStoreSearchText();
@@ -1298,7 +1332,8 @@ function alinSearchText(){ return String(alinSafe('searchInput')?.value || '').t
 function alinItemTitle(x){ return x.title || x.name || ''; }
 function alinOpenLibraries(){ return (db.accounts?.libraries||[]).filter(x=>x.status==='active'); }
 function alinLibOpen(x){ try{return typeof libIsOpen==='function' ? libIsOpen(x) : x?.is_open!==false;}catch(e){return x?.is_open!==false;} }
-function alinLibraryOptions(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['alinLibraryOptions'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] alinLibraryOptions is not loaded yet');}
+
+
 window.libraryOptionsClean=alinLibraryOptions;
 
 window.setStoreType=async function(type){
@@ -1420,28 +1455,8 @@ async function alinResolveStoredFile(value, preferredFolder='booklets'){
   return null;
 }
 
-window.openLibraryBookletPdf=async function(orderId){
-  const o=(db.orders||[]).find(x=>x.id===orderId);
-  if(!o || o.kind!=='booklet') return alert('هذا الطلب لا يحتوي ملزمة PDF');
-  const b=(db.booklets||[]).find(x=>x.id===o.item_id);
-  if(!b?.file_path) return alert('لا يوجد ملف PDF لهذه الملزمة');
 
-  checkoutBox.innerHTML=`<h2>مشاهدة الملزمة</h2><div class="pdf-viewer loading-box">جاري فتح ملف PDF...</div><div class="row-actions no-print"><button class="secondary" onclick="closeCheckout()">إغلاق</button></div>`;
-  checkoutModal.classList.remove('hidden');
 
-  const resolved=await alinResolveStoredFile(b.file_path,'booklets');
-  if(!resolved){
-    checkoutBox.innerHTML=`<h2>تعذر فتح الملزمة</h2><div class="empty">ملف PDF غير موجود أو لا يمكن قراءته من التخزين.</div><div class="row-actions no-print"><button class="secondary" onclick="closeCheckout()">إغلاق</button></div>`;
-    return;
-  }
-
-  if(resolved.path!==b.file_path){
-    try{ await update('booklets',{file_path:resolved.path},{id:b.id}); b.file_path=resolved.path; }catch(e){}
-  }
-
-  const directUrl = resolved.url;
-  checkoutBox.innerHTML=`<h2>مشاهدة الملزمة</h2><div class="pdf-viewer"><iframe id="pdfFrame" src="${directUrl}#toolbar=0&navpanes=0&scrollbar=1" type="application/pdf"></iframe></div><div class="row-actions no-print"><button onclick="window.open('${directUrl}','_blank')">فتح PDF</button><button class="secondary" onclick="closeCheckout()">إغلاق</button></div>`;
-};
 
 /* ===== end ALIN V50 ===== */
 
@@ -1713,35 +1728,16 @@ window.alinV57SettleOrder = alinV57SettleOrder;
 
 window.ensureOrderFinancials = async function(o){ if(o) await alinV57InsertLedger(o); };
 
-window.libraryOrderStatus = async function(id,status){
-  const o=(db.orders||[]).find(x=>x.id===id); if(!o) return;
-  const h=[...(o.status_history||[]),{status,at:new Date().toISOString()}];
-  await update('orders',{status,status_history:h},{id});
-  o.status=status; o.status_history=h;
-  if(status==='completed' || status==='تم التسليم') await alinV57SettleOrder(o);
-  await audit('order','المكتبة حدثت '+id+' إلى '+status);
-  await load();
-  renderLibrary();
-};
 
-const alinV57OldOrderStatus = window.orderStatus || orderStatus;
-window.orderStatus = orderStatus = async function(id,status){
-  const o=(db.orders||[]).find(x=>x.id===id);
-  if(alinV57OldOrderStatus) await alinV57OldOrderStatus(id,status);
-  if(o && (status==='completed' || status==='تم التسليم')) await alinV57SettleOrder(o);
-};
 
-window.openOrderPdf = async function(orderId){
-  const o=(db.orders||[]).find(x=>x.id===orderId);
-  const b=alinV57OrderBooklet(o);
-  if(!b?.file_path) return alert('لا يوجد ملف PDF لهذه الملزمة');
-  const resolved = typeof alinResolveStoredFile === 'function' ? await alinResolveStoredFile(b.file_path,'booklets') : null;
-  const url = (resolved?.url || mediaUrl(b.file_path)) + '#toolbar=0&navpanes=0&scrollbar=1';
-  checkoutBox.innerHTML=`<h2>PDF الملزمة للمكتبة</h2>
-    <div class="pdf-viewer"><iframe id="pdfFrame" src="${url}" oncontextmenu="return false"></iframe></div>
-    <div class="row-actions no-print"><button onclick="printPdfFrame()">طباعة</button><button class="secondary" onclick="closeCheckout()">إغلاق</button></div>`;
-  checkoutModal.classList.remove('hidden');
-};
+
+/* platform step 5: removed legacy v57 order alias; authoritative code is modules/admin/orders.js */
+
+
+/* platform step 5: removed legacy orderStatus; authoritative code is modules/admin/orders.js */
+
+
+
 
 window.printReceipt = function(orderId){
   const o=(db.orders||[]).find(x=>x.id===orderId), lib=(db.accounts?.libraries||[]).find(x=>x.id===o?.library_id);
@@ -1776,16 +1772,10 @@ window.renderFinanceAdmin = renderFinanceAdmin = function(){
 
 
 
-const alinV57OldRenderTeacher = window.renderTeacher || renderTeacher;
-window.renderTeacher = renderTeacher = function(){
-  try{ alinV57OldRenderTeacher(); }catch(e){}
-  if(!window.teacherContent || current?.role!=='teacher') return;
-  const id=current.id;
-  const draftBooks=(db.booklets||[]).filter(b=>b.teacher_id===id && !alinV57BookletVisible(b));
-  if(!draftBooks.length) return;
-  const box=`<h3>معاينة قبل النشر</h3>${draftBooks.map(b=>`<div class="row"><div><b>${esc(b.title)}</b><small>${esc(b.subject||'')} — ${esc(b.file_name||'')} — ${alinV57BookletApproved(b)?'تمت الموافقة':'بانتظار موافقتك'}</small></div><div class="row-actions">${b.file_path?`<button onclick="openTeacherPdf('${b.id}')">مشاهدة</button>`:''}${!alinV57BookletApproved(b)?`<button onclick="alinTeacherApproveBookletV56('${b.id}')">✅ موافق للنشر</button>`:''}</div></div>`).join('')}`;
-  teacherContent.innerHTML = box + teacherContent.innerHTML;
-};
+
+
+
+
 
 window.storeItems = function(){
   const type=db.settings?.storeType||'booklet';
@@ -1865,46 +1855,19 @@ async function alinV59CancelDelivery(orderId){
   const lg=(db.ledger||[]).find(x=>x.order_id===orderId);
   if(lg){ try{ await update('ledger',{settlement_status:'cancelled',alin:0,admin:0,teacher:0,library:0,delegate:0,total:0,note:'إلغاء التسليم بدون احتساب مبلغ'},{id:lg.id}); }catch(e){} }
   await audit('order','إلغاء تسليم بدون احتساب '+(o.order_number||orderId));
-  await load(); renderLibrary();
+  await load(); window.renderLibrary?.();
 }
 window.alinV59CancelDelivery=alinV59CancelDelivery;
 
-window.libraryOrderStatus = async function(id,status){
-  const o=(db.orders||[]).find(x=>x.id===id); if(!o)return;
-  if(alinV59IsCancelledStatus(status)) return alinV59CancelDelivery(id);
-  const h=[...(o.status_history||[]),{status,at:new Date().toISOString()}];
-  await update('orders',{status,status_history:h,payment_status:alinV59IsDeliveredStatus(status)?'paid':(o.payment_status||'cod_pending')},{id});
-  Object.assign(o,{status,status_history:h});
-  if(alinV59IsDeliveredStatus(status)) await alinV59SettleOrder(o);
-  await audit('order','المكتبة غيرت حالة الطلب '+(o.order_number||id)+' إلى '+status);
-  await load(); renderLibrary();
-};
-window.orderStatus = orderStatus = async function(id,status){
-  const o=(db.orders||[]).find(x=>x.id===id); if(!o)return;
-  if(alinV59IsCancelledStatus(status)){
-    const h=[...(o.status_history||[]),{status:'cancelled',at:new Date().toISOString()}];
-    await update('orders',{status:'cancelled',status_history:h,settlement_done:false,settlement_cancelled:true},{id});
-    const lg=(db.ledger||[]).find(x=>x.order_id===id);
-    if(lg) try{ await update('ledger',{settlement_status:'cancelled',alin:0,admin:0,teacher:0,library:0,delegate:0,total:0,note:'إلغاء بدون احتساب'},{id:lg.id}); }catch(e){}
-  }else{
-    const h=[...(o.status_history||[]),{status,at:new Date().toISOString()}];
-    await update('orders',{status,status_history:h,payment_status:alinV59IsDeliveredStatus(status)?'paid':(o.payment_status||'cod_pending')},{id});
-    Object.assign(o,{status,status_history:h});
-    if(alinV59IsDeliveredStatus(status)) await alinV59SettleOrder(o);
-  }
-  await audit('order','تحديث الطلب '+(o.order_number||id)+' إلى '+status); await load(); renderOrdersAdmin(); toast('تم تحديث الطلب');
-};
 
-window.openLibraryBookletPdf = async function(orderId){
-  const o=(db.orders||[]).find(x=>x.id===orderId); if(!o || o.kind!=='booklet')return alert('هذا الطلب لا يحتوي ملف PDF');
-  const b=alinV59OrderBooklet(o); if(!b?.file_path)return alert('لا يوجد ملف PDF لهذه الملزمة');
-  const resolved=typeof alinResolveStoredFile==='function'?await alinResolveStoredFile(b.file_path,'booklets'):null;
-  const base=(resolved?.url||mediaUrl(b.file_path));
-  const url=base+'#toolbar=0&navpanes=0&scrollbar=1';
-  checkoutBox.innerHTML=`<h2>عرض PDF للطباعة فقط</h2><div class="pdf-guard print-only"><div class="watermark">${esc(current?.name||'مكتبة')} — طباعة فقط — ${esc(o.order_number||o.id)}</div><iframe id="pdfFrame" src="${url}" oncontextmenu="return false"></iframe></div><div class="row-actions no-print"><button onclick="printPdfFrame()">طباعة</button><button class="secondary" onclick="closeCheckout()">إغلاق</button></div>`;
-  checkoutModal.classList.remove('hidden');
-};
-window.openOrderPdf=window.openLibraryBookletPdf;
+
+
+/* platform step 5: removed legacy orderStatus; authoritative code is modules/admin/orders.js */
+
+
+
+
+
 
 window.printReceipt = window.printOrderReceipt = function(orderId){
   const o=(db.orders||[]).find(x=>x.id===orderId); if(!o)return;
@@ -1914,38 +1877,18 @@ window.printReceipt = window.printOrderReceipt = function(orderId){
   checkoutModal.classList.remove('hidden');
 };
 
-window.renderLibrary = renderLibrary = function(){
-  if(!window.libraryStats)return;
-  const id=current?.role==='library'?current.id:'';
-  const orders=(db.orders||[]).filter(x=>x.library_id===id && !alinV59IsCancelledStatus(x.status));
-  const cancelled=(db.orders||[]).filter(x=>x.library_id===id && alinV59IsCancelledStatus(x.status));
-  const led=(db.ledger||[]).filter(x=>x.library_id===id && x.settlement_status!=='cancelled');
-  const notices=(typeof v19Notifications!=='undefined'?v19Notifications:[]).filter(n=>n.status==='active'&&((n.target_role||n.audience)==='all'||(n.target_role||n.audience)==='library'));
-  libraryStats.innerHTML=`<div><b>طلبات المكتبة</b><span>${orders.length}</span></div><div><b>الجديدة</b><span>${orders.filter(x=>x.status==='new').length}</span></div><div><b>الجاهزة</b><span>${orders.filter(x=>x.status==='ready').length}</span></div><div><b>المستحقات</b><span>${money(led.reduce((a,x)=>a+(+x.library||0),0))} د.ع</span></div>`;
-  libraryPermits.innerHTML=notices.map(n=>`<div class="notice"><b>${esc(n.title)}</b><div>${esc(n.message||n.text||'')}</div></div>`).join('')+(orders.map(x=>`<div class="row"><div><b>${esc(x.order_number||x.id)} — ${esc(x.title)}</b><small>${esc(x.student_name||'')} • ${esc(x.student_phone||'')} • ×${x.qty||1} • ${esc(x.status||'new')}</small></div><div class="row-actions">${x.kind==='booklet'?`<button class="library-pdf-btn" onclick="openLibraryBookletPdf('${x.id}')">طباعة</button>`:''}<button onclick="libraryOrderStatus('${x.id}','processing')">استلام</button><button onclick="libraryOrderStatus('${x.id}','ready')">جاهز</button><button onclick="libraryOrderStatus('${x.id}','completed')">تسليم</button><button class="secondary" onclick="printReceipt('${x.id}')">وصل الحسابات</button><button class="danger" onclick="alinV59CancelDelivery('${x.id}')">إلغاء تسليم</button></div></div>`).join('')||emptyState('لا توجد طلبات'));
-  libraryHistory.innerHTML=`<div class="notice"><b>ملاحظة الحسابات</b><div>يُحتسب المبلغ فقط عند ضغط تسليم. إلغاء التسليم لا يدخل بالدفتر المالي.</div></div>`+led.map(x=>`<div class="row"><b>${esc(x.order_number||x.order_id)}</b><span>${money(x.library)} د.ع</span></div>`).join('')+(cancelled.length?`<h3>طلبات ملغاة بدون احتساب</h3>`+cancelled.map(x=>`<div class="row"><b>${esc(x.order_number||x.id)}</b><span>0 د.ع</span></div>`).join(''): '');
-};
 
-window.alinTeacherApproveBookletV56 = async function(id){
-  const b=(db.booklets||[]).find(x=>x.id===id); if(!b)return alert('الملزمة غير موجودة');
-  try{ await update('booklets',{teacher_approved:true,teacher_approved_at:new Date().toISOString(),publish_status:'approved',status:'approved'},{id}); Object.assign(b,{teacher_approved:true,publish_status:'approved',status:'approved'}); await audit('booklet','موافقة المدرس على النشر '+b.title); await load(); activeTeacherTab='booklets'; renderTeacher(); toast('تم إرسال الموافقة إلى لوحة المدير / طلبات المدرسين'); }catch(e){ alert('لم تتم الموافقة: '+(e.message||'')); }
-};
-window.alinAdminPublishBookletV56 = async function(id){
-  const b=(db.booklets||[]).find(x=>x.id===id); if(!b)return alert('الملزمة غير موجودة');
-  if(!alinV57BookletApproved(b) && !confirm('المدرس لم يوافق بعد. هل تريد النشر رغم ذلك؟')) return;
-  await update('booklets',{status:'published',publish_status:'published',published:true,is_published:true,published_at:new Date().toISOString()},{id});
-  await audit('booklet','نشر ملزمة بعد الموافقة '+b.title); await load(); renderTeacherRequestsAdmin(); toast('تم نشر الملزمة في المتجر');
-};
-window.alinUnpublishBookletV56 = async function(id){
-  await update('booklets',{status:'hidden',publish_status:'hidden',published:false,is_published:false},{id}); await audit('booklet','إيقاف نشر ملزمة '+id); await load(); renderBookletsAdmin();
-};
 
-window.renderTeacherRequestsAdmin = function(){
-  const approved=(db.booklets||[]).filter(b=>alinV57BookletApproved(b) && !alinV57BookletVisible(b));
-  const drafts=(db.booklets||[]).filter(b=>!alinV57BookletApproved(b) && !alinV57BookletVisible(b));
-  const reqs=db.teacherRequests||[];
-  adminContent.innerHTML=`<h2>طلبات المدرسين</h2><h3>موافق عليها وجاهزة للنشر</h3>${approved.map(b=>`<div class="row"><div><b>${esc(b.title)}</b><small>${esc(teacherName(b.teacher_id))} — ${esc(b.subject||'')} — موافقة المدرس موجودة</small></div><div class="row-actions"><button class="secondary" onclick="openTeacherPdf('${b.id}')">معاينة</button><button onclick="alinAdminPublishBookletV56('${b.id}')">نشر الآن</button></div></div>`).join('')||emptyState('لا توجد ملازم موافق عليها')}<h3>بانتظار موافقة المدرس</h3>${drafts.map(b=>`<div class="row"><div><b>${esc(b.title)}</b><small>${esc(teacherName(b.teacher_id))} — ${esc(b.subject||'')} — لم يوافق المدرس بعد</small></div><div class="row-actions"><button class="secondary" onclick="openTeacherPdf('${b.id}')">معاينة</button></div></div>`).join('')||emptyState('لا توجد مسودات')}<h3>طلبات ملزمة من المدرسين</h3>${reqs.map(r=>`<div class="row"><div><b>${esc(r.title)}</b><small>${esc(r.teacher_name||teacherName(r.teacher_id))} — ${esc(r.subject||'')} — ${esc(r.grade||'')} — ${esc(r.status||'new')}</small><p>${esc(r.note||'')}</p></div><div class="row-actions">${r.source_file_path?`<button onclick="openTeacherRequestSource('${r.id}')">عرض الملف الأولي</button>`:''}<button onclick="teacherRequestStatus('${r.id}','designing')">قيد التصميم</button><button onclick="teacherRequestStatus('${r.id}','ready')">جاهزة</button><button class="danger" onclick="teacherRequestStatus('${r.id}','rejected')">رفض</button></div></div>`).join('')||emptyState('لا توجد طلبات')}`;
-};
+
+
+
+
+
+
+
+
+
+
 const alinV59AdminTabOld=adminTab;
 window.adminTab = adminTab = function(t){ window.activeAdminTab=t; if(t==='teacherRequests') return renderTeacherRequestsAdmin(); if(t==='finance') return renderFinanceAdmin(); return alinV59AdminTabOld(t); };
 
@@ -1987,31 +1930,10 @@ window.printPdfFrame = function(){
   }
 };
 
-const alinV60RenderLibraryBase = window.renderLibrary;
-window.renderLibrary = renderLibrary = function(){
-  alinV60RenderLibraryBase();
-  if(current?.role!=='library' || !window.libraryHistory) return;
-  let owed=0, paid=0;
-  try{
-    if(typeof libDebt==='function'){
-      const d=libDebt(current.id)||{};
-      owed=+d.owed||0; paid=+d.paid||0;
-    }else{
-      const rows=(db.ledger||[]).filter(x=>x.library_id===current.id && x.settlement_status!=='cancelled');
-      owed=rows.reduce((a,x)=>a+(+x.admin||+x.alin||0)+(+x.teacher||0),0);
-      const pays=(typeof librarySettlements!=='undefined'?librarySettlements:[]).filter(x=>x.library_id===current.id&&x.status==='received');
-      paid=pays.reduce((a,x)=>a+(+x.amount||0),0);
-    }
-  }catch(e){}
-  const remaining=Math.max(0,owed-paid);
-  const old=document.getElementById('alinV60LibraryDebt');
-  if(old) old.remove();
-  const box=document.createElement('div');
-  box.id='alinV60LibraryDebt';
-  box.className='notice';
-  box.innerHTML=`<b>تسوية المكتبة</b><div>المبلغ بذمة المكتبة للإدارة: <strong>${money(remaining)} د.ع</strong><br>إجمالي المطلوب: ${money(owed)} د.ع<br>المسدّد: ${money(paid)} د.ع</div>`;
-  libraryHistory.prepend(box);
-};
+
+
+
+
 
 
 /* ================= ALIN V61 PDF PRINT FIX ================= */
@@ -2051,52 +1973,25 @@ window.printPdfFrame = async function(){
     setTimeout(()=>{ try{ w.focus(); w.print(); }catch(_){} },1200);
   }
 };
-const alinV61OldOpenLibraryBookletPdf = window.openLibraryBookletPdf;
-window.openLibraryBookletPdf = async function(orderId){
-  const o=(db.orders||[]).find(x=>x.id===orderId);
-  if(!o)return;
-  const b=(typeof alinV59OrderBooklet==='function'?alinV59OrderBooklet(o):db.booklets.find(x=>x.id===o.item_id));
-  if(!b?.file_path)return alert('لا يوجد ملف PDF لهذه الملزمة');
-  const resolved=typeof alinResolveStoredFile==='function'?await alinResolveStoredFile(b.file_path,'booklets'):null;
-  const source=(resolved?.url||mediaUrl(b.file_path));
-  checkoutBox.innerHTML=`<h2>عرض PDF للطباعة فقط</h2><div class="pdf-guard print-only"><div class="watermark">${esc(current?.name||'مكتبة')} — طباعة فقط — ${esc(o.order_number||o.id)}</div><iframe id="pdfFrame" data-source="${esc(source)}" src="about:blank" oncontextmenu="return false"></iframe></div><div class="row-actions no-print"><button id="alinPrintPdfBtn" onclick="printPdfFrame()">طباعة</button><button class="secondary" onclick="closeCheckout()">إغلاق</button></div>`;
-  checkoutModal.classList.remove('hidden');
-  const frame=document.getElementById('pdfFrame');
-  const btn=document.getElementById('alinPrintPdfBtn');
-  if(btn){ btn.disabled=true; btn.textContent='جاري تجهيز الطباعة...'; }
-  const ok=await alinV61PreparePrintablePdf(frame,source);
-  if(btn){ btn.disabled=false; btn.textContent=ok?'طباعة فقط':'إعادة محاولة الطباعة'; }
-};
-window.openOrderPdf=window.openLibraryBookletPdf;
+
+
+
+
+
+
 
 
 /* ================= ALIN V63 ACTIVE LIBRARY SETTLEMENT ================= */
-function alinV63LibraryDebt(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['alinV63LibraryDebt'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] alinV63LibraryDebt is not loaded yet');}
-function alinV63PayLibrarySettlement(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['alinV63PayLibrarySettlement'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] alinV63PayLibrarySettlement is not loaded yet');}
+
+
+
+
 window.alinV63PayLibrarySettlement=alinV63PayLibrarySettlement;
 
-const alinV63RenderLibraryBase = window.renderLibrary;
-window.renderLibrary = renderLibrary = function(){
-  alinV63RenderLibraryBase();
-  if(current?.role!=='library' || !window.libraryHistory) return;
-  const d=alinV63LibraryDebt(current.id);
-  const old=document.getElementById('alinV60LibraryDebt');
-  if(old) old.remove();
-  const old2=document.getElementById('alinV63LibraryDebt');
-  if(old2) old2.remove();
-  const box=document.createElement('div');
-  box.id='alinV63LibraryDebt';
-  box.className='notice';
-  box.innerHTML=`<b>تسوية المكتبة</b>
-    <div>المبلغ بذمة المكتبة للإدارة: <strong>${money(d.remaining)} د.ع</strong><br>
-    إجمالي المطلوب: ${money(d.owed)} د.ع<br>
-    المسدّد: ${money(d.paid)} د.ع</div>
-    <div class="row-actions" style="margin-top:10px">
-      <button onclick="alinV63PayLibrarySettlement('${current.id}')">تثبيت تسوية</button>
-      <button class="secondary" onclick="renderLibrary()">تحديث</button>
-    </div>`;
-  libraryHistory.prepend(box);
-};
+
+
+
+
 
 
 /* ================= ALIN V64 ADMIN-ONLY LIBRARY SETTLEMENT ================= */
@@ -2118,8 +2013,10 @@ function alinV64AllSettlements(){
     seen.add(k); return true;
   });
 }
-function alinV64LibraryDebt(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['alinV64LibraryDebt'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] alinV64LibraryDebt is not loaded yet');}
-function alinV64AdminSettleLibrary(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['alinV64AdminSettleLibrary'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] alinV64AdminSettleLibrary is not loaded yet');}
+
+
+
+
 function alinV64PrintSettlement(id){
   const s=alinV64AllSettlements().find(x=>x.id===id || x.receipt_number===id);
   if(!s) return;
@@ -2138,24 +2035,10 @@ function alinV64PrintSettlement(id){
 window.alinV64AdminSettleLibrary=alinV64AdminSettleLibrary;
 window.alinV64PrintSettlement=alinV64PrintSettlement;
 
-const alinV64RenderLibraryBase = window.renderLibrary;
-window.renderLibrary = renderLibrary = function(){
-  alinV64RenderLibraryBase();
-  if(current?.role!=='library' || !window.libraryHistory) return;
-  const old=document.getElementById('alinV63LibraryDebt'); if(old) old.remove();
-  const old0=document.getElementById('alinV60LibraryDebt'); if(old0) old0.remove();
-  const d=alinV64LibraryDebt(current.id);
-  const box=document.createElement('div');
-  box.id='alinV64LibraryDebt';
-  box.className='notice';
-  box.innerHTML=`<b>تسوية المكتبة</b>
-    <div>المبلغ بذمة المكتبة للإدارة: <strong>${money(d.remaining)} د.ع</strong><br>
-    إجمالي المطلوب: ${money(d.owed)} د.ع<br>
-    المسدّد: ${money(d.paid)} د.ع</div>
-    <small>تثبيت التسوية يتم من لوحة المدير فقط.</small>`;
-  const old2=document.getElementById('alinV64LibraryDebt'); if(old2) old2.remove();
-  libraryHistory.prepend(box);
-};
+
+
+
+
 
 const alinV64RenderFinanceBase = window.renderFinanceAdmin;
 window.renderFinanceAdmin = renderFinanceAdmin = function(){
@@ -2250,16 +2133,10 @@ window.renderFinanceAdmin = renderFinanceAdmin = function(){
   try{ alinV65RenderFinanceBase(); }catch(e){ adminContent.innerHTML='<h2>الدفتر المالي والتسويات</h2>'; }
   adminContent.innerHTML += `<h3>أرصدة الأرباح المستحقة</h3><p class="muted">تسديد أرباح المدرسين والمكتبات والمندوبين، واستلام ربح المدير. كل تسديد يصفر الرصيد الجاري فقط ويحفظ السجل القديم.</p>${alinV65AdminPartyCards()}<h3>سجل سندات الأرباح</h3>${alinV65PayoutHistory()}`;
 };
-const alinV65RenderLibraryBase = window.renderLibrary;
-window.renderLibrary = renderLibrary = function(){
-  alinV65RenderLibraryBase();
-  if(current?.role!=='library' || !window.libraryHistory) return;
-  const b=alinV65Balance('library',current.id);
-  const old=document.getElementById('alinV65LibraryProfit'); if(old) old.remove();
-  const box=document.createElement('div'); box.id='alinV65LibraryProfit'; box.className='notice';
-  box.innerHTML=`<b>ربح المكتبة المستحق</b><div>من طلبات المندوب فقط: <strong>${money(b.remaining)} د.ع</strong><br>إجمالي الربح: ${money(b.earned)} د.ع<br>المسدد من الإدارة: ${money(b.paid)} د.ع</div><small>تسديد ربح المكتبة يتم من لوحة المدير.</small>`;
-  libraryHistory.prepend(box);
-};
+
+
+
+
 
 /* ================= ALIN V66 PERSISTENT SETTLEMENT SAVE FIX ================= */
 function alinV66ReadLocal(key){ try{return JSON.parse(localStorage.getItem(key)||'[]')||[];}catch(e){return [];} }
@@ -2344,29 +2221,23 @@ window.alinV65PayBalance = alinV65PayBalance = async function(role,id){
   renderFinanceAdmin();
 };
 
-const alinV66RenderLibraryBase = window.renderLibrary;
-window.renderLibrary = renderLibrary = function(){
-  alinV66RenderLibraryBase();
-  if(current?.role!=='library' || !window.libraryHistory) return;
-  const old=document.getElementById('alinV64LibraryDebt'); if(old) old.remove();
-  const old2=document.getElementById('alinV65LibraryProfit'); if(old2) old2.remove();
-  const d=alinV64LibraryDebt(current.id);
-  const b=alinV65Balance('library',current.id);
-  const box=document.createElement('div'); box.id='alinV66LibraryFinance'; box.className='notice';
-  const exists=document.getElementById('alinV66LibraryFinance'); if(exists) exists.remove();
-  box.innerHTML=`<b>حساب المكتبة</b><div>المبلغ بذمة المكتبة للإدارة: <strong>${money(d.remaining)} د.ع</strong><br>المسدّد من التسويات: ${money(d.paid)} د.ع<br>ربح المكتبة المستحق من طلبات المندوب: <strong>${money(b.remaining)} د.ع</strong><br>المسدد من الأرباح: ${money(b.paid)} د.ع</div><small>التسديد والتسوية من لوحة المدير فقط.</small>`;
-  libraryHistory.prepend(box);
-};
+
+
+
+
 
 try{ if(typeof toast==='function') console.log('ALIN V66 settlement persistence fix loaded'); }catch(e){}
 
 /* ================= ALIN V67 CURRENT BALANCE DISPLAY FIX ================= */
-function alinV67SumTeacherBalances(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['alinV67SumTeacherBalances'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] alinV67SumTeacherBalances is not loaded yet');}
-function alinV67SumLibraryProfitBalances(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['alinV67SumLibraryProfitBalances'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] alinV67SumLibraryProfitBalances is not loaded yet');}
+
+
+
+
 function alinV67SumDelegateBalances(){
   return ((db.delegates||db.couriers||[])).reduce((a,d)=>a+(+alinV65Balance('delegate',d.id).remaining||0),0);
 }
-function alinV67SumLibrarySettlementDebt(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['alinV67SumLibrarySettlementDebt'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] alinV67SumLibrarySettlementDebt is not loaded yet');}
+
+
 function alinV67FinanceStatsHtml(){
   const adminBal=alinV65Balance('admin','admin').remaining;
   const teacherBal=alinV67SumTeacherBalances();
@@ -2381,7 +2252,8 @@ function alinV67FinanceStatsHtml(){
     <div><b>أرباح المندوبين</b><span>${money(delegateBal)} د.ع</span></div>
   </div>`;
 }
-function alinV67LibrarySettlementRows(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['alinV67LibrarySettlementRows'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] alinV67LibrarySettlementRows is not loaded yet');}
+
+
 function alinV67SettlementHistory(){
   const libs=(db.accounts?.libraries||[]);
   const rows=alinV64AllSettlements().slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
@@ -2473,45 +2345,16 @@ function alinV68Balance(role,id){
 window.alinV68Balance=alinV68Balance;
 
 /* Update teacher dashboard "المتبقي" so it shows current balance after payouts */
-const alinV68RenderTeacherBase = window.renderTeacher;
-window.renderTeacher = renderTeacher = function(){
-  try{ alinV68RenderTeacherBase(); }catch(e){}
-  if(current?.role!=='teacher') return;
-  const b=alinV68Balance('teacher', current.id);
-  try{
-    const cards=[...(document.querySelectorAll('#teacherStats div, .stats div'))];
-    cards.forEach(card=>{
-      const label=(card.querySelector('b')?.textContent||'').trim();
-      if(label.includes('المتبقي') || label.includes('مستحق')){
-        const span=card.querySelector('span');
-        if(span) span.textContent=money(b.remaining)+' د.ع';
-      }
-    });
-  }catch(e){}
-};
+
+
+
+
 
 /* Update library page profit box and remove stale duplicate boxes */
-const alinV68RenderLibraryBase = window.renderLibrary;
-window.renderLibrary = renderLibrary = function(){
-  try{ alinV68RenderLibraryBase(); }catch(e){}
-  if(current?.role!=='library' || !window.libraryHistory) return;
-  const b=alinV68Balance('library', current.id);
-  ['alinV65LibraryProfit','alinV64LibraryDebt','alinV63LibraryDebt','alinV60LibraryDebt'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.remove();
-  });
-  const old=document.getElementById('alinV68LibraryProfit'); 
-  if(old) old.remove();
-  const box=document.createElement('div');
-  box.id='alinV68LibraryProfit';
-  box.className='notice';
-  box.innerHTML=`<b>ربح المكتبة المستحق</b>
-    <div>الرصيد الجاري بعد التسديد: <strong>${money(b.remaining)} د.ع</strong><br>
-    إجمالي الربح: ${money(b.earned)} د.ع<br>
-    المسدد من الإدارة: ${money(b.paid)} د.ع</div>
-    <small>تسديد ربح المكتبة يتم من لوحة المدير.</small>`;
-  libraryHistory.prepend(box);
-};
+
+
+
+
 
 /* Make finance admin cards depend on current balance everywhere */
 function alinV68PartyName(role,id){
@@ -2549,8 +2392,8 @@ async function alinV68PayBalance(role,id){
   toast(saved?'تم التسديد وتحديث كل الصفحات':'تعذر حفظ التسديد');
   await load();
   if(current?.role==='admin') renderFinanceAdmin();
-  if(current?.role==='teacher') renderTeacher();
-  if(current?.role==='library') renderLibrary();
+  if(current?.role==='teacher') window.renderTeacher?.();
+  if(current?.role==='library') window.renderLibrary?.();
 }
 window.alinV65PayBalance=alinV68PayBalance;
 window.alinV68PayBalance=alinV68PayBalance;
@@ -2666,28 +2509,10 @@ function alinV70BookletTitleFromLedger(x){
   const b=(db.booklets||[]).find(b=>b.id===itemId);
   return b?.title || b?.name || 'ملزمة';
 }
-const alinV70RenderTeacherBase=window.renderTeacher;
-window.renderTeacher=renderTeacher=function(){
-  try{alinV70RenderTeacherBase();}catch(e){}
-  if(current?.role!=='teacher') return;
-  const teacherId=current.id;
-  const rows=(db.ledger||[]).filter(x=>x.teacher_id===teacherId && x.settlement_status!=='cancelled');
-  const candidates=[...document.querySelectorAll('#teacherContent .row, #teacherHistory .row, #teacherPayouts .row, .teacher-page .row')];
-  candidates.forEach(row=>{
-    const txt=(row.textContent||'');
-    rows.forEach(x=>{
-      const bad=[x.order_id,x.order_number].filter(Boolean);
-      bad.forEach(id=>{
-        if(txt.includes(String(id))){
-          const title=alinV70BookletTitleFromLedger(x);
-          row.querySelectorAll('b,strong').forEach(el=>{
-            if((el.textContent||'').includes(String(id))) el.textContent=title;
-          });
-        }
-      });
-    });
-  });
-};
+
+
+
+
 
 
 /* ================= ALIN V71 COMPLETE ADMIN TOOLS ================= */
@@ -2813,41 +2638,21 @@ function alinV71Backup(){
 window.alinV71ExportFinanceCsv=alinV71ExportFinanceCsv;
 window.alinV71Backup=alinV71Backup;
 
-function alinV71OrderStatusLabel(s){
-  const map={new:'جديد',printing:'قيد الطباعة',ready:'جاهز',completed:'مسلّم',delivered:'مسلّم',cancelled:'ملغي'};
-  return map[s]||s||'جديد';
-}
-function alinV71StatusClass(s){ return 'status-badge status-'+(s||'new'); }
-async function alinV71SetOrderStatus(id,status){
-  const o=(db.orders||[]).find(x=>x.id===id); if(!o)return;
-  const h=[...(o.status_history||[]),{status,at:alinV71Now(),by:alinV71UserLabel()}];
-  try{ await update('orders',{status,status_history:h},{id}); }catch(e){}
-  o.status=status; o.status_history=h;
-  await alinV71Audit('order_status','تغيير حالة الطلب '+(o.order_number||id)+' إلى '+alinV71OrderStatusLabel(status),{order_id:id,status});
-  if(status==='completed'||status==='delivered') await alinV71Notify('admin','', 'طلب مسلّم', 'تم تسليم الطلب '+(o.order_number||id)+' بواسطة '+alinV71UserLabel());
-  renderAll();
-}
-window.alinV71SetOrderStatus=alinV71SetOrderStatus;
 
-function alinV71OrderSearchHtml(containerId='alinOrderSearch'){
-  return `<div class="toolbar"><input id="${containerId}" placeholder="بحث سريع: رقم الطلب أو اسم الطالب" oninput="renderAll()" style="min-width:260px"></div>`;
-}
-function alinV71OrderMatches(o, inputId='alinOrderSearch'){
-  const q=(document.getElementById(inputId)?.value||'').trim().toLowerCase();
-  if(!q) return true;
-  return String(o.order_number||o.id||'').toLowerCase().includes(q) || String(o.student_name||'').toLowerCase().includes(q) || String(o.student_phone||'').toLowerCase().includes(q);
-}
-function alinV71StatusControls(o){
-  return `<span class="${alinV71StatusClass(o.status)}">${alinV71OrderStatusLabel(o.status)}</span>
-  <select onchange="alinV71SetOrderStatus('${o.id}',this.value)">
-    <option value="">تغيير الحالة</option>
-    <option value="new">جديد</option>
-    <option value="printing">قيد الطباعة</option>
-    <option value="ready">جاهز</option>
-    <option value="completed">مسلّم</option>
-    <option value="cancelled">ملغي</option>
-  </select>`;
-}
+/* platform step 5: removed legacy alinV71OrderStatusLabel; authoritative code is modules/admin/orders.js */
+
+/* platform step 5: removed legacy alinV71StatusClass; authoritative code is modules/admin/orders.js */
+
+/* platform step 5: removed legacy alinV71SetOrderStatus; authoritative code is modules/admin/orders.js */
+
+/* platform step 5: removed legacy v71 order export; authoritative code is modules/admin/orders.js */
+
+
+/* platform step 5: removed legacy alinV71OrderSearchHtml; authoritative code is modules/admin/orders.js */
+
+/* platform step 5: removed legacy alinV71OrderMatches; authoritative code is modules/admin/orders.js */
+
+/* platform step 5: removed legacy alinV71StatusControls; authoritative code is modules/admin/orders.js */
 
 /* wrap settlement and payout functions with audit/notification */
 const alinV71OldPayBalance=window.alinV68PayBalance||window.alinV65PayBalance;
@@ -2956,37 +2761,14 @@ function alinV71InjectNotifications(target){
   box.innerHTML=`<b>الإشعارات</b>${rows.map(n=>`<div style="border-top:1px solid #dbe4f0;margin-top:8px;padding-top:8px"><b>${esc(n.title||'')}</b><br><small>${esc(n.message||'')}</small><br><button class="secondary" onclick="alinV71MarkRead('${n.id}')">تمت القراءة</button></div>`).join('')}`;
   target.prepend(box);
 }
-const alinV71RenderTeacherBase2=window.renderTeacher;
-window.renderTeacher=renderTeacher=function(){
-  try{ alinV71RenderTeacherBase2(); }catch(e){}
-  alinV71InjectNotifications(document.getElementById('teacherContent')||document.body);
-};
-const alinV71RenderLibraryBase2=window.renderLibrary;
-window.renderLibrary=renderLibrary=function(){
-  try{ alinV71RenderLibraryBase2(); }catch(e){}
-  alinV71InjectNotifications(document.getElementById('libraryHistory')||document.body);
-};
 
-/* Improve order rows after render: search + status labels */
-const alinV71RenderOrdersAdminBase=window.renderOrdersAdmin;
-if(alinV71RenderOrdersAdminBase){
-  window.renderOrdersAdmin=renderOrdersAdmin=function(){
-    alinV71RenderOrdersAdminBase();
-    if(!window.adminContent) return;
-    if(!document.getElementById('alinOrderSearch')) adminContent.innerHTML = alinV71OrderSearchHtml('alinOrderSearch') + adminContent.innerHTML;
-    document.querySelectorAll('.row').forEach(row=>{
-      const txt=row.textContent||'';
-      const o=(db.orders||[]).find(o=>txt.includes(o.order_number||o.id));
-      if(o && !row.querySelector('.status-badge')){
-        const div=document.createElement('div');
-        div.className='row-actions';
-        div.innerHTML=alinV71StatusControls(o);
-        row.appendChild(div);
-      }
-      if(o && !alinV71OrderMatches(o,'alinOrderSearch')) row.style.display='none';
-    });
-  };
-}
+
+
+
+
+
+/* platform step 5: removed legacy alinV71 render wrapper + renderOrdersAdmin; authoritative code is modules/admin/orders.js */
+
 
 /* CSS */
 const alinV71Style=document.createElement('style');
@@ -3037,7 +2819,8 @@ function alinV72Matches(item){
 function alinV72OrderCount(item){
   return (db.orders||[]).filter(o=>o.item_id===item.id && o.status!=='cancelled').reduce((a,o)=>a+(+o.qty||1),0);
 }
-function alinV72TeacherName(){const fn=window.AlinTeacherModules&&window.AlinTeacherModules['alinV72TeacherName'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] alinV72TeacherName is not loaded yet');}
+
+
 function alinV72Card(item){
   const img=alinV72ProductImage(item);
   const title=item.title||item.name||'منتج';
@@ -3674,34 +3457,16 @@ window.renderStore=renderStore=function(){
 };
 
 /* Teacher notification button */
-const alinV78TeacherBase=window.renderTeacher;
-window.renderTeacher=renderTeacher=function(){
-  try{ alinV78TeacherBase(); }catch(e){}
-  const host=document.querySelector('#teacherPage h2, #teacherContent h2, .teacher-page h2')?.parentElement
-    || document.getElementById('teacherContent')
-    || document.getElementById('teacherPage');
-  if(host && !host.querySelector('.alin-v78-teacher-notify')){
-    const wrap=document.createElement('div');
-    wrap.className='alin-v78-role-notify alin-v78-teacher-notify';
-    wrap.innerHTML=alinV78ButtonHtml();
-    host.prepend(wrap);
-  }
-  alinV78RenderBadge();
-};
+
+
+
+
 
 /* Library notification button */
-const alinV78LibraryBase=window.renderLibrary;
-window.renderLibrary=renderLibrary=function(){
-  try{ alinV78LibraryBase(); }catch(e){}
-  const host=document.getElementById('libraryPage')||document.getElementById('libraryHistory')?.parentElement||document.querySelector('.library-page');
-  if(host && !host.querySelector('.alin-v78-library-notify')){
-    const wrap=document.createElement('div');
-    wrap.className='alin-v78-role-notify alin-v78-library-notify';
-    wrap.innerHTML=alinV78ButtonHtml();
-    host.prepend(wrap);
-  }
-  alinV78RenderBadge();
-};
+
+
+
+
 
 /* Generic injection for student/store page after all renders */
 function alinV78EnsureButtons(){
@@ -4127,43 +3892,8 @@ setTimeout(alinV84RefreshBadges,1200);
 
 
 /* ================= ALIN V86 LIBRARY PROFESSIONAL DASHBOARD ================= */
-(function(){
-function v86Status(o){const s=String(o.status||'new');return {new:'جديد',pending:'جديد',processing:'قيد التجهيز',ready:'جاهز',completed:'تم التسليم',delivered:'تم التسليم'}[s]||s}
-function v86StatusClass(o){const s=String(o.status||'new');return ['completed','delivered'].includes(s)?'done':s==='ready'?'ready':s==='processing'?'processing':'new'}
-window.alinV86LibraryFilter='all';
-window.alinV86LibrarySearch='';
-window.alinV86SetLibraryFilter=function(v){alinV86LibraryFilter=v;renderLibrary()}
-window.alinV86LibrarySearchSet=function(v){alinV86LibrarySearch=v.toLowerCase();renderLibrary()}
-window.alinV86OpenLibraryOrder=function(id){
- const o=(db.orders||[]).find(x=>String(x.id)===String(id));if(!o)return;
- const m=document.createElement('div');m.className='alin-v86-overlay';m.innerHTML=`<div class="alin-v86-modal"><button class="alin-v86-x" onclick="this.closest('.alin-v86-overlay').remove()">×</button><h2>تفاصيل الطلب</h2><div class="alin-v86-details"><div><small>رقم الطلب</small><b>${esc(o.order_number||o.id)}</b></div><div><small>الطالب</small><b>${esc(o.student_name||'—')}</b></div><div><small>الهاتف</small><b>${esc(o.student_phone||'—')}</b></div><div><small>الطلب</small><b>${esc(o.title||'—')}</b></div><div><small>الكمية</small><b>${o.qty||1}</b></div><div><small>الحالة</small><b>${v86Status(o)}</b></div></div><div class="alin-v86-modal-actions">${o.kind==='booklet'?`<button onclick="openLibraryBookletPdf('${o.id}')">طباعة</button>`:''}<button onclick="printReceipt('${o.id}')">وصل الحسابات</button>${typeof alinV85WhatsApp==='function'?`<button class="alin-v86-wa" onclick="alinV85WhatsApp('${o.id}')">واتساب</button>`:''}</div></div>`;document.body.appendChild(m)
-};
-window.renderLibrary=renderLibrary=function(){
- if(!window.libraryStats)return;
- const id=current?.role==='library'?current.id:'';
- const all=(db.orders||[]).filter(x=>x.library_id===id);
- const orders=all.filter(x=>!alinV59IsCancelledStatus(x.status));
- const cancelled=all.filter(x=>alinV59IsCancelledStatus(x.status));
- const led=(db.ledger||[]).filter(x=>x.library_id===id&&x.settlement_status!=='cancelled');
- const total=led.reduce((a,x)=>a+(+x.library||0),0);
- const ready=orders.filter(x=>x.status==='ready').length,newc=orders.filter(x=>['new','pending'].includes(String(x.status))).length;
- const completed=orders.filter(x=>['completed','delivered'].includes(String(x.status))).length;
- const q=alinV86LibrarySearch;
- const list=orders.filter(o=>(alinV86LibraryFilter==='all'||(alinV86LibraryFilter==='new'?['new','pending'].includes(String(o.status)):String(o.status)===alinV86LibraryFilter))&&(`${o.order_number||o.id} ${o.title||''} ${o.student_name||''} ${o.student_phone||''}`).toLowerCase().includes(q));
- libraryStats.className='alin-v86-library-stats';
- libraryStats.innerHTML=`<div><span>طلبات المكتبة</span><b>${orders.length}</b><small>إجمالي الطلبات</small></div><div><span>طلبات جديدة</span><b>${newc}</b><small>تحتاج إجراء</small></div><div><span>جاهزة</span><b>${ready}</b><small>بانتظار الاستلام</small></div><div class="money"><span>المستحقات</span><b>${money(total)} د.ع</b><small>الرصيد الحالي</small></div>`;
- libraryPermits.parentElement.className='panel alin-v86-orders-panel';
- libraryPermits.parentElement.querySelector('h3').innerHTML='إدارة الطلبات';
- libraryPermits.innerHTML=`<div class="alin-v86-toolbar"><div class="alin-v86-search"><span>⌕</span><input value="${esc(alinV86LibrarySearch)}" oninput="alinV86LibrarySearchSet(this.value)" placeholder="ابحث برقم الطلب، الطالب أو الهاتف"></div><div class="alin-v86-filters"><button class="${alinV86LibraryFilter==='all'?'active':''}" onclick="alinV86SetLibraryFilter('all')">الكل <span>${orders.length}</span></button><button class="${alinV86LibraryFilter==='new'?'active':''}" onclick="alinV86SetLibraryFilter('new')">جديد <span>${newc}</span></button><button class="${alinV86LibraryFilter==='processing'?'active':''}" onclick="alinV86SetLibraryFilter('processing')">قيد التجهيز</button><button class="${alinV86LibraryFilter==='ready'?'active':''}" onclick="alinV86SetLibraryFilter('ready')">جاهز <span>${ready}</span></button></div></div><div class="alin-v86-order-list">${list.map(o=>`<article class="alin-v86-order"><div class="alin-v86-order-main"><div class="alin-v86-order-title"><b>${esc(o.order_number||o.id)}</b><span class="alin-v86-status ${v86StatusClass(o)}">${v86Status(o)}</span></div><h4>${esc(o.title||'')}</h4><p>${esc(o.student_name||'')} <span>•</span> ${esc(o.student_phone||'')} <span>•</span> الكمية ${o.qty||1}</p></div><div class="alin-v86-actions"><button class="secondary" onclick="alinV86OpenLibraryOrder('${o.id}')">التفاصيل</button>${o.kind==='booklet'?`<button onclick="openLibraryBookletPdf('${o.id}')">طباعة</button>`:''}${['new','pending'].includes(String(o.status))?`<button onclick="libraryOrderStatus('${o.id}','processing')">استلام الطلب</button>`:''}${o.status==='processing'?`<button onclick="libraryOrderStatus('${o.id}','ready')">تحديد جاهز</button>`:''}${o.status==='ready'?`<button class="success" onclick="libraryOrderStatus('${o.id}','completed')">تسليم الطلب</button>`:''}<button class="secondary" onclick="printReceipt('${o.id}')">وصل</button></div></article>`).join('')||emptyState('لا توجد طلبات بهذه الحالة')}</div>`;
- const hist=led.slice().sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
- libraryHistory.parentElement.className='panel alin-v86-finance-panel';
- libraryHistory.parentElement.querySelector('h3').innerHTML='الحساب والمستحقات';
- libraryHistory.innerHTML=`<div class="alin-v86-balance"><small>الرصيد المستحق للمكتبة</small><strong>${money(total)} د.ع</strong><span>${completed} طلب تم تسليمه</span></div><div class="alin-v86-finance-note">يُحتسب ربح المكتبة فقط بعد تسليم الطلب. الطلب الملغي لا يدخل بالحساب.</div><h4>آخر الحركات المالية</h4><div class="alin-v86-ledger">${hist.slice(0,8).map(x=>`<div><b>${esc(x.order_number||x.order_id)}</b><span>+ ${money(+x.library||0)} د.ع</span></div>`).join('')||'<p>لا توجد حركات مالية بعد.</p>'}</div>${cancelled.length?`<details><summary>الطلبات الملغاة (${cancelled.length})</summary>${cancelled.slice(0,10).map(x=>`<div class="alin-v86-cancelled">${esc(x.order_number||x.id)} <span>0 د.ع</span></div>`).join('')}</details>`:''}`;
- const amount=document.getElementById('libraryWithdrawAmount'), btn=amount?.nextElementSibling;
- if(amount){amount.placeholder='مبلغ طلب السحب';amount.classList.add('alin-v86-withdraw')}
- if(btn){btn.textContent='طلب سحب الرصيد';btn.classList.add('alin-v86-withdraw-btn')}
-};
-})();
+
+
 
 
 /* ================= ALIN V88 REAL BOOKLET MODAL FIX ================= */
@@ -4417,62 +4147,8 @@ window.renderLibrary=renderLibrary=function(){
 
 
 /* ================= ALIN V91 NOTIFICATIONS DISPLAY CLEANUP ================= */
-(function(){
-  function removeInlineRoleNotifications(){
-    const role=current?.role||'';
-    if(role==='teacher'){
-      const host=document.getElementById('teacherPage')||document.getElementById('teacherContent');
-      if(host){
-        host.querySelectorAll('.notice').forEach(el=>{
-          const text=(el.textContent||'').trim();
-          const isOrderNotice=/طلب موافقة|طلب ملزمة|موافقة/.test(text);
-          if(!isOrderNotice)el.remove();
-        });
-      }
-    }
-    if(role==='library'){
-      const host=document.getElementById('libraryPage');
-      if(host){
-        host.querySelectorAll('.notice').forEach(el=>{
-          const text=(el.textContent||'').trim();
-          if(!/ملاحظة الحسابات|حالة المكتبة/.test(text))el.remove();
-        });
-      }
-    }
-  }
 
-  const previousTeacher=window.renderTeacher||renderTeacher;
-  window.renderTeacher=renderTeacher=function(){
-    const result=previousTeacher.apply(this,arguments);
-    setTimeout(removeInlineRoleNotifications,0);
-    return result;
-  };
 
-  const previousLibrary=window.renderLibrary||renderLibrary;
-  window.renderLibrary=renderLibrary=function(){
-    const result=previousLibrary.apply(this,arguments);
-    setTimeout(removeInlineRoleNotifications,0);
-    return result;
-  };
-
-  let cleanupQueued=false;
-  const queueCleanup=()=>{
-    if(cleanupQueued)return;
-    cleanupQueued=true;
-    requestAnimationFrame(()=>{
-      cleanupQueued=false;
-      removeInlineRoleNotifications();
-    });
-  };
-  const observer={observe(){},disconnect(){},takeRecords(){return[];}};
-  window.addEventListener('load',()=>{
-    ['teacherPage','libraryPage'].forEach(id=>{
-      const root=document.getElementById(id);
-      if(root)observer.observe(root,{childList:true,subtree:true});
-    });
-    setTimeout(removeInlineRoleNotifications,500);
-  });
-})();
 
 
 /* ================= ALIN V92 FULL AUDIT STABILITY LAYER ================= */
@@ -4617,8 +4293,6 @@ window.renderLibrary=renderLibrary=function(){
 
     [
       'renderStore',
-      'renderTeacher',
-      'renderLibrary',
       'renderProductsAdmin',
       'renderNotificationsAdmin',
       'adminStatsRender'
@@ -4691,162 +4365,8 @@ window.renderLibrary=renderLibrary=function(){
 
 
 /* ================= ALIN V95 RESTORE LIBRARY SETTLEMENT ================= */
-(function(){
-  function currentLibraryId(){
-    return current?.role==='library' ? current.id : '';
-  }
 
-  function librarySettlements(){
-    const id=currentLibraryId();
-    const rows=[
-      ...(db.library_settlements||[]),
-      ...(db.withdrawals||[]).filter(x=>x.role==='library'||x.type==='library')
-    ];
-    const seen=new Set();
-    return rows.filter(x=>{
-      const key=String(x.id||`${x.library_id}-${x.created_at}-${x.amount}`);
-      if(seen.has(key))return false;
-      seen.add(key);
-      return !id || String(x.library_id||x.account_id||x.user_id||'')===String(id);
-    }).sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
-  }
 
-  function settlementStatusLabel(s){
-    const v=String(s||'pending').toLowerCase();
-    return {
-      pending:'قيد المراجعة',
-      approved:'موافق عليها',
-      paid:'تم الدفع',
-      completed:'مكتملة',
-      rejected:'مرفوضة',
-      cancelled:'ملغاة'
-    }[v]||v;
-  }
-
-  function availableLibraryBalance(){
-    const id=currentLibraryId();
-    return (db.ledger||[])
-      .filter(x=>String(x.library_id||'')===String(id) && x.settlement_status!=='cancelled')
-      .reduce((sum,x)=>sum+(+x.library||0),0);
-  }
-
-  window.alinV95RequestLibrarySettlement=async function(){
-    const id=currentLibraryId();
-    if(!id)return alert('تعذر تحديد حساب المكتبة');
-
-    const input=document.getElementById('alinV95SettlementAmount');
-    const amount=Number(input?.value||0);
-    const balance=availableLibraryBalance();
-
-    if(amount<=0)return alert('اكتب مبلغ تسوية صحيح');
-    if(amount>balance)return alert('مبلغ التسوية أكبر من الرصيد المتاح');
-
-    const existing=librarySettlements().find(x=>['pending','approved'].includes(String(x.status||'pending').toLowerCase()));
-    if(existing)return alert('لديك طلب تسوية قيد المعالجة');
-
-    const row={
-      id:typeof uid==='function'?uid('LS'):('LS-'+Date.now()),
-      library_id:id,
-      amount,
-      status:'pending',
-      created_at:new Date().toISOString(),
-      note:'طلب تسوية من لوحة المكتبة'
-    };
-
-    try{
-      try{
-        await insert('library_settlements',row);
-        db.library_settlements=db.library_settlements||[];
-        db.library_settlements.unshift(row);
-      }catch(primaryError){
-        await insert('withdrawals',{
-          id:row.id,
-          user_id:id,
-          account_id:id,
-          library_id:id,
-          role:'library',
-          type:'library',
-          amount,
-          status:'pending',
-          created_at:row.created_at,
-          note:row.note
-        });
-        db.withdrawals=db.withdrawals||[];
-        db.withdrawals.unshift(row);
-      }
-
-      try{await audit('library_settlement','طلب تسوية مكتبة بمبلغ '+amount)}catch(_){}
-      toast('تم إرسال طلب التسوية');
-      renderLibrary();
-    }catch(e){
-      console.error('V95 library settlement',e);
-      alert(e?.message||'تعذر إرسال طلب التسوية');
-    }
-  };
-
-  function settlementHtml(){
-    const balance=availableLibraryBalance();
-    const rows=librarySettlements();
-    const pending=rows.find(x=>['pending','approved'].includes(String(x.status||'pending').toLowerCase()));
-
-    return `
-      <section class="alin-v95-settlement">
-        <div class="alin-v95-settlement-head">
-          <div>
-            <small>تسوية المكتبة</small>
-            <h3>طلب سحب المستحقات</h3>
-          </div>
-          <span>${money(balance)} د.ع متاح</span>
-        </div>
-
-        ${pending?`
-          <div class="alin-v95-pending">
-            <b>يوجد طلب تسوية قيد المعالجة</b>
-            <span>${money(+pending.amount||0)} د.ع — ${settlementStatusLabel(pending.status)}</span>
-          </div>
-        `:`
-          <div class="alin-v95-settlement-form">
-            <input id="alinV95SettlementAmount" type="number" min="1" max="${balance}" placeholder="مبلغ التسوية">
-            <button onclick="alinV95RequestLibrarySettlement()">إرسال طلب التسوية</button>
-          </div>
-        `}
-
-        <div class="alin-v95-settlement-history">
-          <h4>سجل التسويات</h4>
-          ${rows.slice(0,8).map(x=>`
-            <div>
-              <span>
-                <b>${money(+x.amount||0)} د.ع</b>
-                <small>${x.created_at?new Date(x.created_at).toLocaleDateString('ar-IQ'):'—'}</small>
-              </span>
-              <em class="${String(x.status||'pending').toLowerCase()}">${settlementStatusLabel(x.status)}</em>
-            </div>
-          `).join('')||'<p>لا توجد طلبات تسوية سابقة.</p>'}
-        </div>
-      </section>
-    `;
-  }
-
-  const previousRenderLibrary=window.renderLibrary||renderLibrary;
-  window.renderLibrary=renderLibrary=function(){
-    const result=previousRenderLibrary.apply(this,arguments);
-
-    setTimeout(()=>{
-      const host=document.getElementById('libraryHistory');
-      if(!host)return;
-
-      host.querySelectorAll('.alin-v95-settlement').forEach(x=>x.remove());
-      host.insertAdjacentHTML('beforeend',settlementHtml());
-
-      const oldInput=document.getElementById('libraryWithdrawAmount');
-      const oldButton=oldInput?.nextElementSibling;
-      if(oldInput)oldInput.style.display='none';
-      if(oldButton)oldButton.style.display='none';
-    },0);
-
-    return result;
-  };
-})();
 
 
 /* ALIN 2.0.1: legacy V96 banner patch removed; store/banners.js is authoritative. */
