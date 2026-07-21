@@ -1,5 +1,5 @@
 // === modules/store/order-routing.js ===
-/* ALIN v2.1.5 — authoritative checkout routing: area + landmark + GPS, without free-text address. */
+/* ALIN v2.1.6 — authoritative checkout routing: area + landmark + GPS, without free-text address. */
 (function(){
   'use strict';
   const $=id=>document.getElementById(id);

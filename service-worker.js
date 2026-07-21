@@ -1,4 +1,4 @@
-const VERSION='alin-v2.1.5-delivery-area-landmark-gps';
+const VERSION='alin-v2.1.6-courier-dashboard';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[

@@ -1,0 +1,31 @@
+{
+  "version": "2.1.6-stable-courier-dashboard-data-refresh",
+  "package": "2.1.6-stable-courier-dashboard",
+  "tested_at_utc": "2026-07-21T05:22:49.409484+00:00",
+  "result": "passed",
+  "checks": {
+    "javascript_syntax_files": 53,
+    "module_files": 44,
+    "release_checks": 86,
+    "courier_dashboard_checks": 13,
+    "courier_account_area_checks": 19,
+    "delivery_area_landmark_checks": 20,
+    "navigation_checks": 26,
+    "session_restore_checks": 9,
+    "session_single_transition_checks": 10,
+    "finance_checks": 18,
+    "coupon_cart_total_checks": 12
+  },
+  "changes": [
+    "Courier accounts included in the cloud snapshot and legacy runtime arrays.",
+    "Current courier resolves from the signed-in account even while courier data is refreshing.",
+    "Assigned orders refresh directly from Supabase for the current courier.",
+    "Courier dashboard has one implementation for home, current orders, completed orders, finance, notifications and profile.",
+    "Courier status/order updates use fields allowed by current RLS policies.",
+    "Old overlapping courier dashboard implementations removed."
+  ],
+  "sql_required": false,
+  "notes": [
+    "v2.1.3 courier-area SQL must already be installed for area assignment features."
+  ]
+}

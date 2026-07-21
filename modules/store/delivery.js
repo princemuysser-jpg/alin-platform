@@ -1,6 +1,6 @@
 // === store/delivery.js ===
 /* ===== store/js/delivery-gps-v162.js ===== */
-/* ALIN v2.1.5: delivery area dropdown + landmark + GPS, without free-text address. */
+/* ALIN v2.1.6: delivery area dropdown + landmark + GPS, without free-text address. */
 (function(){
   'use strict';
   const $=(s,r=document)=>r.querySelector(s);

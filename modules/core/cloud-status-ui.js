@@ -67,7 +67,7 @@
 
   async function accountForUser(user){
     const c=client();if(!c||!user)return null;
-    const {data,error}=await c.from('accounts').select('id,role,name,username,status,auth_user_id').eq('auth_user_id',user.id).maybeSingle();
+    const {data,error}=await c.from('accounts').select('id,role,name,username,status,auth_user_id,area,phone,landmark').eq('auth_user_id',user.id).maybeSingle();
     if(error)throw error;
     return data||null;
   }
@@ -90,7 +90,7 @@
       await c.auth.signOut();failAttempt(requested,username);throw new Error('نوع الحساب لا يطابق البوابة المختارة');
     }
     clearAttempts(requested,username);
-    window.current={role:account.role,id:account.id,name:account.name,username:account.username,auth_user_id:data.user.id};
+    window.current={role:account.role,id:account.id,name:account.name,username:account.username,auth_user_id:data.user.id,area:account.area||'',phone:account.phone||'',landmark:account.landmark||''};
     if(typeof window.load==='function')await window.load();
     const targetPage=account.role==='accountant'?'admin':account.role;
     if(typeof window.openPage==='function')window.openPage(targetPage,{render:false});
@@ -111,7 +111,7 @@
     document.getElementById('login')?.classList.remove('hidden');
   }
   function accountState(account,user){
-    return {role:account.role,id:account.id,name:account.name,username:account.username,auth_user_id:user.id};
+    return {role:account.role,id:account.id,name:account.name,username:account.username,auth_user_id:user.id,area:account.area||'',phone:account.phone||'',landmark:account.landmark||''};
   }
   async function openPublicStore(){
     try{window.AlinCloud?.loadCachedSnapshot?.()}catch(_){}

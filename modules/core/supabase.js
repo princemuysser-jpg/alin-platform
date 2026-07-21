@@ -169,8 +169,11 @@
     const accounts=rows.accounts||[];
     const snapshot={
       accounts:{
+        all:accounts.filter(x=>!x.deleted_at),
         teachers:accounts.filter(x=>x.role==='teacher'&&!x.deleted_at),
-        libraries:accounts.filter(x=>x.role==='library'&&!x.deleted_at)
+        libraries:accounts.filter(x=>x.role==='library'&&!x.deleted_at),
+        couriers:accounts.filter(x=>x.role==='courier'&&!x.deleted_at),
+        accountants:accounts.filter(x=>x.role==='accountant'&&!x.deleted_at)
       },
       booklets:(rows.booklets||[]).filter(x=>!x.deleted_at),
       products:(rows.products||[]).filter(x=>!x.deleted_at),
@@ -205,6 +208,8 @@
     const snapshot=mapCloudToLegacy(rows);
     localStorage.setItem(SNAPSHOT_KEY,JSON.stringify({at:nowIso(),snapshot}));
     window.db=snapshot;
+    try{ window.couriers=snapshot.couriers||snapshot.accounts?.couriers||[]; }catch(_){ }
+    try{ window.courierSettlements=snapshot.courierSettlements||[]; }catch(_){ }
     try{ if(typeof renderAll==='function') renderAll(); }catch(e){console.warn(e);}
     emit('online',{tables:Object.keys(rows).length});
     return snapshot;

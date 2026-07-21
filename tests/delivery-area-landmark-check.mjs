@@ -25,10 +25,11 @@ assert(!courier.includes('<small>العنوان</small>'),'courier:no-address-la
 assert(!courier.includes('العنوان ونقطة الدلالة'),'courier:no-address-landmark-label');
 assert(adminOrders.includes('<small>المنطقة</small>')&&adminOrders.includes('<small>أقرب نقطة دالة</small>'),'admin:area-landmark-details');
 
-const helperLine=courier.split('\n').find(line=>line.includes('window.alinNormalizeDeliveryArea='));
+const helperMatch=courier.match(/window\.alinNormalizeDeliveryArea=window\.alinNormalizeDeliveryArea\|\|function\(value\)\{[\s\S]*?\n  \};/);
+assert(Boolean(helperMatch),'courier:normalizer-source');
 const helperContext={window:{}};
 vm.createContext(helperContext);
-vm.runInContext(helperLine,helperContext);
+if(helperMatch)vm.runInContext(helperMatch[0],helperContext);
 assert(helperContext.window.alinNormalizeDeliveryArea('عرفة - العين دار — جامع نور الرحمن')==='عرفة','normalizer:legacy-combined-area');
 assert(helperContext.window.alinNormalizeDeliveryArea('  عرفة   ')==='عرفة','normalizer:spaces');
 

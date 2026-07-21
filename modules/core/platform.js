@@ -162,7 +162,7 @@ async function load(){
     const [accounts,booklets,products,categories,banners,coupons,orders,permits,ledger,withdrawals,auditRows,settingsRows] = await Promise.all([
       query('accounts'),query('booklets'),query('products'),query('categories'),query('banners'),query('coupons').catch(error=>{console.warn('[ALIN coupons] optional load failed',error);return []}),query('orders'),query('permits'),query('ledger'),query('withdrawals'),query('audit'),query('settings')
     ]);
-    db.accounts={teachers:accounts.filter(x=>x.role==='teacher'),libraries:accounts.filter(x=>x.role==='library')};
+    db.accounts={all:accounts,teachers:accounts.filter(x=>x.role==='teacher'),libraries:accounts.filter(x=>x.role==='library'),couriers:accounts.filter(x=>x.role==='courier'),accountants:accounts.filter(x=>x.role==='accountant')};
     db.booklets=booklets; db.products=products; db.categories=categories; db.banners=banners; db.coupons=coupons; db.orders=orders.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')); db.permits=permits; db.ledger=ledger; db.withdrawals=withdrawals; db.audit=auditRows.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')); db.settings={storeType:'booklet'};
     settingsRows.forEach(x=>db.settings[x.key]=x.value);
     // Secure release: never create demo accounts or seed passwords automatically.
