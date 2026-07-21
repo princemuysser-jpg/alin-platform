@@ -1030,7 +1030,7 @@ body.store-desktop .desktop-action-count[hidden]{display:none!important}
 /* Mobile shortcuts */
 body.store-mobile .mobile-quick-actions{
   display:grid!important;
-  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
   gap:7px!important;
 }
 body.store-mobile .mobile-quick-actions button{
@@ -2204,7 +2204,7 @@ body.store-mobile .alin98-cats .cat-copy small{font-size:10px}
 body.store-mobile .store-shell{padding:0 14px 70px!important}
 body.store-mobile #storeGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
 body.store-mobile .alin98-title h2{font-size:25px}
-body.store-mobile .alin98-bottom{grid-template-columns:repeat(5,1fr)!important;right:10px;left:10px;bottom:max(8px,env(safe-area-inset-bottom));padding:7px 5px;border-radius:23px}
+body.store-mobile .alin98-bottom{grid-template-columns:repeat(4,1fr)!important;right:10px;left:10px;bottom:max(8px,env(safe-area-inset-bottom));padding:7px 5px;border-radius:23px}
 body.store-mobile .alin98-bottom button{position:relative;min-height:56px;border-radius:15px}
 body.store-mobile .alin98-bottom .mobile-center-action{margin-top:-24px;min-height:74px;border-radius:50%;background:linear-gradient(145deg,#0b2449,#123f75);color:#fff;box-shadow:0 12px 28px rgba(7,26,55,.28)}
 body.store-mobile .alin98-bottom .mobile-center-action small{color:#fff}
@@ -2250,7 +2250,7 @@ body.store-mobile .alin-cloud-rc53{left:12px!important;bottom:calc(var(--alin-mo
   body.store-mobile .alin98-cats .cat-icon{width:44px!important;height:44px!important;min-width:44px!important}
   body.store-mobile #storeGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
   body.store-mobile #storeGrid .alin-v76-cover{height:155px!important}
-  body.store-mobile .alin98-bottom{right:10px!important;left:10px!important;bottom:max(8px,env(safe-area-inset-bottom))!important;min-height:66px!important;padding:6px!important;border-radius:22px!important;grid-template-columns:repeat(5,minmax(0,1fr))!important}
+  body.store-mobile .alin98-bottom{right:10px!important;left:10px!important;bottom:max(8px,env(safe-area-inset-bottom))!important;min-height:66px!important;padding:6px!important;border-radius:22px!important;grid-template-columns:repeat(4,minmax(0,1fr))!important}
   body.store-mobile .alin98-bottom button{min-height:54px!important;padding:6px 2px!important;border-radius:15px!important}
   body.store-mobile .alin98-bottom .mobile-center-action{margin-top:-18px!important;min-height:70px!important;border-radius:22px!important}
   body.store-mobile .alin98-bottom small{font-size:9px!important}

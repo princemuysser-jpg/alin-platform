@@ -33,3 +33,41 @@ body.store-mobile .alin-store-banners-v115{margin-inline:20px}
   body.store-mobile .alin-notifications-v120__panel>header{padding:15px}
   body.store-mobile .alin-notifications-v120__list{padding-bottom:max(10px,env(safe-area-inset-bottom))}
 }
+
+
+/* ALIN v2.3.0 — polished mobile icons and white category labels. */
+body.store-mobile .mobile-notification-icon,
+body.store-mobile .mobile-favorite-icon{
+  width:27px;height:27px;display:grid;place-items:center;color:#0b3158
+}
+body.store-mobile .mobile-notification-icon svg,
+body.store-mobile .mobile-favorite-icon svg{
+  width:25px;height:25px;display:block;fill:none;stroke:currentColor;stroke-width:1.9;
+  stroke-linecap:round;stroke-linejoin:round
+}
+body.store-mobile .mobile-header-actions>.mobile-header-icon-btn:first-child .mobile-notification-icon{
+  width:27px!important;height:27px!important
+}
+body.store-mobile .alin-mobile-bottom-v103 [data-mobile-control="favorites"] .mobile-favorite-icon{
+  width:28px;height:28px;color:currentColor
+}
+body.store-mobile .alin98-cats>button[data-v99-category],
+html[data-alin-theme="dark"] body.store-mobile .alin98-cats>button[data-v99-category]{
+  background:linear-gradient(145deg,#082d57,#0d416f)!important;
+  color:#fff!important;border-color:rgba(218,177,85,.45)!important;
+  box-shadow:0 9px 23px rgba(7,31,61,.18)!important
+}
+body.store-mobile .alin98-cats>button[data-v99-category]:active,
+body.store-mobile .alin98-cats>button[data-v99-category][aria-pressed="true"]{
+  background:linear-gradient(145deg,#0f4b80,#12619f)!important;
+  border-color:#e4ba5a!important;box-shadow:0 0 0 3px rgba(215,173,84,.20)!important
+}
+body.store-mobile .alin98-cats>button[data-v99-category] .cat-copy strong{
+  color:#fff!important;font-weight:900!important;text-shadow:0 1px 2px rgba(0,0,0,.22)
+}
+body.store-mobile .alin98-cats>button[data-v99-category] .cat-copy small{
+  color:rgba(255,255,255,.88)!important;font-weight:700!important
+}
+body.store-mobile .alin98-cats>button[data-v99-category] .cat-icon{
+  background:linear-gradient(145deg,#fff8e8,#ead39d)!important;color:#7c5712!important
+}

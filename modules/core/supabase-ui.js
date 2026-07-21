@@ -1,12 +1,12 @@
 // === core/supabase-ui.js ===
-/* ALIN v2.2.8 — read-only UI binding for the authoritative Supabase service.
+/* ALIN v2.3.0 — read-only UI binding for the authoritative Supabase service.
    Data access is owned only by modules/core/supabase.js.
    File storage is owned only by modules/core/storage.js.
 */
 (function(){
   'use strict';
 
-  const VERSION='2.2.8';
+  const VERSION='2.3.0';
   let lastRefresh=null;
   let lastMutation=null;
 

@@ -1,5 +1,5 @@
 // === core/storage.js ===
-/* ALIN v2.2.8 — authoritative file storage and media resolver. */
+/* ALIN v2.3.0 — authoritative file storage and media resolver. */
 (function(){
   'use strict';
 

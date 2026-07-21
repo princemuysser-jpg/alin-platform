@@ -1,11 +1,11 @@
 // === core/supabase.js ===
-/* ALIN v2.2.8 — authoritative Supabase data service.
+/* ALIN v2.3.0 — authoritative Supabase data service.
    This file is the only owner of query/insert/update/removeRow/load and cloud snapshots.
 */
 (function(){
   'use strict';
 
-  const VERSION='2.2.8';
+  const VERSION='2.3.0';
   const TABLES=[
     'settings','accounts','delivery_areas','couriers','courier_areas','categories',
     'booklets','teacher_requests','teacher_request_versions','products','orders',
@@ -359,7 +359,7 @@
 
   function startRealtime(){
     const c=client();if(!c?.channel||realtimeChannel)return;
-    realtimeChannel=c.channel('alin-live-v228');
+    realtimeChannel=c.channel('alin-live-v229');
     for(const table of ['orders','notifications','booklets','products','accounts','couriers','ledger','financial_entries']){
       realtimeChannel.on('postgres_changes',{event:'*',schema:'public',table},()=>scheduleReload(300));
     }

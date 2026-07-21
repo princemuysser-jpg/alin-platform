@@ -7,7 +7,7 @@
 <meta content="0" http-equiv="Expires"/>
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
-<title>متجر آلين v2.2.8</title>
+<title>متجر آلين v2.3.0</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
 <meta content="#111827" name="theme-color"/>
@@ -17,27 +17,27 @@
 <link href="./manifest-desktop.webmanifest" rel="manifest"/>
 <link href="assets/icons/icon-192.png" rel="icon" sizes="192x192" type="image/png"/>
 <link href="assets/icons/icon-192.png" rel="apple-touch-icon"/>
-<link href="./dist/css/desktop.bundle.css?v=2.2.8" rel="stylesheet"/>
-<link href="./styles/alin-tokens.css?v=2.2.8" rel="stylesheet"/>
-<link href="./styles/alin-shared.css?v=2.2.8" rel="stylesheet"/>
-<link href="./styles/alin-desktop.css?v=2.2.8" rel="stylesheet"/>
+<link href="./dist/css/desktop.bundle.css?v=2.3.0" rel="stylesheet"/>
+<link href="./styles/alin-tokens.css?v=2.3.0" rel="stylesheet"/>
+<link href="./styles/alin-shared.css?v=2.3.0" rel="stylesheet"/>
+<link href="./styles/alin-desktop.css?v=2.3.0" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer onerror="window.__ALIN_CDN_ERROR__=true;console.error('تعذر تحميل Supabase')"></script>
-<script src="./modules/core/config.js?v=2.2.8" defer></script>
-<script src="./modules/core/ui.js?v=2.2.8" defer></script>
-<script src="./modules/core/platform.js?v=2.2.8" defer></script>
-<script src="./modules/core/storage.js?v=2.2.8" defer></script>
-<script src="./modules/core/navigation.js?v=2.2.8" defer></script>
-<script src="./modules/core/supabase.js?v=2.2.8" defer></script>
-<script src="./modules/core/notifications.js?v=2.2.8" defer></script>
-<script src="./core/finance-runtime.js?v=2.2.8" defer></script>
-<script src="./modules/store/coupons.js?v=2.2.8" defer></script>
-<script src="./modules/admin/shell.js?v=2.2.8" defer></script>
-<script src="./modules/admin/accounts.js?v=2.2.8" defer></script>
-<script src="./modules/core/features.js?v=2.2.8" defer></script>
-<script src="./modules/store/discovery.js?v=2.2.8" defer></script>
-<script src="./modules/store/cart.js?v=2.2.8" defer></script>
-<script src="./modules/store/student-auth.js?v=2.2.8" defer></script>
-<script src="./modules/teacher/shell.js?v=2.2.8" defer></script>
+<script src="./modules/core/config.js?v=2.3.0" defer></script>
+<script src="./modules/core/ui.js?v=2.3.0" defer></script>
+<script src="./modules/core/platform.js?v=2.3.0" defer></script>
+<script src="./modules/core/storage.js?v=2.3.0" defer></script>
+<script src="./modules/core/navigation.js?v=2.3.0" defer></script>
+<script src="./modules/core/supabase.js?v=2.3.0" defer></script>
+<script src="./modules/core/notifications.js?v=2.3.0" defer></script>
+<script src="./core/finance-runtime.js?v=2.3.0" defer></script>
+<script src="./modules/store/coupons.js?v=2.3.0" defer></script>
+<script src="./modules/admin/shell.js?v=2.3.0" defer></script>
+<script src="./modules/admin/accounts.js?v=2.3.0" defer></script>
+<script src="./modules/core/features.js?v=2.3.0" defer></script>
+<script src="./modules/store/discovery.js?v=2.3.0" defer></script>
+<script src="./modules/store/cart.js?v=2.3.0" defer></script>
+<script src="./modules/store/student-auth.js?v=2.3.0" defer></script>
+<script src="./modules/teacher/shell.js?v=2.3.0" defer></script>
 
 
 
@@ -82,9 +82,9 @@
 
 
 
-  <link rel="stylesheet" href="./store/banners.css?v=2.2.8">
-<script src="./core/runtime-guard.js?v=2.2.8" defer></script>
-<script src="./core/app-health.js?v=2.2.8" defer></script>
+  <link rel="stylesheet" href="./store/banners.css?v=2.3.0">
+<script src="./core/runtime-guard.js?v=2.3.0" defer></script>
+<script src="./core/app-health.js?v=2.3.0" defer></script>
 <style id="alinAuthBootStyle">html[data-alin-auth-boot="1"] body>*{visibility:hidden!important}html[data-alin-auth-boot="1"] body::before{content:"جارٍ فتح منصة آلين...";visibility:visible;position:fixed;inset:0;display:grid;place-items:center;background:#f7f9fc;color:#102342;font:800 18px system-ui;z-index:2147483647}</style>
 <script>setTimeout(()=>document.documentElement.removeAttribute('data-alin-auth-boot'),7000)</script>
 </head>
@@ -127,13 +127,10 @@
 <input id="searchInput" oninput="renderStore()" placeholder="ابحث عن ملزمة، مادة، مدرس أو منتج" type="search"/>
 </label>
 <div class="alin98-actions desktop-store-actions">
-<button aria-expanded="false" aria-label="فلترة المنتجات" class="desktop-action" data-desktop-control="filter" data-v99-action="toggleFilters" type="button"><span aria-hidden="true" class="desktop-filter-icon"></span><small>فلترة</small><span class="desktop-action-count" hidden="" id="v99DesktopFilterCount">0</span></button>
-<button aria-label="المفضلة" class="desktop-action" data-desktop-control="favorites" data-v99-action="desktopFavorites" type="button"><span aria-hidden="true" class="desktop-heart-icon"></span><small>المفضلة</small><span class="desktop-action-count" hidden="" id="v99DesktopFavoriteCount">0</span></button>
-<button aria-label="الإشعارات" class="desktop-action desktop-notification" data-desktop-control="notifications" onclick="AlinStoreNotifications?.open?.()" type="button"><span aria-hidden="true" class="v99-icon v99-icon-bell"></span><small>الإشعارات</small><span class="alin98-notify-count desktop-action-count" hidden="">0</span></button>
-<button aria-label="حساب الطالب" class="desktop-action desktop-account" data-desktop-control="account" id="studentAuthBtn" onclick="openStudentAuth()" type="button"><span aria-hidden="true" class="desktop-account-icon"></span><small>تسجيل الدخول</small></button>
+<button aria-label="المفضلة" class="desktop-action" data-desktop-control="favorites" data-v99-action="desktopFavorites" type="button"><span aria-hidden="true" class="desktop-favorite-icon"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"/></svg></span><small>المفضلة</small><span class="desktop-action-count" hidden="" id="v99DesktopFavoriteCount">0</span></button>
+<button aria-label="الإشعارات" class="desktop-action desktop-notification" data-desktop-control="notifications" onclick="AlinStoreNotifications?.open?.()" type="button"><span aria-hidden="true" class="desktop-notification-icon"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.5 3.5 20 2"/><path d="M5.5 3.5 4 2"/></svg></span><small>الإشعارات</small><span class="alin98-notify-count desktop-action-count" hidden="">0</span></button>
 <button aria-label="سلة المشتريات" class="desktop-action desktop-cart" data-desktop-control="cart" onclick="openCart()" type="button"><svg aria-hidden="true" class="desktop-cart-icon alin-cart-nav-icon" style="stroke:#0b5fa5" viewBox="0 0 28 28"><path d="M2.8 4.5h3.1l2.2 11.1a2.3 2.3 0 0 0 2.3 1.9h10.2a2.3 2.3 0 0 0 2.2-1.8l1.5-7.1H7"/><path d="M10 12.9h12.9"/><circle cx="11" cy="22.2" r="1.7"/><circle cx="21" cy="22.2" r="1.7"/></svg><small>السلة</small><span class="desktop-action-count" hidden="" id="desktopCartCount">0</span></button>
 <button aria-label="خروج إلى القائمة الرئيسية" class="desktop-action desktop-exit" data-desktop-control="exit" onclick="logout()" type="button"><span aria-hidden="true" class="desktop-exit-icon"></span><small>خروج</small></button>
-<span aria-live="polite" class="desktop-account-status" id="studentAuthStatus">التسجيل اختياري</span>
 </div>
 </header>
 <section id="alinStoreBanners" class="alin-store-banners" aria-label="إعلانات منصة آلين" hidden></section>
@@ -148,8 +145,6 @@
 <div class="store-shell">
 <div id="bannerBox" class="alin-legacy-banner-sink" hidden aria-hidden="true"></div>
 <section aria-live="polite" class="v99-rail-root" id="v99DailyDeals"></section>
-<button aria-label="إغلاق لوحة الفلاتر" class="desktop-filter-backdrop" data-v99-action="closeDesktopFilters" hidden="" type="button"></button>
-<section aria-label="فرز وتصفية المنتجات" class="v99-discovery-tools" id="v99DiscoveryTools"></section>
 <div class="v99-curated-rails">
 <section class="v99-rail-root" id="v99BestSellers"></section>
 <section aria-hidden="true" class="v99-rail-root" hidden="" id="v99TeacherRail"></section>
@@ -215,7 +210,7 @@
 <main id="courierV161Content"></main>
 </section>
 <section class="page hidden" id="adminPage">
-<div class="admin-heading"><div><h2>لوحة إدارة آلين</h2><p>إدارة المنصة من مكان واحد</p></div><span class="version-badge">v2.2.8</span></div>
+<div class="admin-heading"><div><h2>لوحة إدارة آلين</h2><p>إدارة المنصة من مكان واحد</p></div><span class="version-badge">v2.3.0</span></div>
 <div class="stats" id="adminStats"></div>
 <div class="admin-tabs">
 <button onclick="adminTab('dashboard')">الرئيسية</button>
@@ -257,42 +252,42 @@
 </div>
 </div>
 <aside aria-hidden="true" hidden="" id="alin98Menu"></aside>
-<script src="./core/lazy-libs.js?v=2.2.8" defer></script>
-<script src="./modules/teacher/booklets.js?v=2.2.8" defer></script>
-<script src="./modules/teacher/finance.js?v=2.2.8" defer></script>
-<script src="./modules/teacher/dashboard.js?v=2.2.8" defer></script>
-<script src="./modules/teacher/publishing.js?v=2.2.8" defer></script>
-<script src="./modules/teacher/notifications.js?v=2.2.8" defer></script>
-<script src="./modules/teacher/profile.js?v=2.2.8" defer></script>
-<script src="./modules/library/dashboard.js?v=2.2.8" defer></script>
-<script src="./modules/library/orders.js?v=2.2.8" defer></script>
-<script src="./modules/library/finance.js?v=2.2.8" defer></script>
-<script src="./modules/library/printing.js?v=2.2.8" defer></script>
-<script src="./modules/store/order-routing.js?v=2.2.8" defer></script>
-<script src="./modules/store/delivery.js?v=2.2.8" defer></script>
-<script src="./modules/admin/dashboard.js?v=2.2.8" defer></script>
-<script src="./modules/admin/orders.js?v=2.2.8" defer></script>
-<script src="./modules/admin/booklets.js?v=2.2.8" defer></script>
-<script src="./modules/admin/products.js?v=2.2.8" defer></script>
-<script src="./modules/admin/accounts-advanced.js?v=2.2.8" defer></script>
-<script src="./modules/admin/finance.js?v=2.2.8" defer></script>
-<script src="./modules/admin/coupons.js?v=2.2.8" defer></script>
-<script src="./store/banners.js?v=2.2.8" defer></script>
-<script src="./modules/admin/reports.js?v=2.2.8" defer></script>
-<script src="./modules/admin/settings.js?v=2.2.8" defer></script>
-<script src="./modules/admin/notifications.js?v=2.2.8" defer></script>
-<script src="./modules/admin/couriers.js?v=2.2.8" defer></script>
-<script src="./modules/courier/dashboard.js?v=2.2.8" defer></script>
-<script src="./modules/courier/finance.js?v=2.2.8" defer></script>
-<script src="./modules/core/security.js?v=2.2.8" defer></script>
-<script src="./modules/core/design.js?v=2.2.8" defer></script>
-<script src="./modules/admin/branding.js?v=2.2.8" defer></script>
-<script src="./modules/admin/backup.js?v=2.2.8" defer></script>
-<script src="./modules/admin/system-health.js?v=2.2.8" defer></script>
-<script src="./modules/core/supabase-ui.js?v=2.2.8" defer></script>
-<script src="./modules/core/cloud-status-ui.js?v=2.2.8" defer></script>
-<script src="./store/notifications.js?v=2.2.8" defer></script>
-<script src="./options.js?v=2.2.8" defer></script>
+<script src="./core/lazy-libs.js?v=2.3.0" defer></script>
+<script src="./modules/teacher/booklets.js?v=2.3.0" defer></script>
+<script src="./modules/teacher/finance.js?v=2.3.0" defer></script>
+<script src="./modules/teacher/dashboard.js?v=2.3.0" defer></script>
+<script src="./modules/teacher/publishing.js?v=2.3.0" defer></script>
+<script src="./modules/teacher/notifications.js?v=2.3.0" defer></script>
+<script src="./modules/teacher/profile.js?v=2.3.0" defer></script>
+<script src="./modules/library/dashboard.js?v=2.3.0" defer></script>
+<script src="./modules/library/orders.js?v=2.3.0" defer></script>
+<script src="./modules/library/finance.js?v=2.3.0" defer></script>
+<script src="./modules/library/printing.js?v=2.3.0" defer></script>
+<script src="./modules/store/order-routing.js?v=2.3.0" defer></script>
+<script src="./modules/store/delivery.js?v=2.3.0" defer></script>
+<script src="./modules/admin/dashboard.js?v=2.3.0" defer></script>
+<script src="./modules/admin/orders.js?v=2.3.0" defer></script>
+<script src="./modules/admin/booklets.js?v=2.3.0" defer></script>
+<script src="./modules/admin/products.js?v=2.3.0" defer></script>
+<script src="./modules/admin/accounts-advanced.js?v=2.3.0" defer></script>
+<script src="./modules/admin/finance.js?v=2.3.0" defer></script>
+<script src="./modules/admin/coupons.js?v=2.3.0" defer></script>
+<script src="./store/banners.js?v=2.3.0" defer></script>
+<script src="./modules/admin/reports.js?v=2.3.0" defer></script>
+<script src="./modules/admin/settings.js?v=2.3.0" defer></script>
+<script src="./modules/admin/notifications.js?v=2.3.0" defer></script>
+<script src="./modules/admin/couriers.js?v=2.3.0" defer></script>
+<script src="./modules/courier/dashboard.js?v=2.3.0" defer></script>
+<script src="./modules/courier/finance.js?v=2.3.0" defer></script>
+<script src="./modules/core/security.js?v=2.3.0" defer></script>
+<script src="./modules/core/design.js?v=2.3.0" defer></script>
+<script src="./modules/admin/branding.js?v=2.3.0" defer></script>
+<script src="./modules/admin/backup.js?v=2.3.0" defer></script>
+<script src="./modules/admin/system-health.js?v=2.3.0" defer></script>
+<script src="./modules/core/supabase-ui.js?v=2.3.0" defer></script>
+<script src="./modules/core/cloud-status-ui.js?v=2.3.0" defer></script>
+<script src="./store/notifications.js?v=2.3.0" defer></script>
+<script src="./options.js?v=2.3.0" defer></script>
 
 
 
@@ -325,8 +320,8 @@
 
 
   
-<script src="./core/pwa-register.js?v=2.2.8" defer></script>
+<script src="./core/pwa-register.js?v=2.3.0" defer></script>
 
-<script src="core/v2-runtime.js?v=2.2.8" defer></script>
+<script src="core/v2-runtime.js?v=2.3.0" defer></script>
 </body>
 </html>
