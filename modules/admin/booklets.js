@@ -1,4 +1,4 @@
-// ALIN Admin Booklets — single implementation (v2.2.5)
+// ALIN Admin Booklets — single implementation (v2.2.6)
 (function(){
   'use strict';
 

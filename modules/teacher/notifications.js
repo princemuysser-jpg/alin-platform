@@ -46,19 +46,19 @@
   }
 
   function rows(){
-    const merged=[...array(window.v19Notifications),...array(window.db?.notifications)];
+    const serviceRows=window.AlinNotifications?.visible?.({role:'teacher',id:teacherId()});
+    if(Array.isArray(serviceRows))return serviceRows;
     const unique=new Map();
-    merged.forEach((notification,index)=>{
+    array(window.db?.notifications).forEach((notification,index)=>{
       if(!notification)return;
       const id=String(notification.id??`local-${index}`);
       if(!unique.has(id))unique.set(id,notification);
     });
-    return [...unique.values()]
-      .filter(matchesTeacher)
-      .sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+    return [...unique.values()].filter(matchesTeacher).sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
   }
 
   function isRead(notification,seen=localSeen()){
+    if(window.AlinNotifications?.isRead)return window.AlinNotifications.isRead(notification,{role:'teacher',id:teacherId()});
     return Boolean(notification?.read_at)||seen.has(String(notification?.id));
   }
 
@@ -158,25 +158,17 @@
   async function mark(id){
     const notification=rows().find(item=>String(item.id)===String(id));
     if(!notification)return;
-
-    const seen=localSeen();
-    seen.add(String(id));
-    saveLocalSeen(seen);
-    notification.read_at=notification.read_at||new Date().toISOString();
-
-    const target=String(notification.target_id||notification.account_id||notification.teacher_id||'').trim();
-    if(target===teacherId()){
-      try{
-        if(typeof update==='function')await update('notifications',{read_at:notification.read_at},{id:notification.id});
-      }catch(error){console.warn('[ALIN teacher notifications] remote read state',error)}
+    if(window.AlinNotifications?.markRead)await window.AlinNotifications.markRead(id,{role:'teacher',id:teacherId()});
+    else{
+      const seen=localSeen();seen.add(String(id));saveLocalSeen(seen);
+      notification.read_at=notification.read_at||new Date().toISOString();
     }
     render();
   }
 
-  function markAll(){
-    const seen=localSeen();
-    rows().forEach(notification=>seen.add(String(notification.id)));
-    saveLocalSeen(seen);
+  async function markAll(){
+    if(window.AlinNotifications?.markAll)await window.AlinNotifications.markAll({role:'teacher',id:teacherId()});
+    else{const seen=localSeen();rows().forEach(notification=>seen.add(String(notification.id)));saveLocalSeen(seen)}
     render();
   }
 

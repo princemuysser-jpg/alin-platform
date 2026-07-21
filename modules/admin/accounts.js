@@ -1,5 +1,5 @@
 // === admin/accounts.js ===
-/* ALIN v2.2.5 — authoritative accounts administration. */
+/* ALIN v2.2.6 — authoritative accounts administration. */
 
 /* ===== admin/js/admin-accounts-v133.js ===== */
 (function(){

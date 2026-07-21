@@ -1,9 +1,12 @@
 {
   "early": [
     "modules/core/config.js",
+    "modules/core/ui.js",
     "modules/core/platform.js",
+    "modules/core/storage.js",
     "modules/core/navigation.js",
     "modules/core/supabase.js",
+    "modules/core/notifications.js",
     "core/finance-runtime.js",
     "modules/store/coupons.js",
     "modules/admin/shell.js",
@@ -11,6 +14,7 @@
     "modules/core/features.js",
     "modules/store/discovery.js",
     "modules/store/cart.js",
+    "modules/store/student-auth.js",
     "modules/teacher/shell.js"
   ],
   "app": [
@@ -33,7 +37,7 @@
     "modules/admin/accounts-advanced.js",
     "modules/admin/finance.js",
     "modules/admin/coupons.js",
-    "modules/admin/marketing.js",
+    "store/banners.js",
     "modules/admin/reports.js",
     "modules/admin/settings.js",
     "modules/admin/notifications.js",

@@ -139,7 +139,7 @@
       if(['completed','delivered'].includes(status)&&typeof window.alinV57SettleOrder==='function')await window.alinV57SettleOrder(order);
       addHistory(id,'تغيير الحالة',`${labelOf(status)}${reason?' — '+reason:''}`);
       if(typeof window.audit==='function')await window.audit('order',`تحديث الطلب ${order.order_number||id} إلى ${status}${reason?' بسبب: '+reason:''}`);
-      if((status==='completed'||status==='delivered')&&typeof window.alinV71Notify==='function')await window.alinV71Notify('admin','','طلب مسلّم',`تم تسليم الطلب ${order.order_number||id}`);
+      if((status==='completed'||status==='delivered')&&window.AlinNotifications?.send)await window.AlinNotifications.send({role:'admin',title:'طلب مسلّم',message:`تم تسليم الطلب ${order.order_number||id}`});
       render();notify('تم تحديث حالة الطلب');
     }catch(error){alert('تعذر تحديث الطلب: '+friendlyError(error))}
   }

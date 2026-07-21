@@ -1,5 +1,5 @@
 // === admin/shell.js ===
-/* ALIN v2.2.5 — authoritative admin shell and one admin router. */
+/* ALIN v2.2.6 — authoritative admin shell and one admin router. */
 (function(){
   'use strict';
 
@@ -18,7 +18,7 @@
     deliveryOrders:'renderDeliveryOrdersAdmin',
     courierSettlements:'renderCourierSettlementsAdmin',
     finance:'renderFinanceAdmin',
-    ads:'renderAdsAdminV140',
+    ads:'renderAdsAdmin',
     coupons:'renderCouponsAdmin',
     notifications:'renderNotificationsAdmin',
     settings:'renderSettingsAdmin'
@@ -99,7 +99,6 @@
     if(registry.has(tab))return registry.get(tab);
     const globalName=fallbackRenderers[tab];
     if(globalName&&typeof window[globalName]==='function')return window[globalName];
-    if(tab==='ads'&&typeof window.renderAdsAdmin==='function')return window.renderAdsAdmin;
     if(tab==='audit')return renderAudit;
     return null;
   }

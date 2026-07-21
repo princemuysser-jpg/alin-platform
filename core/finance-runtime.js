@@ -1,4 +1,4 @@
-/* ALIN v2.2.5 — authoritative finance, payouts and settlements runtime. */
+/* ALIN v2.2.6 — authoritative finance, payouts and settlements runtime. */
 (function(){
   'use strict';
 

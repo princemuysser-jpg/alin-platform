@@ -1,4 +1,4 @@
-/* ALIN v2.2.5 — library finance views backed only by AlinFinance. */
+/* ALIN v2.2.6 — library finance views backed only by AlinFinance. */
 (function(){
   'use strict';
   window.AlinLibraryModules=window.AlinLibraryModules||{};

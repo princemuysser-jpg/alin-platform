@@ -1,4 +1,4 @@
-const VERSION='alin-v2.2.5-storefront-extraction';
+const VERSION='alin-v2.2.7-core-services-extraction';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[
@@ -8,15 +8,19 @@ const CORE=[
   './styles/alin-tokens.css','./styles/alin-shared.css','./styles/alin-desktop.css','./styles/alin-mobile.css',
   './dist/js/landing.bundle.js',
   './modules/core/config.js',
+  './modules/core/ui.js',
   './modules/core/platform.js',
+  './modules/core/storage.js',
   './modules/core/navigation.js',
   './modules/core/supabase.js',
+  './modules/core/notifications.js',
   './modules/store/coupons.js',
   './modules/admin/shell.js',
   './modules/admin/accounts.js',
   './modules/core/features.js',
   './modules/store/discovery.js',
   './modules/store/cart.js',
+  './modules/store/student-auth.js',
   './modules/teacher/shell.js',
   './modules/teacher/booklets.js',
   './modules/teacher/finance.js',
@@ -37,7 +41,6 @@ const CORE=[
   './modules/admin/accounts-advanced.js',
   './modules/admin/finance.js',
   './modules/admin/coupons.js',
-  './modules/admin/marketing.js',
   './modules/admin/reports.js',
   './modules/admin/settings.js',
   './modules/admin/notifications.js',

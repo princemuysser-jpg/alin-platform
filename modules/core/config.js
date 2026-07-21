@@ -1,25 +1,22 @@
 // === core/config.js ===
-/* ===== core/js/config.js ===== */
-/* ALIN 2.0.1 central configuration. Keep secrets outside the repository. */
-window.ALIN_CONFIG = Object.freeze({
-  version: '2.0.15',
-  desktopPage: './store-desktop.html',
-  mobilePage: './store-mobile.html',
-  currency: 'د.ع',
-  locale: 'ar-IQ'
-  ,authEnabled: true
-  ,authEmailDomain: 'users.alin.local'
+/* ALIN v2.2.7 — one public runtime configuration source. */
+window.ALIN_CONFIG=Object.freeze({
+  version:'2.2.7',
+  desktopPage:'./store-desktop.html',
+  mobilePage:'./store-mobile.html',
+  currency:'د.ع',
+  locale:'ar-IQ',
+  authEnabled:true,
+  authEmailDomain:'users.alin.local',
+  supabaseUrl:'https://jyavewwlgiaibtdqyzpd.supabase.co',
+  supabaseAnonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5YXZld3dsZ2lhaWJ0ZHF5enBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0MTczMzcsImV4cCI6MjA5ODk5MzMzN30.fcjx4JrNdwd5Xrm_Nn1CaWWJoJLF6_DyYGakFPuGwGQ'
 });
-
-/* ===== core/js/helpers.js ===== */
-/* Shared helpers for new modular code. Legacy helpers remain in platform-legacy.js until phase 2. */
-window.Alin = window.Alin || {};
-window.Alin.helpers = {
-  byId(id){ return document.getElementById(id); },
-  one(selector, root=document){ return root.querySelector(selector); },
-  all(selector, root=document){ return [...root.querySelectorAll(selector)]; },
-  money(value){ return Number(value || 0).toLocaleString('ar-IQ') + ' د.ع'; }
+window.Alin=window.Alin||{};
+window.Alin.helpers={
+  byId:id=>document.getElementById(id),
+  one:(selector,root=document)=>root.querySelector(selector),
+  all:(selector,root=document)=>[...root.querySelectorAll(selector)],
+  money:value=>Number(value||0).toLocaleString('ar-IQ')+' د.ع'
 };
-
 
 ;

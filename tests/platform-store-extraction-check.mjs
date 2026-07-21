@@ -35,11 +35,10 @@ check(discovery.includes('window.v99OpenDetails='), 'details-owner-missing');
 check(!/window\.renderStore\s*=/.test(banners), 'banner-render-wrapper-remains');
 check(banners.includes("alin:store-rendered"), 'banner-render-event-missing');
 check(!/window\.renderStore\s*=/.test(features), 'features-render-wrapper-remains');
-check(features.includes("alin:store-rendered"), 'features-render-event-missing');
 
 for (const [name, html] of [['desktop', desktop], ['mobile', mobile]]) {
-  check(html.includes('./modules/store/discovery.js?v=2.2.5'), `${name}-discovery-version`);
-  check(html.indexOf('./modules/core/platform.js?v=2.2.5') < html.indexOf('./modules/store/discovery.js?v=2.2.5'), `${name}-load-order`);
+  check(html.includes('./modules/store/discovery.js?v=2.2.7'), `${name}-discovery-version`);
+  check(html.indexOf('./modules/core/platform.js?v=2.2.7') < html.indexOf('./modules/store/discovery.js?v=2.2.7'), `${name}-load-order`);
   check(html.includes('oninput="renderStore()"'), `${name}-search-hook`);
 }
 

@@ -1,5 +1,5 @@
 // === admin/finance.js ===
-/* ALIN v2.2.5 — authoritative admin finance UI. No wrapper chains. */
+/* ALIN v2.2.6 — authoritative admin finance UI. No wrapper chains. */
 (function(){
   'use strict';
   const arr=value=>Array.isArray(value)?value:[];

@@ -1,13 +1,11 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 const platform=fs.readFileSync(new URL('../modules/core/platform.js',import.meta.url),'utf8');
-const marketing=fs.readFileSync(new URL('../modules/admin/marketing.js',import.meta.url),'utf8');
 const storeCoupons=fs.readFileSync(new URL('../modules/store/coupons.js',import.meta.url),'utf8');
 const adminCoupons=fs.readFileSync(new URL('../modules/admin/coupons.js',import.meta.url),'utf8');
 assert.doesNotMatch(platform,/function\s+validCoupon\b|function\s+checkCoupon\b|function\s+renderCouponsAdmin\b|\bv19Coupons\b/);
-assert.doesNotMatch(marketing,/renderCouponsAdmin|saveCoupon|toggleCoupon|deleteCoupon|v19Coupons/);
 assert.equal((storeCoupons.match(/function\s+validCoupon\b/g)||[]).length,1);
 assert.equal((storeCoupons.match(/function\s+checkCoupon\b/g)||[]).length,1);
 assert.equal((adminCoupons.match(/function\s+renderCouponsAdmin\b/g)||[]).length,1);
 assert.equal((adminCoupons.match(/function\s+saveCoupon\b/g)||[]).length,1);
-console.log('Platform coupon extraction passed: no legacy coupon implementation remains in platform.js or marketing.js.');
+console.log('Platform coupon extraction passed: no legacy coupon implementation remains in platform.js.');

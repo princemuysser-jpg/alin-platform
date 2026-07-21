@@ -47,7 +47,7 @@
   }
   window.alinV143ReportFilter=(k,v)=>{state[k]=v;if(k==='period'&&v!=='custom'){state.from='';state.to=''}render()};
   window.alinV143ExportReports=()=>{const rows=filteredOrders();const data=[['رقم الطلب','الطالب','العنصر','النوع','المكتبة','المندوب','الحالة','التاريخ','الكمية','المبلغ'],...rows.map(o=>[o.order_no||o.code||o.id||'',o.student_name||o.customer_name||'',titleOf(o),itemKind(o)==='booklet'?'ملزمة':'منتج',accountName('library',o.library_id||o.pickup_library_id),accountName('courier',o.courier_id),statusLabel(o.status),orderDate(o),orderQty(o),orderTotal(o)])];const csv='\ufeff'+data.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='alin-reports-'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500)};
-  function install(){ensureButton();const previous=window.adminTab;const router=function(tab){if(tab==='reports'){render();return}return typeof previous==='function'?previous.apply(this,arguments):undefined};router.__v143Reports=true;window.adminTab=router;document.addEventListener('click',e=>{const b=e.target.closest('#adminPage .admin-tabs button');if(!b)return;if((b.getAttribute('onclick')||'').includes("adminTab('reports')")){e.preventDefault();e.stopImmediatePropagation();render()}},true)}
+  function install(){ensureButton();window.AlinAdminModules?.register?.('reports',render)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
 })();
 

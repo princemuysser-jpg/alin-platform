@@ -1,5 +1,5 @@
 // === teacher/shell.js ===
-/* ALIN v2.2.5 — authoritative teacher runtime. No wrapper chains. */
+/* ALIN v2.2.6 — authoritative teacher runtime. No wrapper chains. */
 (function(){
   'use strict';
 
@@ -25,11 +25,11 @@
       ...arr(database.withdrawals).filter(row=>row.role==='teacher'&&same(row.account_id||row.user_id,id))
     ];
     const requests=arr(database.teacherRequests||database.teacher_requests).filter(row=>same(row.teacher_id,id));
-    const notifications=arr(window.v19Notifications||database.notifications).filter(row=>{
+    const notifications=window.AlinNotifications?.visible?.({role:'teacher',id})||arr(database.notifications).filter(row=>{
       if(String(row.status||'active').toLowerCase()==='deleted')return false;
       const role=String(row.target_role||row.audience||'all').toLowerCase();
       const target=String(row.target_id||row.teacher_id||row.account_id||'');
-      return ['all','teacher','teachers'].includes(role)||same(target,id);
+      return target?same(target,id):['all','teacher','teachers'].includes(role);
     });
     return {id,teacher,books,bookIds,orders,ledger,payouts,requests,notifications};
   }

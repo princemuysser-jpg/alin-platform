@@ -1,81 +1,117 @@
 // === admin/notifications.js ===
-/* ===== admin/js/admin-notifications-v146.js ===== */
+/* ALIN v2.2.6 — admin notification center registered directly in the admin shell. */
 (function(){
   'use strict';
-  const esc = v => String(v ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const roleLabel = r => ({all:'الجميع',teacher:'المدرسون',library:'المكتبات',student:'الطلبة والمتجر',courier:'المندوبون',accountant:'المحاسب'})[r] || 'الجميع';
-  const state={q:'',role:''};
-  function rows(){try{return Array.isArray(window.db?.notifications)?window.db.notifications:[]}catch(_){return []}}
-  function users(){try{return [...(db.accounts?.teachers||[]),...(db.accounts?.libraries||[]),...(db.accounts?.couriers||[]),...(db.accounts?.accountants||[])];}catch(_){return []}}
-  function dateText(v){try{return new Date(v).toLocaleString('ar-IQ')}catch(_){return ''}}
-  function filtered(){return rows().filter(n=>{const text=`${n.title||''} ${n.message||n.text||''}`.toLowerCase();const role=n.target_role||n.audience||'all';return(!state.q||text.includes(state.q.toLowerCase()))&&(!state.role||role===state.role)})}
-  function ensureButton(){
-    const tabs=document.querySelector('#adminPage .admin-tabs');
-    if(!tabs)return null;
-    let btn=tabs.querySelector('[data-admin-tab="notifications"]');
-    if(!btn){
-      btn=[...tabs.querySelectorAll('button')].find(b=>(b.getAttribute('onclick')||'').includes("adminTab('notifications')"));
-    }
-    if(!btn){
-      btn=document.createElement('button');
-      const settings=[...tabs.querySelectorAll('button')].find(b=>(b.getAttribute('onclick')||'').includes("adminTab('settings')"));
-      tabs.insertBefore(btn,settings||null);
-    }
-    btn.type='button';
-    btn.dataset.adminTab='notifications';
-    btn.classList.add('admin-notifications-tab-v146');
-    btn.innerHTML='<span class="admin-notifications-tab-icon">🔔</span><span>مركز الإشعارات</span>';
-    btn.removeAttribute('onclick');
-    btn.onclick=function(e){e.preventDefault();e.stopPropagation();openNotifications();};
-    btn.hidden=false;
-    btn.style.display='inline-flex';
-    return btn;
+
+  const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[char]));
+  const roleLabel=role=>({
+    all:'الجميع',teacher:'المدرسون',library:'المكتبات',student:'الطلبة والمتجر',courier:'المندوبون',accountant:'المحاسب'
+  })[String(role||'all')]||'الجميع';
+  const state={query:'',role:'',sending:false};
+
+  function service(){return window.AlinNotifications}
+  function rows(){return service()?.rows?.()||[]}
+  function users(){
+    const accounts=window.db?.accounts||{};
+    return [
+      ...(accounts.teachers||[]),
+      ...(accounts.libraries||[]),
+      ...(accounts.couriers||[]),
+      ...(accounts.accountants||[])
+    ];
   }
-  function mark(){document.querySelectorAll('#adminPage .admin-tabs button').forEach(b=>b.classList.toggle('active-admin-tab',b.dataset.adminTab==='notifications'))}
+  function dateText(value){
+    try{return new Date(value).toLocaleString('ar-IQ')}
+    catch(_){return ''}
+  }
+  function filteredRows(){
+    const query=state.query.trim().toLowerCase();
+    return rows().filter(row=>{
+      const searchable=`${row.title||''} ${row.message||row.text||''}`.toLowerCase();
+      const role=String(row.target_role||row.audience||'all');
+      return (!query||searchable.includes(query))&&(!state.role||role===state.role);
+    });
+  }
+
   function render(){
     const root=document.getElementById('adminContent');
-    if(!root)return;
-    const list=filtered(),all=rows(),week=all.filter(n=>Date.now()-new Date(n.created_at||0).getTime()<=7*864e5).length;
-    const options=users().map(u=>`<option value="${esc(u.id)}">${esc(u.name||u.username||u.email||'حساب')}</option>`).join('');
+    if(!root)return false;
+    const all=rows();
+    const list=filteredRows();
+    const week=all.filter(row=>Date.now()-new Date(row.created_at||0).getTime()<=7*864e5).length;
+    const accountOptions=users().map(account=>`<option value="${escapeHtml(account.id)}">${escapeHtml(account.name||account.username||account.email||'حساب')}</option>`).join('');
     root.innerHTML=`<section class="admin-v146-notifications">
-      <header class="admin-v146-head"><div><h2>مركز الإشعارات</h2><p>قسم مستقل لإرسال الإشعارات وإدارة السجل.</p></div><div class="admin-v146-bell">🔔</div></header>
+      <header class="admin-v146-head"><div><h2>مركز الإشعارات</h2><p>إرسال الإشعارات ومراجعة السجل من مصدر واحد.</p></div><div class="admin-v146-bell">🔔</div></header>
       <div class="admin-v146-grid">
         <article class="admin-v146-card"><h3>إرسال إشعار جديد</h3><div class="admin-v146-form">
           <select id="v146Audience"><option value="all">الجميع</option><option value="teacher">المدرسون</option><option value="library">المكتبات</option><option value="student">الطلبة والمتجر</option><option value="courier">المندوبون</option><option value="accountant">المحاسب</option></select>
           <select id="v146Priority"><option value="normal">عادي</option><option value="important">مهم</option><option value="urgent">عاجل</option></select>
-          <select id="v146Target" class="full"><option value="">بدون حساب محدد</option>${options}</select>
+          <select id="v146Target" class="full"><option value="">بدون حساب محدد</option>${accountOptions}</select>
           <input id="v146Title" class="full" placeholder="عنوان الإشعار">
           <textarea id="v146Message" class="full" placeholder="اكتب نص الإشعار"></textarea>
-          <button class="admin-v146-send" type="button" onclick="alinV146Send()">إرسال الإشعار</button><div id="v146Status" class="admin-v146-status"></div>
+          <button id="v146SendButton" class="admin-v146-send" type="button" onclick="AlinAdminNotifications.send()">إرسال الإشعار</button>
+          <div id="v146Status" class="admin-v146-status"></div>
         </div></article>
-        <article class="admin-v146-card"><div class="admin-v146-list-head"><h3>سجل الإشعارات</h3><button type="button" onclick="alinV146Refresh()">تحديث</button></div>
+        <article class="admin-v146-card"><div class="admin-v146-list-head"><h3>سجل الإشعارات</h3><button type="button" onclick="AlinAdminNotifications.refresh()">تحديث</button></div>
           <div class="admin-v146-stats"><div><small>الإجمالي</small><b>${all.length}</b></div><div><small>آخر 7 أيام</small><b>${week}</b></div><div><small>النتائج</small><b>${list.length}</b></div></div>
-          <div class="admin-v146-tools"><input placeholder="بحث" value="${esc(state.q)}" oninput="alinV146Filter('q',this.value)"><select onchange="alinV146Filter('role',this.value)"><option value="">كل الفئات</option>${['all','teacher','library','student','courier','accountant'].map(r=>`<option value="${r}" ${state.role===r?'selected':''}>${roleLabel(r)}</option>`).join('')}</select></div>
-          <div class="admin-v146-list">${list.length?list.map(n=>`<div class="admin-v146-item"><div><h4>${esc(n.title||'إشعار')}</h4><p>${esc(n.message||n.text||'')}</p><div class="admin-v146-meta"><span>${roleLabel(n.target_role||n.audience||'all')}</span><span>${esc(n.priority||'normal')}</span><span>${dateText(n.created_at)}</span></div></div><button type="button" class="danger" onclick="alinV146Delete('${esc(n.id)}')">حذف</button></div>`).join(''):'<div class="admin-v146-empty">لا توجد إشعارات حالياً.</div>'}</div>
+          <div class="admin-v146-tools"><input placeholder="بحث" value="${escapeHtml(state.query)}" oninput="AlinAdminNotifications.filter('query',this.value)"><select onchange="AlinAdminNotifications.filter('role',this.value)"><option value="">كل الفئات</option>${['all','teacher','library','student','courier','accountant'].map(role=>`<option value="${role}" ${state.role===role?'selected':''}>${roleLabel(role)}</option>`).join('')}</select></div>
+          <div class="admin-v146-list">${list.length?list.map(row=>`<div class="admin-v146-item"><div><h4>${escapeHtml(row.title||'إشعار')}</h4><p>${escapeHtml(row.message||row.text||'')}</p><div class="admin-v146-meta"><span>${roleLabel(row.target_role||row.audience||'all')}</span><span>${escapeHtml(row.priority||'normal')}</span><span>${escapeHtml(dateText(row.created_at))}</span></div></div><button type="button" class="danger" onclick="AlinAdminNotifications.remove('${escapeHtml(row.id)}')">حذف</button></div>`).join(''):'<div class="admin-v146-empty">لا توجد إشعارات حالياً.</div>'}</div>
         </article>
       </div>
     </section>`;
+    return true;
   }
-  function openNotifications(){ensureButton();window.activeAdminTab='notifications';mark();render()}
-  window.alinV146Filter=(k,v)=>{state[k]=v;render()};
-  window.alinV146Refresh=async()=>{try{if(typeof query==='function'){const fresh=await query('notifications');if(window.db)window.db.notifications=fresh}}catch(_){}render()};
-  window.alinV146Send=async()=>{
-    const status=document.getElementById('v146Status'),title=document.getElementById('v146Title')?.value.trim(),message=document.getElementById('v146Message')?.value.trim(),audience=document.getElementById('v146Audience')?.value||'all',priority=document.getElementById('v146Priority')?.value||'normal',target=document.getElementById('v146Target')?.value||'';
-    if(!title||!message){if(status)status.textContent='اكتب العنوان ونص الإشعار.';return}
-    const row={id:'NT-'+Date.now(),title,message,text:message,target_role:audience,audience,priority,target_id:target||null,created_at:new Date().toISOString()};
-    try{if(typeof insert==='function')await insert('notifications',row);if(window.db){window.db.notifications=Array.isArray(window.db.notifications)?window.db.notifications:[];window.db.notifications.unshift(row)}if(status)status.textContent='تم إرسال الإشعار بنجاح.';setTimeout(render,250)}catch(e){console.error(e);if(status)status.textContent='تعذر الإرسال. تأكد من جدول notifications في Supabase.'}
-  };
-  window.alinV146Delete=async id=>{if(!confirm('حذف هذا الإشعار؟'))return;try{if(typeof removeRow==='function')await removeRow('notifications',{id});if(window.db&&Array.isArray(window.db.notifications))window.db.notifications=window.db.notifications.filter(n=>String(n.id)!==String(id));render()}catch(e){alert('تعذر حذف الإشعار')}};
-  function install(){
-    ensureButton();
-    const previous=window.adminTab;
-    const router=function(tab){if(tab==='notifications'){openNotifications();return}return typeof previous==='function'?previous.apply(this,arguments):undefined};
-    router.__v146Notifications=true;window.adminTab=router;
-    document.addEventListener('click',e=>{const b=e.target.closest('#adminPage .admin-tabs [data-admin-tab="notifications"]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();openNotifications()},true);
+
+  async function send(){
+    if(state.sending)return;
+    const status=document.getElementById('v146Status');
+    const button=document.getElementById('v146SendButton');
+    const title=document.getElementById('v146Title')?.value.trim()||'';
+    const message=document.getElementById('v146Message')?.value.trim()||'';
+    const role=document.getElementById('v146Audience')?.value||'all';
+    const priority=document.getElementById('v146Priority')?.value||'normal';
+    const targetId=document.getElementById('v146Target')?.value||'';
+    if(!title||!message){if(status)status.textContent='اكتب العنوان ونص الإشعار.';return false}
+    if(!service()?.send){if(status)status.textContent='خدمة الإشعارات غير جاهزة.';return false}
+    state.sending=true;
+    if(button){button.disabled=true;button.textContent='جارٍ الإرسال...'}
+    try{
+      const result=await service().send({title,message,role,target_id:targetId||null,priority,from_user:'admin'});
+      if(typeof window.audit==='function')await window.audit('notification',`إرسال إشعار ${title}`);
+      if(status)status.textContent=result.remote?'تم إرسال الإشعار بنجاح.':'تم حفظ الإشعار محليًا، وتعذر رفعه إلى الخادم.';
+      render();
+      return true;
+    }catch(error){
+      console.error('[ALIN admin notifications]',error);
+      if(status)status.textContent=error?.message||'تعذر إرسال الإشعار.';
+      return false;
+    }finally{
+      state.sending=false;
+      if(button){button.disabled=false;button.textContent='إرسال الإشعار'}
+    }
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
-  window.addEventListener('load',()=>setTimeout(ensureButton,50));
+
+  async function refresh(){
+    await service()?.refresh?.();
+    render();
+  }
+
+  async function remove(id){
+    if(!confirm('حذف هذا الإشعار؟'))return false;
+    try{await service()?.remove?.(id);render();return true}
+    catch(error){console.error(error);alert(error?.message||'تعذر حذف الإشعار');return false}
+  }
+
+  function filter(key,value){state[key]=value;render()}
+
+  const api=Object.freeze({render,send,refresh,remove,filter});
+  window.AlinAdminNotifications=api;
+  window.renderNotificationsAdmin=render;
+  window.AlinAdminModules?.register?.('notifications',render);
+
+  window.addEventListener('alin:notifications-updated',()=>{
+    if(window.activeAdminTab==='notifications')render();
+  });
 })();
-
-
-;

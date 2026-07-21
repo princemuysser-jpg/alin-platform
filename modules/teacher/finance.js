@@ -1,4 +1,4 @@
-/* ALIN v2.2.5 — teacher orders and finance views backed only by AlinFinance. */
+/* ALIN v2.2.6 — teacher orders and finance views backed only by AlinFinance. */
 (function(){
   'use strict';
   if(!window.TeacherApp)throw new Error('TeacherApp must load before teacher/finance.js');

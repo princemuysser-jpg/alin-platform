@@ -289,23 +289,20 @@
     }));
   }
 
+  function registerAdmin(){
+    window.renderAdsAdmin=renderAdmin;
+    if(window.AlinAdminModules?.register)window.AlinAdminModules.register('ads',renderAdmin);
+  }
+
   function install(){
     if(state.installed)return;state.installed=true;
-    const oldAdmin=window.adminTab;
-    if(typeof oldAdmin==='function')window.adminTab=function(tab){
-      if(['ads','banners','advertisements'].includes(tab)){
-        window.activeAdminTab='ads';
-        renderAdmin();
-        return;
-      }
-      return oldAdmin.apply(this,arguments);
-    };
+    registerAdmin();
     document.addEventListener('alin:store-rendered',()=>setTimeout(renderStorefront,0));
     window.addEventListener('alin:data-mutated',event=>{if(event.detail?.table==='banners')refresh()});
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});
     refresh();
   }
 
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
   window.AlinBanners=Object.freeze({refresh,renderStorefront,renderAdmin});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
