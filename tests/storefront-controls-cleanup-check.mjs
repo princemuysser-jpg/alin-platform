@@ -22,4 +22,4 @@ check(mobile.includes('data-mobile-control="account"'),'mobile-account-kept');
 check(mobile.includes('alinOpenRealAccount()'),'mobile-student-login-kept');
 check(mobile.includes('data-mobile-control="cart"')&&mobile.includes('data-mobile-control="favorites"')&&mobile.includes('data-mobile-control="tracking"'),'mobile-primary-actions-kept');
 check(mobileCss.includes('grid-template-columns:repeat(4,minmax(0,1fr))!important'),'mobile-nav-four-columns');
-console.log(JSON.stringify({ok:true,checks:checks.length,version:'2.3.4'},null,2));
+console.log(JSON.stringify({ok:true,checks:checks.length,version:'2.3.5'},null,2));

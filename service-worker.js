@@ -1,11 +1,11 @@
-const VERSION='alin-v2.3.4-light-default-options-student-phone-login';
+const VERSION='alin-v2.3.5-brand-identity-calm-templates';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[
   './','./index.html','./store-desktop.html','./store-mobile.html',
   './manifest-desktop.webmanifest','./manifest-mobile.webmanifest',
   './dist/css/landing.bundle.css','./dist/css/desktop.bundle.css','./dist/css/mobile.bundle.css',
-  './styles/alin-tokens.css','./styles/alin-shared.css','./styles/alin-i18n.css','./styles/alin-desktop.css','./styles/alin-mobile.css',
+  './styles/alin-tokens.css','./styles/alin-shared.css','./styles/alin-i18n.css','./styles/alin-desktop.css','./styles/alin-mobile.css','./styles/alin-branding.css',
   './dist/js/landing.bundle.js',
   './modules/core/config.js',
   './modules/core/i18n.js',

@@ -1,5 +1,5 @@
 // === core/ui.js ===
-/* ALIN v2.3.4 — authoritative shared UI helpers. */
+/* ALIN v2.3.5 — authoritative shared UI helpers. */
 (function(){
   'use strict';
 

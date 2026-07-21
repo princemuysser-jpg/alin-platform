@@ -1,0 +1,19 @@
+{
+  "version": "2.3.5-brand-identity-calm-templates",
+  "status": "passed",
+  "syntax_files": 57,
+  "modules": 50,
+  "release_checks": 111,
+  "focused_checks": {
+    "branding_identity": 24,
+    "global_language": 28
+  },
+  "changes": [
+    "Visual identity no longer overwrites the light or dark appearance mode",
+    "Seven calm ready-made visual templates were added",
+    "Brand colors now reach all role pages through shared theme variables",
+    "Responsive visual preview and logo/icon removal controls were added",
+    "Repeated save clicks are blocked while the identity is being saved",
+    "No SQL update is required"
+  ]
+}
