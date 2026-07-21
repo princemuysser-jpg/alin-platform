@@ -94,8 +94,8 @@
     if(typeof window.load==='function')await window.load();
     const targetPage=account.role==='accountant'?'admin':account.role;
     if(typeof window.openPage==='function')window.openPage(targetPage,{render:false});
-    if(account.role==='accountant')setTimeout(()=>{try{window.adminTab?.('finance');document.querySelectorAll('.admin-tabs button').forEach(b=>b.style.display=(b.textContent||'').includes('الأرباح')?'':'none')}catch(_){}},80);
     const passEl=window.loginPass||document.getElementById('loginPass');if(passEl)passEl.value='';
+    window.dispatchEvent(new CustomEvent('alin:auth-login',{detail:{account}}));
     return account;
   }
 
@@ -106,6 +106,7 @@
   }
   function showSignedOut(){
     if(window.current)return;
+    if(window.ALINNavigation?.showSignedOut)return window.ALINNavigation.showSignedOut();
     document.getElementById('app')?.classList.add('hidden');
     document.getElementById('login')?.classList.remove('hidden');
   }
@@ -141,7 +142,6 @@
       const target=account.role==='accountant'?'admin':account.role;
       if(typeof window.openPage==='function')window.openPage(target,{render:false});
       if(account.role==='library')window.AlinLibraryModules?.showLibraryPage?.();
-      if(account.role==='accountant')setTimeout(()=>{try{window.adminTab?.('finance')}catch(_){}},50);
       finishAuthBoot();
       window.dispatchEvent(new CustomEvent('alin:auth-restored',{detail:{account}}));
       return true;
@@ -305,30 +305,32 @@
   }
   async function deleteAccountFromAdmin(accountId){return invokeAdmin('admin-delete-account',{account_id:accountId})}
 
+  async function loginFromUI(){
+    try{msg('جارٍ التحقق...');const account=await login();msg('');return account}
+    catch(error){msg(error?.message||'تعذر تسجيل الدخول');throw error}
+    finally{finishAuthBoot()}
+  }
+  async function signOut(){
+    if(logoutPromise)return logoutPromise;
+    logoutPromise=(async()=>{
+      explicitSignOut=true;
+      try{await client()?.auth?.signOut()}finally{explicitSignOut=false}
+      finishAuthBoot();
+      return true;
+    })().finally(()=>{logoutPromise=null});
+    return logoutPromise;
+  }
   function install(){
     if(!enabled()){window.ALIN_AUTH_MODE='disabled';finishAuthBoot();return}
     window.ALIN_AUTH_MODE='supabase';
-    window.doLogin=async function(){try{msg('جارٍ التحقق...');await login();msg('')}catch(e){msg(e.message||'تعذر تسجيل الدخول')}finally{finishAuthBoot()}};
     window.addAccount=createAccountFromAdmin;
-    const oldLogout=window.logout;
-    window.logout=function(){
-      if(logoutPromise)return logoutPromise;
-      const args=arguments,ctx=this;
-      logoutPromise=(async()=>{
-        explicitSignOut=true;
-        try{await client()?.auth?.signOut()}catch(_){}
-        window.current=null;
-        const result=typeof oldLogout==='function'?oldLogout.apply(ctx,args):showSignedOut();
-        finishAuthBoot();
-        return result;
-      })().finally(()=>{explicitSignOut=false;logoutPromise=null});
-      return logoutPromise;
-    };
-    client()?.auth?.onAuthStateChange?.((event)=>{if(event==='SIGNED_OUT'&&!explicitSignOut){window.current=null;showSignedOut();finishAuthBoot()}});
+    client()?.auth?.onAuthStateChange?.((event)=>{
+      if(event==='SIGNED_OUT'&&!explicitSignOut){window.current=null;showSignedOut();finishAuthBoot();window.dispatchEvent(new CustomEvent('alin:logout',{detail:{source:'external'}}))}
+    });
     restoreSession();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
-  window.ALINAuth=Object.freeze({enabled,emailFor,login,restoreSession,accountForUser,secureCheckout,createAccount,createAccountFromAdmin,updateAccountFromAdmin,resetPasswordFromAdmin,repairAuthLink,deleteAccountFromAdmin,ensureAdminSession:()=>adminSession(false)});
+  window.ALINAuth=Object.freeze({enabled,emailFor,login,loginFromUI,signOut,restoreSession,accountForUser,secureCheckout,createAccount,createAccountFromAdmin,updateAccountFromAdmin,resetPasswordFromAdmin,repairAuthLink,deleteAccountFromAdmin,ensureAdminSession:()=>adminSession(false)});
 })();
 
 

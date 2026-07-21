@@ -1,5 +1,5 @@
 // === modules/store/cart.js ===
-/* ALIN v2.1.3 — authoritative cart module. No legacy wrappers. */
+/* ALIN v2.1.5 — authoritative cart module. Delivery uses area + landmark + GPS only. */
 (function(){
   'use strict';
 
@@ -88,6 +88,15 @@
     }catch(_){return ''}
   }
 
+  function deliveryAreaNames(){
+    const cloud=window.db?.deliveryAreas||window.db?.delivery_areas||[];
+    const fallback=Array.isArray(window.ALIN_KIRKUK_AREAS)?window.ALIN_KIRKUK_AREAS:[];
+    return [...new Set((cloud.length?cloud.map(row=>row?.name):fallback).map(name=>String(name||'').trim()).filter(Boolean))];
+  }
+  function deliveryAreaOptions(){
+    return `<option value="">اختر منطقة التوصيل</option>`+deliveryAreaNames().map(name=>`<option value="${escText(name)}">${escText(name)}</option>`).join('');
+  }
+
   function dispatch(name,detail={}){document.dispatchEvent(new CustomEvent(name,{detail}))}
 
   function renderCartBadge(){
@@ -139,9 +148,9 @@
 
   function fulfillmentHtml(){
     if(hasProducts()){
-      return `<section class="alin-fulfillment"><h4>طريقة الاستلام والدفع</h4><div class="alin-delivery-options"><label class="selected"><input type="radio" name="fulfillment" value="home_delivery" checked><span><b>توصيل للبيت</b><small>القرطاسية والهدايا تُسلّم عن طريق المندوب</small></span></label></div><div id="deliveryFields" class="alin-delivery-fields"><div class="form-grid"><input id="deliveryArea" placeholder="المنطقة"><input id="deliveryAddress" placeholder="العنوان الكامل"><input id="deliveryLandmark" placeholder="أقرب نقطة دالة"><select id="courierSelect"><option value="">تحديد المندوب من الإدارة</option>${courierOptions()}</select></div></div></section>`;
+      return `<section class="alin-fulfillment"><h4>طريقة الاستلام والدفع</h4><div class="alin-delivery-options"><label class="selected"><input type="radio" name="fulfillment" value="home_delivery" checked><span><b>توصيل للبيت</b><small>القرطاسية والهدايا تُسلّم عن طريق المندوب</small></span></label></div><div id="deliveryFields" class="alin-delivery-fields"><div class="form-grid"><select id="deliveryArea" required>${deliveryAreaOptions()}</select><input id="deliveryLandmark" placeholder="أقرب نقطة دالة" required><select id="courierSelect"><option value="">تحديد المندوب من الإدارة</option>${courierOptions()}</select></div></div></section>`;
     }
-    return `<section class="alin-fulfillment"><h4>طريقة الاستلام والدفع</h4><div class="alin-delivery-options"><label class="selected"><input type="radio" name="fulfillment" value="pickup" checked onchange="toggleDeliveryFields()"><span><b>استلام من المكتبة</b><small>الدفع عند الاستلام</small></span></label><label><input type="radio" name="fulfillment" value="home_delivery" onchange="toggleDeliveryFields()"><span><b>توصيل للبيت</b><small>الدفع للمندوب</small></span></label></div><div id="pickupFields" class="alin-pickup-fields"><select id="libSelect" onchange="showLibInfo()"><option value="">اختر مكتبة الاستلام</option>${libraryOptions()}</select><div id="libInfo"></div></div><div id="deliveryFields" class="alin-delivery-fields hidden"><div class="form-grid"><input id="deliveryArea" placeholder="المنطقة"><input id="deliveryAddress" placeholder="العنوان الكامل"><input id="deliveryLandmark" placeholder="أقرب نقطة دالة"><select id="courierSelect"><option value="">تحديد المندوب من الإدارة</option>${courierOptions()}</select></div></div></section>`;
+    return `<section class="alin-fulfillment"><h4>طريقة الاستلام والدفع</h4><div class="alin-delivery-options"><label class="selected"><input type="radio" name="fulfillment" value="pickup" checked onchange="toggleDeliveryFields()"><span><b>استلام من المكتبة</b><small>الدفع عند الاستلام</small></span></label><label><input type="radio" name="fulfillment" value="home_delivery" onchange="toggleDeliveryFields()"><span><b>توصيل للبيت</b><small>الدفع للمندوب</small></span></label></div><div id="pickupFields" class="alin-pickup-fields"><select id="libSelect" onchange="showLibInfo()"><option value="">اختر مكتبة الاستلام</option>${libraryOptions()}</select><div id="libInfo"></div></div><div id="deliveryFields" class="alin-delivery-fields hidden"><div class="form-grid"><select id="deliveryArea" required>${deliveryAreaOptions()}</select><input id="deliveryLandmark" placeholder="أقرب نقطة دالة" required><select id="courierSelect"><option value="">تحديد المندوب من الإدارة</option>${courierOptions()}</select></div></div></section>`;
   }
 
   function showLibInfo(){

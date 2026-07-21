@@ -1,4 +1,4 @@
-const VERSION='alin-v2.1.3-courier-work-areas';
+const VERSION='alin-v2.1.5-delivery-area-landmark-gps';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[
@@ -9,6 +9,7 @@ const CORE=[
   './dist/js/landing.bundle.js',
   './modules/core/config.js',
   './modules/core/platform.js',
+  './modules/core/navigation.js',
   './modules/core/supabase.js',
   './modules/store/coupons.js',
   './modules/admin/shell.js',

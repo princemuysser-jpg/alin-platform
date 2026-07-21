@@ -1,44 +1,33 @@
 // === core/security.js ===
-/* ===== core/js/auth-security-v167.js ===== */
-/* ALIN V167 — login throttling, session expiry, and role guards. */
+/* ===== core/js/auth-security-v214.js ===== */
+/* ALIN V214 — idle-session protection without replacing navigation or auth functions. */
 (function(){
   'use strict';
-  const KEY='alin_security_login_attempts_v167';
-  const SESSION='alin_secure_session_v167';
-  const MAX_ATTEMPTS=5;
-  const LOCK_MS=10*60*1000;
+  const SESSION='alin_secure_session_v214';
   const IDLE_BY_ROLE={admin:15,accountant:15,teacher:30,library:30,courier:30,student:60,store:60};
   const WARN_MS=2*60*1000;
-  let idleTimer=null, warningTimer=null, lastActivity=Date.now(), warningBox=null;
-
-  function readJSON(key,fallback){try{return JSON.parse(localStorage.getItem(key)||'')||fallback}catch(_){return fallback}}
-  function writeJSON(key,value){try{localStorage.setItem(key,JSON.stringify(value))}catch(_){}}
-  function cleanId(value){return String(value||'').trim().toLowerCase().slice(0,80)}
-  function attemptKey(role,user){return cleanId(role)+':'+cleanId(user)}
-  function attempts(){return readJSON(KEY,{})}
-  function getState(role,user){const all=attempts(),k=attemptKey(role,user),s=all[k]||{count:0,first:0,lockedUntil:0};if(s.lockedUntil&&s.lockedUntil<=Date.now()){delete all[k];writeJSON(KEY,all);return {count:0,first:0,lockedUntil:0}}return s}
-  function remainingMs(role,user){return Math.max(0,Number(getState(role,user).lockedUntil||0)-Date.now())}
-  function registerFailure(role,user){const all=attempts(),k=attemptKey(role,user),now=Date.now(),old=all[k]||{count:0,first:now,lockedUntil:0};if(now-old.first>LOCK_MS){old.count=0;old.first=now}old.count+=1;if(old.count>=MAX_ATTEMPTS)old.lockedUntil=now+LOCK_MS;all[k]=old;writeJSON(KEY,all);return old}
-  function clearFailures(role,user){const all=attempts();delete all[attemptKey(role,user)];writeJSON(KEY,all)}
-  function formatTime(ms){const sec=Math.ceil(ms/1000),m=Math.floor(sec/60),s=sec%60;return m?`${m} دقيقة و${s} ثانية`:`${s} ثانية`}
-  function loginElements(){return {u:window.loginU||document.getElementById('loginU'),p:window.loginPass||document.getElementById('loginPass'),msg:window.loginMsg||document.getElementById('loginMsg')}}
-  function roleNow(){try{return String(window.pendingRole||'')}catch(_){return ''}}
-  function currentNow(){try{return window.current||null}catch(_){return null}}
-
+  let idleTimer=null,warningTimer=null,lastActivity=Date.now(),warningBox=null;
+  const currentNow=()=>{try{return window.current||null}catch(_){return null}};
   function setSession(user){
-    if(!user||!user.role)return;
+    if(!user?.role)return;
     const data={role:user.role,id:user.id||'',username:user.username||'',startedAt:Date.now(),lastActivity:Date.now()};
     try{sessionStorage.setItem(SESSION,JSON.stringify(data))}catch(_){}
     lastActivity=Date.now();scheduleIdle();
   }
-  function clearSession(){try{sessionStorage.removeItem(SESSION)}catch(_){};clearTimers();hideWarning()}
   function clearTimers(){if(idleTimer)clearTimeout(idleTimer);if(warningTimer)clearTimeout(warningTimer);idleTimer=warningTimer=null}
-  function idleLimit(){const role=String(currentNow()?.role||'');return (IDLE_BY_ROLE[role]||30)*60*1000}
-  function touch(){if(!currentNow())return;lastActivity=Date.now();try{const d=JSON.parse(sessionStorage.getItem(SESSION)||'{}');d.lastActivity=lastActivity;sessionStorage.setItem(SESSION,JSON.stringify(d))}catch(_){};hideWarning();scheduleIdle()}
+  function hideWarning(){if(warningBox)warningBox.hidden=true}
+  function clearSession(){try{sessionStorage.removeItem(SESSION)}catch(_){}clearTimers();hideWarning()}
+  function idleLimit(){return (IDLE_BY_ROLE[String(currentNow()?.role||'')]||30)*60*1000}
+  function touch(){
+    if(!currentNow())return;
+    lastActivity=Date.now();
+    try{const data=JSON.parse(sessionStorage.getItem(SESSION)||'{}');data.lastActivity=lastActivity;sessionStorage.setItem(SESSION,JSON.stringify(data))}catch(_){}
+    hideWarning();scheduleIdle();
+  }
   function scheduleIdle(){
     clearTimers();if(!currentNow())return;
-    const limit=idleLimit(),elapsed=Date.now()-lastActivity,remain=Math.max(0,limit-elapsed);
-    if(remain<=0){expireSession();return}
+    const remain=Math.max(0,idleLimit()-(Date.now()-lastActivity));
+    if(remain<=0)return expireSession();
     warningTimer=setTimeout(showWarning,Math.max(0,remain-WARN_MS));
     idleTimer=setTimeout(expireSession,remain);
   }
@@ -47,42 +36,20 @@
     if(!warningBox){warningBox=document.createElement('div');warningBox.className='alin-session-warning';warningBox.innerHTML='<strong>ستنتهي الجلسة قريباً</strong><span>اضغط استمرار حتى تبقى داخل الحساب.</span><button type="button">استمرار</button>';warningBox.querySelector('button').addEventListener('click',touch);document.body.appendChild(warningBox)}
     warningBox.hidden=false;
   }
-  function hideWarning(){if(warningBox)warningBox.hidden=true}
   function expireSession(){
     if(!currentNow())return;clearSession();
-    try{if(typeof window.toast==='function')window.toast('انتهت الجلسة لعدم النشاط')}catch(_){}
-    try{window.logout()}catch(_){location.reload()}
+    try{window.toast?.('انتهت الجلسة لعدم النشاط')}catch(_){}
+    Promise.resolve(window.logout?.()).catch(error=>console.error('[ALIN idle logout]',error));
   }
-
-  const allowed={
-    admin:new Set(['admin']),accountant:new Set(['admin']),teacher:new Set(['teacher']),library:new Set(['library']),courier:new Set(['courier']),student:new Set(['store']),store:new Set(['store'])
-  };
-  function canOpen(page){const c=currentNow();if(page==='store')return true;if(!c)return false;return (allowed[c.role]||new Set()).has(page)}
-
   function install(){
-    const oldLogin=window.doLogin;
-    if(typeof oldLogin==='function'){
-      window.doLogin=async function(){
-        const el=loginElements(),role=roleNow(),user=cleanId(el.u?.value),left=remainingMs(role,user);
-        if(left>0){if(el.msg)el.msg.textContent='تم إيقاف المحاولات مؤقتاً. حاول بعد '+formatTime(left);return}
-        const before=currentNow();
-        try{await oldLogin.apply(this,arguments)}catch(e){if(el.msg)el.msg.textContent=e?.message||'تعذّر تسجيل الدخول'}
-        const after=currentNow();
-        if(after&&after!==before){clearFailures(role,user);if(el.p)el.p.value='';setSession(after);return}
-        const state=registerFailure(role,user),tries=Math.max(0,MAX_ATTEMPTS-state.count);
-        if(el.msg){el.msg.textContent=state.lockedUntil>Date.now()?'تم إيقاف المحاولات لمدة 10 دقائق بسبب تكرار الخطأ.':`بيانات الدخول غير صحيحة. المحاولات المتبقية: ${tries}`}
-        if(el.p)el.p.value='';
-      };
-    }
-    const oldLogout=window.logout;
-    if(typeof oldLogout==='function')window.logout=function(){clearSession();const el=loginElements();if(el.p)el.p.value='';return oldLogout.apply(this,arguments)};
-    const oldOpen=window.openPage;
-    if(typeof oldOpen==='function')window.openPage=function(page){if(!canOpen(page)){try{if(typeof window.toast==='function')window.toast('ليس لديك صلاحية لفتح هذه الصفحة');else alert('ليس لديك صلاحية لفتح هذه الصفحة')}catch(_){};return}const r=oldOpen.apply(this,arguments);if(currentNow())setSession(currentNow());return r};
-
+    window.addEventListener('alin:auth-login',event=>setSession(event.detail?.account||currentNow()));
+    window.addEventListener('alin:auth-restored',event=>setSession(event.detail?.account||currentNow()));
+    window.addEventListener('alin:page-open',()=>{if(currentNow())setSession(currentNow())});
+    window.addEventListener('alin:logout',clearSession);
     ['click','keydown','touchstart','pointerdown'].forEach(ev=>document.addEventListener(ev,touch,{passive:true}));
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)touch()});
     if(currentNow())setSession(currentNow());
-    window.ALINSecureSession=Object.freeze({version:'167.1',touch,expire:expireSession,remainingMs});
+    window.ALINSecureSession=Object.freeze({version:'214.1',touch,expire:expireSession,clear:clearSession});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
@@ -274,21 +241,8 @@
   protectForms();
 })();
 
-/* ===== core/js/legacy-auth-stabilizer-v173.js ===== */
-(function(){
-  "use strict";
-  // V173: keep the proven username/password login until final Supabase migration.
-  // This intentionally prevents experimental email-auth adapters from replacing legacy handlers.
-  if(window.ALIN_CONFIG?.authEnabled===true){
-    window.ALIN_AUTH_MODE = "pending-supabase";
-    return;
-  }
-  const legacyDoLogin = window.doLogin;
-  const legacyLogout = window.logout;
-  if (typeof legacyDoLogin === "function") window.doLogin = legacyDoLogin;
-  if (typeof legacyLogout === "function") window.logout = legacyLogout;
-  if (window.ALIN_CONFIG?.authEnabled === true) window.ALIN_AUTH_MODE = "pending-supabase";
-})();
+/* Legacy auth stabilizer removed: navigation and Supabase Auth now have single owners. */
+
 
 
 ;

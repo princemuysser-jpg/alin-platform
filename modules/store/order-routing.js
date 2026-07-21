@@ -1,5 +1,5 @@
 // === modules/store/order-routing.js ===
-/* ALIN v2.1.3 — authoritative checkout routing and order creation. */
+/* ALIN v2.1.5 — authoritative checkout routing: area + landmark + GPS, without free-text address. */
 (function(){
   'use strict';
   const $=id=>document.getElementById(id);
@@ -26,11 +26,11 @@
       if(!libraryOpen(libraryId))throw new Error('المكتبة المختارة مغلقة حالياً');
       return {fulfillment_type:'pickup',delivery_type:'library',library_id:libraryId,pickup_library_id:libraryId,courier_id:null,delegate_id:null,delivery_area:null,delivery_address:null,delivery_landmark:null,delivery_fee:0,payment_method:'cash_at_library',payment_status:'cod_pending'};
     }
-    const area=value('deliveryArea'),address=value('deliveryAddress'),landmark=value('deliveryLandmark');
+    const area=value('deliveryArea'),landmark=value('deliveryLandmark');
     const latitude=value('deliveryLatitude'),longitude=value('deliveryLongitude'),locationUrl=value('deliveryLocationUrl'),accuracy=value('deliveryLocationAccuracy');
-    if(!area||!address)throw new Error('اختر المنطقة وأكمل العنوان الكامل');
-    if(!landmark&&!latitude)throw new Error('حدد موقع GPS أو اكتب أقرب نقطة دالة بوضوح');
-    return {fulfillment_type:'home_delivery',delivery_type:'courier',library_id:null,pickup_library_id:null,courier_id:null,delegate_id:null,delivery_area:area,delivery_address:address,delivery_landmark:landmark,delivery_latitude:latitude?num(latitude):null,delivery_longitude:longitude?num(longitude):null,delivery_location_url:locationUrl||null,delivery_location_accuracy:accuracy?Math.round(num(accuracy)):null,delivery_location_source:latitude?'student_device':'manual_address',delivery_fee:deliveryCost(),payment_method:'cash_to_courier',payment_status:'cod_pending',assignment_status:'pending_admin'};
+    if(!area)throw new Error('اختر منطقة التوصيل من القائمة');
+    if(!landmark&&!latitude)throw new Error('حدد الموقع أو اكتب أقرب نقطة دالة');
+    return {fulfillment_type:'home_delivery',delivery_type:'courier',library_id:null,pickup_library_id:null,courier_id:null,delegate_id:null,delivery_area:area,delivery_address:null,delivery_landmark:landmark,delivery_latitude:latitude?num(latitude):null,delivery_longitude:longitude?num(longitude):null,delivery_location_url:locationUrl||null,delivery_location_accuracy:accuracy?Math.round(num(accuracy)):null,delivery_location_source:latitude?'student_device':'landmark',delivery_fee:deliveryCost(),payment_method:'cash_to_courier',payment_status:'cod_pending',assignment_status:'pending_admin'};
   }
 
   function orderNumber(){return 'AL-'+Date.now().toString().slice(-8)+'-'+Math.floor(Math.random()*90+10)}

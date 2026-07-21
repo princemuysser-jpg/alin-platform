@@ -45,8 +45,6 @@
   function install(){
     const base=window.adminTab;
     if(typeof base==='function'&&!base.__v122){const wrapped=function(tab){window.activeAdminTab=tab;if(tab==='dashboard'){mark(tab);render();return}const result=base.apply(this,arguments);const content=document.getElementById('adminContent');if(content)delete content.dataset.adminV122;mark(tab);return result};wrapped.__v122=true;window.adminTab=wrapped;}
-    const oldOpen=window.openPage;
-    if(typeof oldOpen==='function'&&!oldOpen.__v122){const wrappedOpen=function(page){const r=oldOpen.apply(this,arguments);if(page==='admin'&&(!window.activeAdminTab||window.activeAdminTab==='accounts'))setTimeout(()=>window.adminTab?.('dashboard'),0);return r};wrappedOpen.__v122=true;window.openPage=wrappedOpen;}
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
 })();

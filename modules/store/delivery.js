@@ -1,12 +1,12 @@
 // === store/delivery.js ===
 /* ===== store/js/delivery-gps-v162.js ===== */
-/* V162: student GPS point for delivery + map actions for admin/courier */
+/* ALIN v2.1.5: delivery area dropdown + landmark + GPS, without free-text address. */
 (function(){
   'use strict';
   const $=(s,r=document)=>r.querySelector(s);
   const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
   const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const areas=()=>Array.isArray(window.ALIN_KIRKUK_AREAS)&&window.ALIN_KIRKUK_AREAS.length?window.ALIN_KIRKUK_AREAS:[];
+  const areas=()=>{const cloud=window.db?.deliveryAreas||window.db?.delivery_areas||[];const source=cloud.length?cloud.map(row=>row?.name):(Array.isArray(window.ALIN_KIRKUK_AREAS)?window.ALIN_KIRKUK_AREAS:[]);return [...new Set(source.map(name=>String(name||'').trim()).filter(Boolean))]};
   const mapUrl=(lat,lng)=>lat&&lng?`https://www.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}`:'';
 
   function areaOptions(selected=''){
@@ -14,7 +14,7 @@
   }
   function gpsMarkup(){
     return `<section class="v162-gps-box" id="v162GpsBox">
-      <div class="v162-gps-head"><div><b>نقطة موقع التوصيل GPS</b><small>تساعد المدير والمندوب على الوصول للعنوان بدقة.</small></div><span id="v162GpsStatus" class="v162-gps-status">غير محدد</span></div>
+      <div class="v162-gps-head"><div><b>نقطة موقع التوصيل GPS</b><small>تساعد المدير والمندوب على الوصول لنقطة التسليم بدقة.</small></div><span id="v162GpsStatus" class="v162-gps-status">غير محدد</span></div>
       <div class="v162-gps-actions">
         <button type="button" class="v162-gps-primary" onclick="alinV162UseCurrentLocation()"><span aria-hidden="true">⌖</span> استخدام موقعي الحالي</button>
         <button type="button" id="v162OpenMapBtn" class="secondary" onclick="alinV162OpenSelectedMap()" disabled>فتح الموقع على الخريطة</button>
@@ -22,7 +22,7 @@
       </div>
       <div id="v162GpsDetails" class="v162-gps-details" hidden></div>
       <input type="hidden" id="deliveryLatitude"><input type="hidden" id="deliveryLongitude"><input type="hidden" id="deliveryLocationUrl"><input type="hidden" id="deliveryLocationAccuracy">
-      <p class="v162-gps-note">يلزم السماح للموقع من المتصفح. إذا تعذر تحديد GPS، اكتب العنوان الكامل وأقرب نقطة دالة بدقة.</p>
+      <p class="v162-gps-note">يمكن تحديد الموقع من المتصفح، وأقرب نقطة دالة تكفي عند عدم استخدام GPS.</p>
     </section>`;
   }
   function enhanceDeliveryFields(){
@@ -33,6 +33,7 @@
       const select=document.createElement('select');select.id='deliveryArea';select.required=true;select.innerHTML=areaOptions(oldArea.value);
       oldArea.replaceWith(select);
     } else if(oldArea && oldArea.tagName==='SELECT' && oldArea.options.length<2){ oldArea.innerHTML=areaOptions(oldArea.value); }
+    const oldAddress=$('#deliveryAddress',root);if(oldAddress)oldAddress.remove();
     const courier=$('#courierSelect',root); if(courier) courier.closest('label')?.remove(),courier.remove();
     if(!$('#v162GpsBox',root)){
       const grid=$('.form-grid',fields);
@@ -58,7 +59,7 @@
     if(status){status.textContent='جاري تحديد الموقع...';status.classList.remove('is-set')}
     navigator.geolocation.getCurrentPosition(p=>setGps(p.coords.latitude,p.coords.longitude,p.coords.accuracy),e=>{
       if(status)status.textContent=e.code===1?'لم يتم السماح بالموقع':'تعذر تحديد الموقع';
-      if(typeof toast==='function')toast('تعذر تحديد GPS. اسمح للموقع أو اكتب العنوان ونقطة الدلالة بدقة.');
+      if(typeof toast==='function')toast('تعذر تحديد GPS. اكتب أقرب نقطة دالة أو حاول مرة أخرى.');
     },{enableHighAccuracy:true,timeout:15000,maximumAge:30000});
   };
   window.alinV162OpenSelectedMap=function(){const u=$('#deliveryLocationUrl')?.value;if(u)window.open(u,'_blank','noopener')};

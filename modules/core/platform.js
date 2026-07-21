@@ -173,14 +173,7 @@ async function seedData(){
   throw new Error('تم تعطيل إنشاء الحسابات والبيانات التجريبية في النسخة الآمنة');
 }
 
-function showLogin(role){ pendingRole=role; loginForm.classList.remove('hidden'); loginMsg.textContent=''; loginU.value=''; loginPass.value=''; }
-async function doLogin(){
-  loginMsg.textContent=window.ALIN_CONFIG?.authEnabled===true
-    ? 'جارٍ تشغيل تسجيل الدخول الآمن...'
-    : 'تم تعطيل تسجيل الدخول القديم في هذا الإصدار';
-}
-function openPage(page,options){ login.classList.add('hidden'); app.classList.remove('hidden'); app.classList.toggle('store-mode', page==='store'); document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden')); const el=document.getElementById(page+'Page'); if(el)el.classList.remove('hidden'); activeNav.innerHTML=`<button>${{store:'المتجر',teacher:'المدرس',library:'المكتبة',admin:'الإدارة'}[page]||page}</button>`; if(options?.render!==false)renderAll(); }
-function logout(){ current=null; app.classList.remove('store-mode'); app.classList.add('hidden'); login.classList.remove('hidden'); loginForm.classList.add('hidden'); }
+/* Login, logout, page navigation and role guards live in modules/core/navigation.js. */
 async function setStoreType(type,btn){ db.settings.storeType=type; document.querySelectorAll('.store-nav button').forEach(x=>x.classList.remove('active')); if(btn)btn.classList.add('active'); else { const map={booklet:2,stationery:3,gift:4}; const b=document.querySelector(`.store-nav button:nth-child(${map[type]||2})`); if(b)b.classList.add('active'); } renderStore(); }
 
 function storeItems(){
@@ -321,8 +314,6 @@ async function deleteAd(id){ if(!confirm('حذف الإعلان؟'))return; try{
 renderOrdersAdmin = function(){ const statusLabel={payment_pending:'بانتظار الدفع',paid:'مدفوع',processing:'قيد التجهيز',ready:'جاهز',completed:'مكتمل',cancelled:'ملغي'}; adminContent.innerHTML='<h2>الطلبات</h2>'+(db.orders.length?db.orders.map(x=>`<div class="row"><div><b>${esc(x.title)} × ${x.qty}</b><small>${esc(x.student_name)} — ${esc(x.student_phone||'')} — ${money(x.total)} د.ع — ${statusLabel[x.status]||statusLabel[x.payment_status]||esc(x.status||'')}</small></div><div class="row-actions">${x.payment_status==='payment_pending'?`<button onclick="devPay('${x.id}')">تأكيد الدفع</button>`:''}${x.payment_status==='paid'?`<button class="secondary" onclick="orderStatus('${x.id}','processing')">تجهيز</button><button onclick="orderStatus('${x.id}','ready')">جاهز</button><button onclick="orderStatus('${x.id}','completed')">مكتمل</button>`:''}<button class="danger" onclick="orderStatus('${x.id}','cancelled')">إلغاء</button></div></div>`).join(''):emptyState('لا توجد طلبات')); }
 async function orderStatus(id,status){ await update('orders',{status},{id}); await audit('order','تحديث الطلب '+id+' إلى '+status); await load(); renderOrdersAdmin(); toast('تم تحديث الطلب'); }
 
-const oldOpenPageV18 = openPage;
-openPage = function(page){ oldOpenPageV18(page); if(page==='admin')setTimeout(()=>adminTab(activeAdminTab),0); }
 
 /* ================= ALIN V19 NOTIFICATIONS ================= */
 let v19Notifications=[];
@@ -708,15 +699,7 @@ async function adminPassOk(pass){
   if(!saved) return false;
   return (await sha256Text(pass))===saved;
 }
-const _doLoginV27=doLogin;
-doLogin=async function(){
-  const u=loginU.value.trim(), p=loginPass.value.trim();
-  if(pendingRole==='admin'){
-    if(u===adminUser() && await adminPassOk(p)){ current={role:'admin',name:'منصة آلين'}; openPage('admin'); return; }
-    loginMsg.textContent='بيانات الدخول غير صحيحة'; return;
-  }
-  return _doLoginV27();
-};
+/* Legacy local admin login removed; admin access uses Supabase Auth through navigation.js. */
 const _renderSettingsAdminV27=renderSettingsAdmin;
 renderSettingsAdmin=function(){
   _renderSettingsAdminV27();
@@ -749,11 +732,6 @@ const _adminStatsRenderV27=adminStatsRender;
 adminStatsRender=function(){
   _adminStatsRenderV27();
   document.querySelectorAll('.version-badge').forEach(x=>x.textContent='منصة آلين');
-};
-const _openPageV27=openPage;
-openPage=function(page){
-  _openPageV27(page);
-  setTimeout(()=>{document.querySelectorAll('.version-badge').forEach(x=>x.textContent='منصة آلين');},50);
 };
 
 /* ================= ALIN V28 BRAND MANAGER ================= */
@@ -790,8 +768,6 @@ function applyBrandV28(){
 }
 const _renderAllV28=renderAll;
 renderAll=function(){_renderAllV28();setTimeout(applyBrandV28,30)};
-const _openPageV28=openPage;
-openPage=function(page){_openPageV28(page);setTimeout(applyBrandV28,50);setTimeout(()=>{document.querySelectorAll('.version-badge').forEach(x=>x.textContent='منصة آلين');},60)};
 const _adminStatsRenderV28=adminStatsRender;
 adminStatsRender=function(){_adminStatsRenderV28();document.querySelectorAll('.version-badge').forEach(x=>x.textContent='منصة آلين')};
 const _renderSettingsAdminV28=renderSettingsAdmin;
@@ -893,8 +869,6 @@ renderSettingsAdmin = function(){
   adminContent.innerHTML += `<div class="settings-section"><h3>إعدادات التوصيل</h3><div class="form-grid"><input id="deliveryFeeInput" type="number" value="${deliveryFee()}" placeholder="أجور التوصيل"><button onclick="saveDeliverySettings()">حفظ أجور التوصيل</button></div><p class="muted">تم إلغاء خيار الماستر كارد. الدفع نقدًا عند الاستلام فقط.</p></div>`;
 };
 async function saveDeliverySettings(){ await settingsSet('delivery_fee',String(+deliveryFeeInput.value||0)); await audit('settings','تحديث أجور التوصيل'); await load(); renderSettingsAdmin(); toast('تم حفظ أجور التوصيل'); }
-const _openPageV29 = openPage;
-openPage=function(page){_openPageV29(page);setTimeout(()=>{document.querySelectorAll('.version-badge').forEach(x=>x.textContent='منصة آلين'); document.title='منصة آلين';},80)};
 
 /* ================= ALIN V29.1 STOREFRONT ENHANCEMENT ================= */
 const _renderStoreV291 = renderStore;
@@ -1051,8 +1025,6 @@ const oldRenderBookletsAdmin=window.renderBookletsAdmin;
     adminContent.innerHTML=`<h2>المالية والمستحقات</h2><div class="v31-finance-grid"><div><b>إجمالي المبيعات</b><span>${money(total)} د.ع</span></div><div><b>ربح المنصة</b><span>${money(platform)} د.ع</span></div><div><b>مستحقات المدرسين</b><span>${money(teachers)} د.ع</span></div><div><b>مستحقات المكتبات</b><span>${money(libraries)} د.ع</span></div><div><b>طلبات التوصيل</b><span>${delivery}</span></div></div><h3>كشف المدرسين</h3>${(db.accounts?.teachers||[]).map(t=>{const ids=(db.booklets||[]).filter(b=>b.teacher_id===t.id).map(b=>b.id);const val=orders.filter(o=>ids.includes(o.item_id)).reduce((a,o)=>a+(+o.total||0),0);return `<div class="row"><b>${esc(t.name)}</b><span>${money(val)} د.ع</span></div>`}).join('')||emptyState('لا توجد حسابات')}`;
   };
 
-  const oldOpenPage=window.openPage;
-  window.openPage=function(page){const result=oldOpenPage.apply(this,arguments);setTimeout(()=>{document.title='منصة آلين';document.querySelectorAll('.version-badge').forEach(x=>x.textContent='منصة آلين');},50);return result};
 })();
 
 /* ================= ALIN V32 CLEAN STORE HEADER + EDITABLE FOOTER SECTIONS ================= */
@@ -1090,8 +1062,7 @@ const oldRenderBookletsAdmin=window.renderBookletsAdmin;
     renderSettingsAdmin();
     toast('تم حفظ فقرات نهاية المتجر');
   };
-  const oldOpenPage=window.openPage;
-  window.openPage=function(page){const result=oldOpenPage.apply(this,arguments);setTimeout(()=>{renderBottomInfo();document.title='منصة آلين';document.querySelectorAll('.version-badge').forEach(x=>x.textContent='منصة آلين');},80);return result};
+  window.addEventListener('alin:page-open',()=>{renderBottomInfo();});
 })();
 
 /* ================= ALIN V37 ADMIN SETTINGS RESTORE ================= */
@@ -1210,8 +1181,8 @@ function orderExtraV42(){
     if(!libSelect?.value) throw Error('اختر مكتبة الاستلام');
     return {fulfillment_type:'pickup',library_id:libSelect.value,courier_id:null,delivery_area:null,delivery_address:null,delivery_landmark:null,delivery_fee:0,payment_method:'cash_at_library',payment_status:'cod_pending'};
   }
-  if(!deliveryArea.value.trim()||!deliveryAddress.value.trim()||!deliveryLandmark.value.trim()) throw Error('أكمل بيانات التوصيل');
-  return {fulfillment_type:'home_delivery',library_id:null,courier_id:courierSelect?.value||null,delivery_area:deliveryArea.value.trim(),delivery_address:deliveryAddress.value.trim(),delivery_landmark:deliveryLandmark.value.trim(),delivery_fee:deliveryFee(),payment_method:'cash_to_courier',payment_status:'cod_pending'};
+  if(!deliveryArea.value.trim()||!deliveryLandmark.value.trim()) throw Error('اختر المنطقة واكتب أقرب نقطة دالة');
+  return {fulfillment_type:'home_delivery',library_id:null,courier_id:courierSelect?.value||null,delivery_area:deliveryArea.value.trim(),delivery_address:null,delivery_landmark:deliveryLandmark.value.trim(),delivery_fee:deliveryFee(),payment_method:'cash_to_courier',payment_status:'cod_pending'};
 }
 window.renderStore=function(){
   if(!window.storeGrid)return;
@@ -1246,7 +1217,7 @@ window.orderStatus=async function(id,status){
 function recordCourierSettlementForOrder(){const fn=window.AlinCourierModules&&window.AlinCourierModules['recordCourierSettlementForOrder'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] recordCourierSettlementForOrder is not loaded yet');}
 window.renderCourierSettlementsAdmin=function(){
   const deliveryOrders=(db.orders||[]).filter(o=>o.fulfillment_type==='home_delivery');
-  adminContent.innerHTML='<h2>تسويات المندوبين</h2><p class="muted">كل طلب توصيل يظهر هنا. المندوب يستلم المبلغ من الطالب ثم يسلم للإدارة بسند تسوية.</p>'+deliveryOrders.map(o=>`<div class="row"><div><b>${esc(o.order_number||o.id)} — ${esc(o.title)}</b><small>الطالب: ${esc(o.student_name)} • ${esc(o.delivery_area||'')} ${esc(o.delivery_address||'')} • المبلغ ${money(o.total)} د.ع • الحالة ${esc(o.status||'')}</small></div><div class="row-actions"><select id="assign_${o.id}"><option value="">مندوب</option>${couriers.map(c=>`<option value="${c.id}" ${o.courier_id===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select><button onclick="assignCourier('${o.id}')">حفظ</button><button onclick="courierOrderStatus('${o.id}','out_for_delivery')">قيد التوصيل</button><button onclick="courierOrderStatus('${o.id}','completed')">تم التسليم</button><button onclick="recordCourierSettlementForOrder('${o.id}')">تسجيل تسوية</button></div></div>`).join('')+(deliveryOrders.length?'':'لا توجد طلبات توصيل')+'<h3>سندات تسوية المندوبين</h3>'+(courierSettlements.map(s=>`<div class="row"><div><b>${esc(s.receipt_number)}</b><small>${esc((couriers.find(c=>c.id===s.courier_id)||{}).name||'مندوب')} — ${esc(s.payment_method||'')}</small></div><span>${money(s.amount)} د.ع</span></div>`).join('')||emptyState('لا توجد تسويات'));
+  adminContent.innerHTML='<h2>تسويات المندوبين</h2><p class="muted">كل طلب توصيل يظهر هنا. المندوب يستلم المبلغ من الطالب ثم يسلم للإدارة بسند تسوية.</p>'+deliveryOrders.map(o=>`<div class="row"><div><b>${esc(o.order_number||o.id)} — ${esc(o.title)}</b><small>الطالب: ${esc(o.student_name)} • ${esc(o.delivery_area||'')} — ${esc(o.delivery_landmark||'')} • المبلغ ${money(o.total)} د.ع • الحالة ${esc(o.status||'')}</small></div><div class="row-actions"><select id="assign_${o.id}"><option value="">مندوب</option>${couriers.map(c=>`<option value="${c.id}" ${o.courier_id===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select><button onclick="assignCourier('${o.id}')">حفظ</button><button onclick="courierOrderStatus('${o.id}','out_for_delivery')">قيد التوصيل</button><button onclick="courierOrderStatus('${o.id}','completed')">تم التسليم</button><button onclick="recordCourierSettlementForOrder('${o.id}')">تسجيل تسوية</button></div></div>`).join('')+(deliveryOrders.length?'':'لا توجد طلبات توصيل')+'<h3>سندات تسوية المندوبين</h3>'+(courierSettlements.map(s=>`<div class="row"><div><b>${esc(s.receipt_number)}</b><small>${esc((couriers.find(c=>c.id===s.courier_id)||{}).name||'مندوب')} — ${esc(s.payment_method||'')}</small></div><span>${money(s.amount)} د.ع</span></div>`).join('')||emptyState('لا توجد تسويات'));
 };
 window.renderOrdersAdmin=function(){
   const labels={pickup:'عن طريق المكتبة',home_delivery:'عن طريق المندوب'};
@@ -1429,8 +1400,8 @@ window.renderStore=function(){ renderStoreBeforeStudentAuth(); updateStudentAuth
 // تعبئة بيانات الطالب وربط الطلب بالحساب من خلال أحداث السلة المركزية.
 document.addEventListener('alin:cart-rendered',()=>{
   const s=typeof currentStudent==='function'?currentStudent():null;if(!s)return;
-  const n=document.getElementById('studentName'),p=document.getElementById('studentPhone'),a=document.getElementById('deliveryAddress');
-  if(n&&!n.value)n.value=s.name||'';if(p&&!p.value)p.value=s.phone||'';if(a&&!a.value)a.value=s.address||'';
+  const n=document.getElementById('studentName'),p=document.getElementById('studentPhone');
+  if(n&&!n.value)n.value=s.name||'';if(p&&!p.value)p.value=s.phone||'';
 });
 document.addEventListener('alin:order-created',()=>{
   const s=typeof currentStudent==='function'?currentStudent():null;

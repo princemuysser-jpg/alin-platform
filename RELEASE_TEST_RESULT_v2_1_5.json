@@ -1,0 +1,11 @@
+{
+  "version": "2.1.5-delivery-area-landmark-gps",
+  "status": "passed",
+  "javascript_files": 53,
+  "modules": 44,
+  "release_checks": 86,
+  "delivery_checks": 20,
+  "platform_bytes": 416484,
+  "sql_update_required": false,
+  "browser_test": "not_run_environment_headless_timeout"
+}

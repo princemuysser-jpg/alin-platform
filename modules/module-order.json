@@ -2,6 +2,7 @@
   "early": [
     "modules/core/config.js",
     "modules/core/platform.js",
+    "modules/core/navigation.js",
     "modules/core/supabase.js",
     "modules/store/coupons.js",
     "modules/admin/shell.js",
