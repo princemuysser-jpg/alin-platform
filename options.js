@@ -71,6 +71,7 @@
   const themeMode = () => validThemes.includes(localStorage.getItem(THEME_KEY)) ? localStorage.getItem(THEME_KEY) : 'system';
   const resolvedTheme = mode => mode === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode;
   const text = (selector, value) => { const el = $(selector); if (el) el.textContent = value; };
+  const escapeHtml = value => String(value??'').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 
   function student() {
     try { return typeof window.currentStudent === 'function' ? window.currentStudent() : null; } catch (_) { return null; }
@@ -148,6 +149,10 @@
         <section class="alin-contact-dialog" id="alinContactDialog" role="dialog" aria-modal="true" aria-labelledby="alinContactTitle" hidden>
           <header><h2 id="alinContactTitle" data-copy="contactTitle"></h2><button type="button" data-contact-close aria-label="إغلاق">×</button></header>
           <div data-contact-content></div>
+        </section>
+        <section class="alin-contact-dialog alin-about-dialog" id="alinAboutDialog" role="dialog" aria-modal="true" aria-labelledby="alinAboutTitle" hidden>
+          <header><h2 id="alinAboutTitle" data-copy="about"></h2><button type="button" data-about-close aria-label="إغلاق">×</button></header>
+          <div data-about-content></div>
         </section>`);
     }
     bindUI();
@@ -158,6 +163,7 @@
     $$('[data-alin-close]').forEach(el => el.addEventListener('click', closeOptions));
     $('[data-alin-backdrop]')?.addEventListener('click', () => {
       if (!$('#alinContactDialog')?.hidden) closeContact();
+      else if (!$('#alinAboutDialog')?.hidden) closeAbout();
       else closeOptions();
     });
     $$('[data-alin-account]').forEach(el => el.addEventListener('click', openAccount));
@@ -166,6 +172,7 @@
     $$('[data-lang]').forEach(el => el.addEventListener('click', () => applyLanguage(el.dataset.lang, true)));
     $$('[data-theme]').forEach(el => el.addEventListener('click', () => applyTheme(el.dataset.theme, true)));
     $$('[data-contact-close]').forEach(el => el.addEventListener('click', closeContact));
+    $$('[data-about-close]').forEach(el => el.addEventListener('click', closeAbout));
   }
 
   function announce(message) {
@@ -205,9 +212,8 @@
       ['[data-v99-category="deal"] strong','deals'],['[data-v99-category="deal"] small','dealsSub'],
       ['#v99CatalogKicker','catalog'],['#v99CatalogTitle','allProducts'],['[data-v99-action="clearDesktopCategory"]','showAll'],
       ['#orderTrackBox h2','trackTitle'],['#orderTrackBox p','trackText'],['#orderTrackBox button','track'],
-      ['#storeAbout>div:nth-child(1) small','available'],['#storeAbout>div:nth-child(2) small','completed'],
-      ['#storeAbout>div:nth-child(3) small','teachers'],['#storeAbout>div:nth-child(4) small','libraries'],
-      ['#aboutPlatformBox h2','aboutTitle'],['#aboutPlatformBox p','aboutText'],['#contactPlatformBox h2','contact'],['#contactPlatformBox p','contactText'],
+      ['#storeAbout>div:nth-child(1) small','available'],
+      ['#storeAbout>div:nth-child(2) small','teachers'],['#storeAbout>div:nth-child(3) small','libraries'],
       ['.desktop-partner-access>span','partner'],['.desktop-partner-access button:nth-of-type(1)','teacher'],['.desktop-partner-access button:nth-of-type(2)','library'],['.desktop-partner-access button:nth-of-type(3)','admin'],['.alin-footer','footer']
     ];
     shell.forEach(([selector,key,html]) => $$(selector).forEach(el => { if (html) el.innerHTML=t[key]; else el.textContent=t[key]; }));
@@ -303,20 +309,40 @@
   }
 
   function openAbout() {
-    closeOptions();
-    const target = $('#aboutPlatformBox') || $('#storeAbout');
-    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    target?.setAttribute('tabindex', '-1');
-    setTimeout(() => target?.focus({ preventScroll: true }), 350);
+    const desktop=$('#alinOptionsDialog'), mobile=$('#alinAccountSheet');
+    if (desktop && !desktop.hidden) desktop.hidden=true;
+    if (mobile && !mobile.hidden) mobile.hidden=true;
+    document.body.classList.remove('alin-options-open');
+    clearInert();
+    const dialog=$('#alinAboutDialog'), content=$('[data-about-content]',dialog), t=copy[language()];
+    if(!dialog||!content)return;
+    const settings=window.db?.settings||{};
+    const title=String(settings.about_title||t.about||t.aboutTitle||'عن منصة آلين');
+    const description=String(settings.about_text||t.aboutText||'منصة آلين تجمع الملازم والقرطاسية والهدايا في مكان واحد.');
+    $('#alinAboutTitle').textContent=title;
+    content.innerHTML=`<div class="alin-about-content"><div class="alin-about-mark" aria-hidden="true">آ</div><p>${escapeHtml(description)}</p></div>`;
+    dialog.hidden=false;
+    $('[data-alin-backdrop]').hidden=false;
+    setInert(dialog);
+    requestAnimationFrame(()=>$('[data-about-close]',dialog)?.focus());
+  }
+
+  function closeAbout() {
+    const dialog=$('#alinAboutDialog');
+    if(dialog)dialog.hidden=true;
+    $('[data-alin-backdrop]').hidden=true;
+    clearInert();
+    lastFocus?.focus?.();
   }
 
   function trapKey(event) {
     if (event.key === 'Escape') {
       if (!$('#alinContactDialog')?.hidden) closeContact();
+      else if (!$('#alinAboutDialog')?.hidden) closeAbout();
       else closeOptions();
       return;
     }
-    const dialog = !$('#alinContactDialog')?.hidden ? $('#alinContactDialog') : (!$('#alinOptionsDialog')?.hidden ? $('#alinOptionsDialog') : (!$('#alinAccountSheet')?.hidden ? $('#alinAccountSheet') : null));
+    const dialog = !$('#alinContactDialog')?.hidden ? $('#alinContactDialog') : (!$('#alinAboutDialog')?.hidden ? $('#alinAboutDialog') : (!$('#alinOptionsDialog')?.hidden ? $('#alinOptionsDialog') : (!$('#alinAccountSheet')?.hidden ? $('#alinAccountSheet') : null)));
     if (!dialog || event.key !== 'Tab') return;
     const focusable = $$('button:not([disabled]),a[href],input:not([disabled])', dialog);
     if (!focusable.length) return;
@@ -348,7 +374,7 @@
       setInert(sheet);
       requestAnimationFrame(() => $('[data-alin-close]',sheet)?.focus());
     } else {
-      if (!$('#alinContactDialog')?.hidden) return;
+      if (!$('#alinContactDialog')?.hidden || !$('#alinAboutDialog')?.hidden) return;
       clearInert();
       lastFocus?.focus?.();
     }

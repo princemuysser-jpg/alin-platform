@@ -40,7 +40,7 @@ body.store-desktop .alin98-cats>button[data-v99-category] .cat-copy strong{color
 body.store-desktop .alin98-cats>button[data-v99-category] .cat-copy small{color:rgba(255,255,255,.86);font-weight:600}
 
 
-/* ALIN v2.3.0 — polished desktop favorite and notification icons. */
+/* ALIN v2.3.1 — polished desktop favorite and notification icons. */
 body.store-desktop .desktop-favorite-icon,
 body.store-desktop .desktop-notification-icon{
   width:34px;height:34px;display:grid;place-items:center;border-radius:12px;
@@ -63,3 +63,23 @@ html[data-alin-theme="dark"] body.store-desktop .desktop-favorite-icon,
 html[data-alin-theme="dark"] body.store-desktop .desktop-notification-icon{
   background:#17334f;color:#f1c866;border-color:#92702f
 }
+
+/* ALIN v2.3.1 — storefront action polish and three live counters. */
+body.store-desktop .desktop-notification-icon{
+  width:36px;height:36px;border-radius:13px;
+  background:linear-gradient(145deg,#fffaf0,#efd89e);
+  color:#082f58;border-color:rgba(190,140,38,.58);
+  box-shadow:0 8px 18px rgba(8,47,88,.12)
+}
+body.store-desktop .desktop-notification-icon svg{
+  width:23px;height:23px;stroke-width:2.05
+}
+/* Keep the cart button itself unchanged; only align its label with the other action labels. */
+body.store-desktop [data-desktop-control="cart"] small{
+  color:#243b5a!important;background:rgba(255,255,255,.96)!important;
+  min-width:38px;padding:2px 7px!important;border-radius:999px!important;
+  font-size:10px!important;font-weight:800!important;line-height:1!important;
+  box-shadow:0 2px 7px rgba(8,35,72,.14)
+}
+body.store-desktop .store-real-stats{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+body.store-desktop .store-real-stats>div:last-child{border-left:0!important}

@@ -1,4 +1,4 @@
-const VERSION='alin-v2.3.0-storefront-icons-category-colors';
+const VERSION='alin-v2.3.1-storefront-actions-live-stats';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[

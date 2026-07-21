@@ -35,7 +35,7 @@ body.store-mobile .alin-store-banners-v115{margin-inline:20px}
 }
 
 
-/* ALIN v2.3.0 — polished mobile icons and white category labels. */
+/* ALIN v2.3.1 — polished mobile icons and white category labels. */
 body.store-mobile .mobile-notification-icon,
 body.store-mobile .mobile-favorite-icon{
   width:27px;height:27px;display:grid;place-items:center;color:#0b3158
@@ -70,4 +70,32 @@ body.store-mobile .alin98-cats>button[data-v99-category] .cat-copy small{
 }
 body.store-mobile .alin98-cats>button[data-v99-category] .cat-icon{
   background:linear-gradient(145deg,#fff8e8,#ead39d)!important;color:#7c5712!important
+}
+
+/* ALIN v2.3.1 — new mobile cart, refined bell and three live counters. */
+body.store-mobile .mobile-notification-icon{
+  width:29px!important;height:29px!important;color:#082f58!important
+}
+body.store-mobile .mobile-notification-icon svg{
+  width:27px!important;height:27px!important;stroke-width:2.05!important
+}
+body.store-mobile .alin-mobile-bottom-v103 [data-mobile-control="cart"] .mobile-cart-icon{
+  width:30px!important;height:30px!important;display:grid!important;place-items:center!important;
+  border:0!important;background:transparent!important;transform:none!important;overflow:visible!important
+}
+body.store-mobile .alin-mobile-bottom-v103 [data-mobile-control="cart"] .mobile-cart-icon::before,
+body.store-mobile .alin-mobile-bottom-v103 [data-mobile-control="cart"] .mobile-cart-icon::after{
+  content:none!important;display:none!important
+}
+body.store-mobile .alin-mobile-bottom-v103 [data-mobile-control="cart"] .mobile-cart-icon svg{
+  width:28px;height:28px;display:block;fill:none;stroke:currentColor;stroke-width:1.9;
+  stroke-linecap:round;stroke-linejoin:round
+}
+body.store-mobile .store-real-stats{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+body.store-mobile .store-real-stats>div:last-child{border-left:0!important}
+@media(max-width:390px){
+  body.store-mobile .store-real-stats{gap:5px!important;padding:8px!important}
+  body.store-mobile .store-real-stats>div{padding:8px 3px!important}
+  body.store-mobile .store-real-stats span{font-size:20px!important}
+  body.store-mobile .store-real-stats small{font-size:10px!important}
 }
