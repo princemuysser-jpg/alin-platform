@@ -300,12 +300,7 @@
       }
       return oldAdmin.apply(this,arguments);
     };
-    const oldRender=window.renderStore;
-    if(typeof oldRender==='function')window.renderStore=function(){
-      const result=oldRender.apply(this,arguments);
-      setTimeout(renderStorefront,0);
-      return result;
-    };
+    document.addEventListener('alin:store-rendered',()=>setTimeout(renderStorefront,0));
     window.addEventListener('alin:data-mutated',event=>{if(event.detail?.table==='banners')refresh()});
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});
     refresh();

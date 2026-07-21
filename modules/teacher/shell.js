@@ -1,5 +1,5 @@
 // === teacher/shell.js ===
-/* ALIN v2.2.2 — authoritative teacher runtime. No wrapper chains. */
+/* ALIN v2.2.5 — authoritative teacher runtime. No wrapper chains. */
 (function(){
   'use strict';
 

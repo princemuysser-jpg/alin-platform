@@ -44,7 +44,7 @@ if(!run.includes('alin_public_accounts')||!run.includes('alin_public_settings'))
 const moduleOrder=JSON.parse(fs.readFileSync(path.join(root,'modules/module-order.json'),'utf8'));
 const moduleFiles=[...moduleOrder.early,...moduleOrder.app];
 const appBundle=moduleFiles.map(rel=>fs.readFileSync(path.join(root,rel),'utf8')).join('\n');
-if(moduleOrder.early.length!==11||moduleOrder.app.length!==33)failures.push('modules:unexpected-count');
+if(moduleOrder.early.length!==12||moduleOrder.app.length!==33)failures.push('modules:unexpected-count');
 for(const rel of moduleFiles){if(!fs.existsSync(path.join(root,rel)))failures.push(`modules:missing:${rel}`)}
 if(!appBundle.includes("c.rpc('alin_track_order'"))failures.push('app:secure-tracking-rpc');
 if(!appBundle.includes('alin-copy-tracking')||!appBundle.includes('navigator.clipboard?.writeText')||!appBundle.includes('document.execCommand(\'copy\')'))failures.push('checkout:tracking-copy');
@@ -89,12 +89,12 @@ if(!run.includes("'status','assignment_status','updated_at','accepted_at','picke
 
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  if(!html.includes('version-badge">v2.2.2'))failures.push(`version-badge:${htmlName}`);
+  if(!html.includes('version-badge">v2.2.5'))failures.push(`version-badge:${htmlName}`);
 }
 for(const obsolete of ['dist/js/shared.early.bundle.js','dist/js/shared.app.bundle.js','options.css']){if(fs.existsSync(path.join(root,obsolete)))failures.push(`obsolete:${obsolete}`)}
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  const positions=moduleFiles.map(rel=>html.indexOf(`./${rel}?v=2.2.2`));
+  const positions=moduleFiles.map(rel=>html.indexOf(`./${rel}?v=2.2.5`));
   if(positions.some(pos=>pos<0))failures.push(`modules:not-loaded:${htmlName}`);
   if(positions.some((pos,index)=>index>0&&pos<positions[index-1]))failures.push(`modules:wrong-order:${htmlName}`);
 }
@@ -109,7 +109,7 @@ for(const token of ['canonicalLedger','librarySummary','teacherSummary',"settlem
 }
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  if(!html.includes('core/finance-runtime.js?v=2.2.2'))failures.push(`finance-script:${htmlName}`);
+  if(!html.includes('core/finance-runtime.js?v=2.2.5'))failures.push(`finance-script:${htmlName}`);
 }
 
 const cartModule=fs.readFileSync(path.join(root,'modules/store/cart.js'),'utf8');

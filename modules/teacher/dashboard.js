@@ -1,5 +1,5 @@
 // === teacher/dashboard.js ===
-/* ALIN v2.2.2 — teacher dashboard and booklets tabs. */
+/* ALIN v2.2.5 — teacher dashboard and booklets tabs. */
 (function(){
   'use strict';
   const app=window.TeacherApp;

@@ -185,14 +185,9 @@
     primary.classList.add('alin98-notify');
   }
 
-  const oldRenderStore=window.renderStore;
-  if(typeof oldRenderStore==='function'){
-    window.renderStore=renderStore=function(){
-      const r=oldRenderStore.apply(this,arguments);
-      setTimeout(()=>{decorateCards();renderBanners();updateNotificationCount()},0);
-      return r;
-    };
-  }
+  document.addEventListener('alin:store-rendered',()=>{
+    setTimeout(()=>{decorateCards();renderBanners();updateNotificationCount()},0);
+  });
 
   document.addEventListener('DOMContentLoaded',()=>{
     decorateNotificationButton();

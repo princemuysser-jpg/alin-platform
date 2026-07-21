@@ -1,5 +1,5 @@
 // === library/orders.js ===
-/* ALIN v2.2.2 — authoritative library order workflow. */
+/* ALIN v2.2.5 — authoritative library order workflow. */
 (function(){
   'use strict';
   const modules=window.AlinLibraryModules=window.AlinLibraryModules||{};

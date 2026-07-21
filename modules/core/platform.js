@@ -39,6 +39,11 @@ try{
   expose('current',()=>current,v=>{current=v});
   expose('pendingRole',()=>pendingRole,v=>{pendingRole=v||''});
   expose('checkoutItem',()=>checkoutItem,v=>{checkoutItem=v});
+  expose('financialEntries',()=>db.financialEntries||db.financial_entries||[],v=>{db.financialEntries=v||[];db.financial_entries=v||[]});
+  expose('financialPayouts',()=>db.financialPayouts||db.financial_payouts||[],v=>{db.financialPayouts=v||[];db.financial_payouts=v||[]});
+  expose('librarySettlements',()=>db.librarySettlements||db.library_settlements||[],v=>{db.librarySettlements=v||[];db.library_settlements=v||[]});
+  expose('courierSettlements',()=>db.courierSettlements||[],v=>{db.courierSettlements=v||[]});
+  expose('couriers',()=>db.couriers||db.accounts?.couriers||[],v=>{db.couriers=v||[]});
 }catch(e){console.warn('[Alin V115 state bridge]',e);}
 
 // ALIN V38: عناصر وهمية آمنة حتى لا تتوقف الواجهة إذا حذفنا حقول الفلترة من المتجر
@@ -159,54 +164,45 @@ async function checkPublicFile(url){
 async function load(){
   if(!init()){ renderAll(); return; }
   try{
-    const [accounts,booklets,products,categories,banners,coupons,orders,permits,ledger,withdrawals,auditRows,settingsRows] = await Promise.all([
-      query('accounts'),query('booklets'),query('products'),query('categories'),query('banners'),query('coupons').catch(error=>{console.warn('[ALIN coupons] optional load failed',error);return []}),query('orders'),query('permits'),query('ledger'),query('withdrawals'),query('audit'),query('settings')
+    const optional=table=>query(table).catch(error=>{console.warn(`[ALIN load] optional table ${table}`,error);return []});
+    const [accounts,booklets,products,categories,banners,coupons,orders,permits,ledger,withdrawals,auditRows,settingsRows,teacherRequests,teacherPayouts,financialEntries,financialPayouts,financialReturns,librarySettlements,courierSettlements,notifications] = await Promise.all([
+      query('accounts'),query('booklets'),query('products'),query('categories'),query('banners'),optional('coupons'),query('orders'),query('permits'),query('ledger'),query('withdrawals'),query('audit'),query('settings'),optional('teacher_requests'),optional('teacher_payouts'),optional('financial_entries'),optional('financial_payouts'),optional('financial_returns'),optional('library_settlements'),optional('delegate_settlements'),optional('notifications')
     ]);
     db.accounts={all:accounts,teachers:accounts.filter(x=>x.role==='teacher'),libraries:accounts.filter(x=>x.role==='library'),couriers:accounts.filter(x=>x.role==='courier'),accountants:accounts.filter(x=>x.role==='accountant')};
-    db.booklets=booklets; db.products=products; db.categories=categories; db.banners=banners; db.coupons=coupons; db.orders=orders.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')); db.permits=permits; db.ledger=ledger; db.withdrawals=withdrawals; db.audit=auditRows.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')); db.settings={storeType:'booklet'};
+    db.booklets=booklets; db.products=products; db.categories=categories; db.banners=banners; db.coupons=coupons;
+    db.orders=orders.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')); db.permits=permits; db.ledger=ledger; db.withdrawals=withdrawals;
+    db.audit=auditRows.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')); db.settings={storeType:'booklet'};
+    db.teacherRequests=teacherRequests; db.teacherPayouts=teacherPayouts; db.teacher_payouts=teacherPayouts;
+    db.financialEntries=financialEntries; db.financial_entries=financialEntries; db.financialPayouts=financialPayouts; db.financial_payouts=financialPayouts; db.financialReturns=financialReturns;
+    db.librarySettlements=librarySettlements; db.library_settlements=librarySettlements; db.courierSettlements=courierSettlements; db.notifications=notifications;
     settingsRows.forEach(x=>db.settings[x.key]=x.value);
-    // Secure release: never create demo accounts or seed passwords automatically.
+    try{v19Notifications=notifications}catch(_){ }
     renderAll();
+    window.dispatchEvent(new CustomEvent('alin:data-refreshed',{detail:{source:'platform-load'}}));
   }catch(e){ console.error(e); if(current?.role==='admin') alert('تعذر تحميل بيانات النظام، تم تثبيت الواجهة بدون إيقاف.'); }
 }
 async function seedData(){
   throw new Error('تم تعطيل إنشاء الحسابات والبيانات التجريبية في النسخة الآمنة');
 }
 
+/* PLATFORM STEP 10: storefront ownership moved to modules/store/discovery.js. */
+
 /* Login, logout, page navigation and role guards live in modules/core/navigation.js. */
-async function setStoreType(type,btn){ db.settings.storeType=type; document.querySelectorAll('.store-nav button').forEach(x=>x.classList.remove('active')); if(btn)btn.classList.add('active'); else { const map={booklet:2,stationery:3,gift:4}; const b=document.querySelector(`.store-nav button:nth-child(${map[type]||2})`); if(b)b.classList.add('active'); } renderStore(); }
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
-function storeItems(){
-  if(db.settings.storeType==='booklet'){
-    return db.booklets.filter(x=>x.status==='published').map(x=>({kind:'booklet',id:x.id,title:x.title,subject:x.subject,grade:x.grade,teacher:teacherName(x.teacher_id),price:x.price,cover:x.cover_path,stock:null}));
-  }
-  return db.products.filter(x=>x.type===db.settings.storeType&&x.status==='published').map(x=>({kind:x.type,id:x.id,title:x.name,subject:x.category,grade:x.category,teacher:'',price:x.price,cover:x.image_path,stock:x.stock}));
-}
-function renderStore(){
-  if(!window.storeGrid || !db.booklets)return;
-  bannerBox.innerHTML=(db.banners||[]).filter(x=>x.active).map(x=>`<div class="banner-card"><div><h2>${esc(x.title||'')}</h2><p>${esc(x.text||'')}</p></div><b>آ</b></div>`).join('');
-  const items=storeItems(), q=(searchInput.value||'').toLowerCase();
-  const cats=[...new Set(items.map(x=>x.grade||x.subject).filter(Boolean))], teachers=[...new Set(items.map(x=>x.teacher).filter(Boolean))];
-  const oldCat=filterCategory.value, oldTeacher=filterTeacher.value;
-  filterCategory.innerHTML='<option value="">كل الأقسام</option>'+cats.map(x=>`<option ${x===oldCat?'selected':''}>${x}</option>`).join('');
-  filterTeacher.style.display=db.settings.storeType==='booklet'?'':'none';
-  filterTeacher.innerHTML='<option value="">كل المدرسين</option>'+teachers.map(x=>`<option ${x===oldTeacher?'selected':''}>${x}</option>`).join('');
-  const list=items.filter(x=>(!filterCategory.value||x.grade===filterCategory.value||x.subject===filterCategory.value)&&(!filterTeacher.value||x.teacher===filterTeacher.value)&&(`${x.title} ${x.teacher} ${x.subject}`).toLowerCase().includes(q));
-  storeGrid.innerHTML=list.map(x=>`<article class="card"><div class="cover">${x.cover?`<img src="${mediaUrl(x.cover)}">`:(x.subject||'منتج')}</div><h3>${x.title}</h3>${x.teacher?`<p>${x.teacher}</p>`:''}<p>${x.grade||x.subject||''}</p>${x.stock!==null?`<p>المخزون: ${x.stock}</p>`:''}<div class="price">${money(x.price)} د.ع</div><button onclick="openCheckout('${x.kind}','${x.id}')">إتمام الشراء</button></article>`).join('')||'لا توجد مواد';
-}
+/* PLATFORM STEP 10: legacy storefront override removed. */
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
 
 
 
 
-function openProtected(id){ const p=db.permits.find(x=>x.id===id); const b=db.booklets.find(x=>x.id===p?.booklet_id); if(!b?.file_path)return alert('لا يوجد ملف PDF'); window.open(mediaUrl(b.file_path),'_blank'); }
+/* v2.2.3: legacy direct PDF opener removed; library printing module is authoritative. */
 async function usePermit(id){ const p=db.permits.find(x=>x.id===id); if(!p || p.used>=p.qty)return alert('إذن النسخ منتهي'); const used=(+p.used||0)+1; await update('permits',{used,status:used>=p.qty?'done':'active'},{id}); await audit('copy','استخدام إذن نسخة '+id); await load(); }
-async function requestWithdraw(role){ try{ const amount=+(role==='teacher'?teacherWithdrawAmount.value:libraryWithdrawAmount.value); if(amount<=0)throw new Error('المبلغ غير صحيح'); await insert('withdrawals',{id:uid('W'),role,account_id:current.id,amount,status:'pending'}); await audit('withdrawal','طلب سحب '+role); await load(); alert('تم إرسال الطلب'); }catch(e){ alert(e.message); } }
-
-function adminStatsRender(){ if(!window.adminStats||!db.ledger)return; adminStats.innerHTML=`<div><b>الحسابات</b><span>${db.accounts.teachers.length+db.accounts.libraries.length}</span></div><div><b>الملازم</b><span>${db.booklets.length}</span></div><div><b>الطلبات</b><span>${db.orders.length}</span></div><div><b>دخل آلين</b><span>${money(db.ledger.reduce((a,x)=>a+(+x.alin||0),0))} د.ع</span></div>`; }
-function adminTab(t){ adminStatsRender(); if(t==='accounts')return renderAccountsAdmin(); if(t==='booklets')return renderBookletsAdmin(); if(t==='products')return renderProductsAdmin(); if(t==='categories')return renderCategoriesAdmin(); if(t==='orders')return renderOrdersAdmin(); if(t==='finance')return renderFinanceAdmin(); if(t==='ads')return renderAdsAdmin(); if(t==='settings')return renderSettingsAdmin(); if(t==='audit')adminContent.innerHTML='<h2>سجل العمليات</h2>'+db.audit.map(x=>`<div class="row"><div><b>${x.text}</b><small>${x.created_at||''}</small></div><span>${x.kind}</span></div>`).join(''); }
-function renderAccountsAdmin(){ adminContent.innerHTML=`<h2>الحسابات</h2><div class="form-grid"><select id="aRole"><option value="teacher">مدرس</option><option value="library">مكتبة</option><option value="courier">مندوب</option><option value="accountant">محاسب</option></select><input id="aName" placeholder="الاسم"><input id="aUser" placeholder="اليوزر"><input id="aPass" placeholder="الرمز"><input id="aArea" placeholder="المنطقة"><input id="aLandmark" placeholder="أقرب نقطة"><button onclick="addAccount()">إضافة</button></div><h3>المدرسين</h3>${db.accounts.teachers.map(x=>`<div class="row"><div><b>${x.name}</b><small>${x.username} — ${x.area||''}</small></div><span>${x.status}</span></div>`).join('')}<h3>المكتبات</h3>${db.accounts.libraries.map(x=>`<div class="row"><div><b>${x.name}</b><small>${x.username} — ${x.area||''} — ${x.landmark||''}</small></div><span>${x.status}</span></div>`).join('')}`; }
-async function addAccount(){ if(window.ALINAuth?.createAccountFromAdmin)return window.ALINAuth.createAccountFromAdmin(); alert('خدمة إنشاء الحساب الآمن غير جاهزة'); }
+/* PLATFORM STEP 9: admin statistics are owned by modules/admin/shell.js. */
+/* PLATFORM STEP 8: finance implementation moved to core/finance-runtime.js and modules/admin/finance.js. */
+/* PLATFORM STEP 9: admin routing is owned by modules/admin/shell.js. */
+/* PLATFORM STEP 9: account administration is owned by modules/admin/accounts.js. */
 
 /* Product, category and booklet administration is implemented only in modules/admin/products.js and modules/admin/booklets.js. */
 
@@ -218,37 +214,18 @@ async function addAccount(){ if(window.ALINAuth?.createAccountFromAdmin)return w
 
 /* platform step 5: removed legacy devPay; authoritative code is modules/admin/orders.js */
 
-function renderFinanceAdmin(){ adminContent.innerHTML=`<h2>الدفتر المالي</h2>${db.ledger.map(x=>`<div class="row"><div><b>${x.order_id}</b><small>آلين ${money(x.alin)} — مدرس ${money(x.teacher)} — مكتبة ${money(x.library)}</small></div><span>${x.settlement_status}</span></div>`).join('')}<h3>طلبات السحب</h3>${db.withdrawals.map(x=>`<div class="row"><div><b>${x.role} — ${money(x.amount)} د.ع</b><small>${x.status}</small></div><div class="row-actions"><button onclick="withdrawStatus('${x.id}','approved')">موافقة</button><button onclick="withdrawStatus('${x.id}','paid')">تم الدفع</button><button class="danger" onclick="withdrawStatus('${x.id}','rejected')">رفض</button></div></div>`).join('')}`; }
-async function withdrawStatus(id,status){ await update('withdrawals',{status},{id}); await audit('withdrawal','تحديث طلب سحب '+id); await load(); renderFinanceAdmin(); }
-
 function renderAdsAdmin(){ adminContent.innerHTML=`<h2>اللوحة الإعلانية</h2><div class="form-grid"><input id="adTitle" placeholder="عنوان الإعلان"><input id="adText" placeholder="نص الإعلان"><button onclick="addAd()">إضافة إعلان</button></div>${db.banners.map(x=>`<div class="row"><div><b>${x.title}</b><small>${x.text}</small></div><button onclick="toggleAd('${x.id}',${x.active})">${x.active?'إيقاف':'تشغيل'}</button></div>`).join('')}`; }
 async function addAd(){ await insert('banners',{id:uid('AD'),title:adTitle.value,text:adText.value,active:1}); await audit('banner','إضافة إعلان'); await load(); renderAdsAdmin(); }
 async function toggleAd(id,active){ await update('banners',{active:active?0:1},{id}); await load(); renderAdsAdmin(); }
 
 function renderSettingsAdmin(){ adminContent.innerHTML=`<h2>إعدادات المنصة</h2><div class="form-grid"><input id="platformNameInput" value="آلين" placeholder="اسم المنصة"><input id="platformPhoneInput" value="" placeholder="رقم الهاتف"><button onclick="saveSystemSettings()">حفظ</button></div><div id="systemMsg"></div>`; }
-function renderAll(){ renderStore(); window.renderTeacher?.(); window.renderLibrary?.(); adminStatsRender(); if(window.adminContent&&!adminContent.innerHTML)adminTab('accounts'); }
+function renderAll(){ window.renderStore?.(); window.renderTeacher?.(); window.renderLibrary?.(); window.adminStatsRender?.(); }
 document.addEventListener('DOMContentLoaded', load);
 /* ================= ALIN V18 UPGRADE ================= */
-let activeAdminTab = 'accounts';
 const esc = v => String(v ?? '').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 function emptyState(text){ return `<div class="empty">${esc(text)}</div>`; }
 function toast(text){ const old=document.querySelector('.toast'); if(old)old.remove(); const el=document.createElement('div'); el.className='toast'; el.textContent=text; document.body.appendChild(el); setTimeout(()=>el.remove(),2200); }
-function markAdminTab(t){ activeAdminTab=t; document.querySelectorAll('.admin-tabs button').forEach(b=>b.classList.toggle('active-admin-tab',(b.getAttribute('onclick')||'').includes(`'${t}'`))); }
-
-adminTab = function(t){
-  markAdminTab(t); adminStatsRender();
-  if(t==='accounts')return renderAccountsAdmin(); if(t==='booklets')return renderBookletsAdmin(); if(t==='products')return renderProductsAdmin(); if(t==='categories')return renderCategoriesAdmin(); if(t==='orders')return renderOrdersAdmin(); if(t==='finance')return renderFinanceAdmin(); if(t==='ads')return renderAdsAdmin(); if(t==='settings')return renderSettingsAdmin();
-  if(t==='audit') adminContent.innerHTML='<h2>سجل العمليات</h2>'+(db.audit.length?db.audit.map(x=>`<div class="row"><div><b>${esc(x.text)}</b><small>${esc(x.created_at||'')}</small></div><span>${esc(x.kind)}</span></div>`).join(''):emptyState('لا توجد عمليات مسجلة'));
-}
-
-renderAccountsAdmin = function(){
-  const rows = list => list.length ? list.map(x=>`<div class="row"><div><b>${esc(x.name)}</b><small>${esc(x.username)} — ${esc(x.area||'')}${x.landmark?' — '+esc(x.landmark):''}</small></div><div class="row-actions"><button class="secondary" onclick="editAccount('${x.id}')">تعديل</button><button onclick="toggleAccount('${x.id}','${x.status==='active'?'disabled':'active'}')">${x.status==='active'?'إيقاف':'تفعيل'}</button><button class="danger" onclick="deleteAccount('${x.id}')">حذف</button></div></div>`).join('') : emptyState('لا توجد حسابات');
-  adminContent.innerHTML=`<h2>الحسابات</h2><div class="form-grid"><select id="aRole"><option value="teacher">مدرس</option><option value="library">مكتبة</option><option value="courier">مندوب</option><option value="accountant">محاسب</option></select><input id="aName" placeholder="الاسم"><input id="aUser" placeholder="اسم الدخول"><input id="aPass" placeholder="الرمز السري"><input id="aArea" placeholder="المنطقة"><input id="aLandmark" placeholder="أقرب نقطة"><button onclick="addAccount()">إضافة حساب</button></div><h3>المدرسون</h3>${rows(db.accounts.teachers)}<h3>المكتبات</h3>${rows(db.accounts.libraries)}`;
-}
-addAccount = async function(){ if(window.ALINAuth?.createAccountFromAdmin)return window.ALINAuth.createAccountFromAdmin(); alert('خدمة إنشاء الحساب الآمن غير جاهزة'); }
-async function editAccount(id){ const x=[...db.accounts.teachers,...db.accounts.libraries].find(a=>a.id===id); if(!x)return; const name=prompt('الاسم',x.name); if(name===null)return; const username=prompt('اسم الدخول',x.username); if(username===null)return; const area=prompt('المنطقة',x.area||''); if(area===null)return; const landmark=x.role==='library'?prompt('أقرب نقطة',x.landmark||''):x.landmark; await update('accounts',{name:name.trim(),username:username.trim(),area:area.trim(),landmark:landmark||''},{id}); await audit('account','تعديل حساب '+id); await load(); renderAccountsAdmin(); toast('تم تعديل الحساب'); }
-async function toggleAccount(id,status){ await update('accounts',{status},{id}); await load(); renderAccountsAdmin(); toast(status==='active'?'تم تفعيل الحساب':'تم إيقاف الحساب'); }
-async function deleteAccount(id){ if(!confirm('حذف الحساب نهائياً؟'))return; try{ await removeRow('accounts',{id}); await audit('account','حذف حساب '+id); await load(); renderAccountsAdmin(); toast('تم حذف الحساب'); }catch(e){alert('تعذر الحذف: '+e.message)} }
+/* PLATFORM STEP 9: legacy admin router and account CRUD removed. */
 
 
 
@@ -269,11 +246,9 @@ const v19OldLoad=load;
 load=async function(){ await v19OldLoad(); if(sb){try{v19Notifications=await query('notifications');db.notifications=v19Notifications}catch(error){console.warn('[ALIN notifications] optional load failed',error);v19Notifications=[];db.notifications=[]}} applyBrand(); renderCartBadge(); renderAll(); };
 function applyBrand(){ const n=db.settings.platform_name||'منصة آلين'; document.title=n; document.querySelectorAll('.brand b').forEach(x=>x.textContent=n.replace('منصة ','')); const hero=document.querySelector('.hero'); if(hero)hero.innerHTML=`<h2>${esc(db.settings.hero_title||n)}</h2><p>${esc(db.settings.hero_text||'')}</p>`; }
 
-const v19Store=renderStore;
-renderStore=function(){ v19Store(); if(!window.storeGrid)return; const items=storeItems(),q=(searchInput.value||'').toLowerCase(); const list=items.filter(x=>(!filterCategory.value||x.grade===filterCategory.value||x.subject===filterCategory.value)&&(!filterTeacher.value||x.teacher===filterTeacher.value)&&(`${x.title} ${x.teacher} ${x.subject}`).toLowerCase().includes(q)); storeGrid.innerHTML=list.map(x=>`<article class="card"><div class="cover">${x.cover?`<img src="${mediaUrl(x.cover)}">`:(x.subject||'منتج')}</div><h3>${esc(x.title)}</h3>${x.teacher?`<p>${esc(x.teacher)}</p>`:''}<p>${esc(x.grade||x.subject||'')}</p>${x.stock!==null?`<p class="${x.stock<=5?'low-stock':''}">${x.stock<=0?'نافد':`المخزون: ${x.stock}`}</p>`:''}<div class="price">${money(x.price)} د.ع</div><div class="product-actions"><button onclick="addToCart('${x.kind}','${x.id}')" ${x.stock===0?'disabled':''}>أضف للسلة</button><button class="secondary" onclick="openCheckout('${x.kind}','${x.id}')">شراء مباشر</button></div></article>`).join('')||emptyState('لا توجد مواد'); renderCartBadge(); };
+/* PLATFORM STEP 10: legacy storefront override removed. */
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
-const v19AdminTab=adminTab;
-adminTab=function(t){ window.activeAdminTab=t; if(t==='notifications')return renderNotificationsAdmin(); return v19AdminTab(t); };
 function renderNotificationsAdmin(){
   const rows=(typeof alinV78NotificationRows==='function'?alinV78NotificationRows():(v19Notifications||[]));
   adminContent.innerHTML=`<h2>الإشعارات</h2><div class="form-grid"><select id="ntAudience"><option value="all">الجميع</option><option value="teacher">المدرسين</option><option value="library">المكتبات</option><option value="student">المتجر / الطلبة</option></select><input id="ntTitle" placeholder="العنوان"><input id="ntText" placeholder="نص الإشعار"><button onclick="sendNotification()">إرسال</button></div>${rows.map(n=>`<div class="row"><div><b>${esc(n.title||'')}</b><small>${esc(n.message||n.text||'')} — ${esc(n.target_role||n.audience||'all')}</small></div><button class="danger" onclick="deleteNotification('${n.id}')">حذف</button></div>`).join('')||emptyState('لا توجد إشعارات')}`;
@@ -300,7 +275,6 @@ async function deleteNotification(id){
   renderNotificationsAdmin();
 }
 
-adminStatsRender=function(){if(!window.adminStats)return;const today=new Date().toISOString().slice(0,10),month=today.slice(0,7),todayOrders=db.orders.filter(x=>(x.created_at||'').slice(0,10)===today),monthOrders=db.orders.filter(x=>(x.created_at||'').slice(0,7)===month),low=db.products.filter(x=>+x.stock<=+(x.low_stock_limit||db.settings.low_stock_default||5));adminStats.innerHTML=`<div><b>طلبات اليوم</b><span>${todayOrders.length}</span></div><div><b>مبيعات الشهر</b><span>${money(monthOrders.reduce((a,x)=>a+(+x.total||0),0))} د.ع</span></div><div><b>طلبات الشهر</b><span>${monthOrders.length}</span></div><div><b>مخزون منخفض</b><span>${low.length}</span><small class="metric-note">${low.slice(0,2).map(x=>esc(x.name)).join('، ')}</small></div>`;}
 
 
 
@@ -342,20 +316,6 @@ function librariesVisibleList(){
 
 
 
-async function ensureOrderFinancials(o){
-  if(!o || db.ledger.some(x=>x.order_id===o.id)) return;
-  let alin=Math.round((+o.total||0)*0.30), teacher=0, teacher_id='', library=0;
-  if(o.kind==='booklet'){
-    const b=db.booklets.find(x=>x.id===o.item_id);
-    teacher_id=b?.teacher_id||''; teacher=Math.round((+o.total||0)*0.50); library=(+o.total||0)-alin-teacher;
-    if(!db.permits.some(p=>p.order_id===o.id)) await insert('permits',{id:uid('P'),order_id:o.id,booklet_id:o.item_id,library_id:o.library_id,qty:o.qty,used:0,status:'active'});
-  }else{ library=Math.round((+o.total||0)*0.10); alin=(+o.total||0)-library; }
-  await insert('ledger',{id:uid('LG'),order_id:o.id,alin,teacher,teacher_id,library,library_id:o.library_id,settlement_status:'unsettled'});
-}
-
-
-
-
 /* platform step 5: removed legacy v21 order alias; authoritative code is modules/admin/orders.js */
 
 
@@ -385,34 +345,13 @@ function printReceipt(orderId){
   checkoutModal.classList.remove('hidden');
 }
 
-const v21OldRenderAccountsAdmin = renderAccountsAdmin;
-renderAccountsAdmin=function(){
-  v21OldRenderAccountsAdmin();
-  const libs=db.accounts.libraries;
-  const old=adminContent.innerHTML;
-  if(!old.includes('حالة المكتبات')){
-    adminContent.innerHTML += `<h3>حالة المكتبات في المتجر</h3>${libs.map(x=>`<div class="row"><div><b>${esc(x.name)}</b><small>${esc(x.area||'')} — ${esc(x.landmark||'')}</small></div><span>${libIsOpen(x)?'مفتوح':'مغلق'} ${x.open_note?`— ${esc(x.open_note)}`:''}</span></div>`).join('')}`;
-  }
-};
 
 
 /* ================= ALIN V22 TEACHER SYSTEM ================= */
 db.teacherRequests = [];
-db.teacherPayouts = [];
+db.teacherRequests = [];
 let activeTeacherTab = 'dashboard';
-
-const v22Load = load;
-load = async function(){
-  await v22Load();
-  if(sb){
-    try{ db.teacherRequests = await query('teacher_requests'); }catch(e){ db.teacherRequests=[]; console.warn('تعذر تحميل طلبات المدرسين', e.message); }
-    try{ db.teacherPayouts = await query('teacher_payouts'); }catch(e){ db.teacherPayouts=[]; }
-  }
-  const badge=document.querySelector('.version-badge'); if(badge) badge.textContent='منصة آلين';
-  document.title=(db.settings.platform_name||'منصة آلين');
-  renderAll();
-};
-document.addEventListener('DOMContentLoaded', function(){ setTimeout(load,150); });
+/* v2.2.3: teacher payout/load wrapper removed; base load is authoritative. */
 
 
 
@@ -440,8 +379,6 @@ function isMissingTableError(e, tableName){
 
 
 
-const v22AdminTab = adminTab;
-adminTab=function(t){ window.activeAdminTab=t; if(t==='teacherRequests')return renderTeacherRequestsAdmin(); return v22AdminTab(t); };
 
 
 
@@ -449,13 +386,6 @@ adminTab=function(t){ window.activeAdminTab=t; if(t==='teacherRequests')return r
 
 
 
-
-
-const v22RenderFinanceAdmin = renderFinanceAdmin;
-renderFinanceAdmin=function(){
-  v22RenderFinanceAdmin();
-  adminContent.innerHTML += `<h3>تسديد مستحقات المدرسين</h3>${db.accounts.teachers.map(t=>`<div class="row"><div><b>${esc(t.name)}</b><small>المستحق: ${money(db.ledger.filter(x=>x.teacher_id===t.id).reduce((a,x)=>a+(+x.teacher||0),0))} د.ع — المدفوع: ${money(teacherAccountPaid(t.id))} د.ع</small></div><button onclick="addTeacherPayoutPrompt('${t.id}')">تسجيل دفعة</button></div>`).join('')}`;
-};
 
 
 /* ================= ALIN V23 MALZAMA STORE DISPLAY ================= */
@@ -467,36 +397,9 @@ const ALIN_VERSION = 'V23 Malzama';
 
 
 
-storeItems=function(){
-  if(db.settings.storeType==='booklet'){
-    return (db.booklets||[]).filter(x=>x.status==='published').map(x=>({
-      kind:'booklet',id:x.id,title:x.title,subject:x.subject,grade:x.grade,
-      teacher:teacherName(x.teacher_id),teacher_id:x.teacher_id,teacher_phone:teacherPhoneForBooklet(x),
-      teacher_image:teacherImageForBooklet(x),price:x.price,cover:x.cover_path,stock:null,pdf_hidden:true
-    }));
-  }
-  return (db.products||[]).filter(x=>x.type===db.settings.storeType&&x.status==='published').map(x=>({kind:x.type,id:x.id,title:x.name,subject:x.category,grade:x.category,teacher:'',price:x.price,cover:x.image_path,stock:x.stock}));
-};
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
-renderStore=function(){
-  if(!window.storeGrid || !db.booklets)return;
-  bannerBox.innerHTML=(db.banners||[]).filter(x=>x.active).map(x=>`<div class="banner-card"><div><h2>${esc(x.title)}</h2><p>${esc(x.text||'')}</p></div><b>آ</b></div>`).join('');
-  const items=storeItems(), q=(searchInput.value||'').toLowerCase();
-  const cats=[...new Set(items.map(x=>x.grade||x.subject).filter(Boolean))], teachers=[...new Set(items.map(x=>x.teacher).filter(Boolean))];
-  const oldCat=filterCategory.value, oldTeacher=filterTeacher.value;
-  filterCategory.innerHTML='<option value="">كل الأقسام</option>'+cats.map(x=>`<option ${x===oldCat?'selected':''}>${esc(x)}</option>`).join('');
-  filterTeacher.style.display=db.settings.storeType==='booklet'?'':'none';
-  filterTeacher.innerHTML='<option value="">كل المدرسين</option>'+teachers.map(x=>`<option ${x===oldTeacher?'selected':''}>${esc(x)}</option>`).join('');
-  const list=items.filter(x=>(!filterCategory.value||x.grade===filterCategory.value||x.subject===filterCategory.value)&&(!filterTeacher.value||x.teacher===filterTeacher.value)&&(`${x.title} ${x.teacher} ${x.subject} ${x.teacher_phone||''}`).toLowerCase().includes(q));
-  storeGrid.innerHTML=list.map(x=>{
-    if(x.kind==='booklet'){
-      const img=x.teacher_image?`<img src="${mediaUrl(x.teacher_image)}" alt="">`:`<div class="avatar-fallback">${esc((x.teacher||'م')[0])}</div>`;
-      return `<article class="card booklet-card"><div class="cover">${x.cover?`<img src="${mediaUrl(x.cover)}">`:esc(x.subject||'ملزمة')}</div><h3>${esc(x.title)}</h3><div class="teacher-card-mini">${img}<div><b>${esc(x.teacher||'مدرس')}</b><small class="store-teacher-phone">${esc(x.teacher_phone||'بدون رقم')}</small></div></div><p>${esc(x.grade||x.subject||'')}</p><div class="price">${money(x.price)} د.ع</div><div class="product-actions"><button onclick="addToCart('${x.kind}','${x.id}')">أضف للسلة</button><button class="secondary" onclick="openCheckout('${x.kind}','${x.id}')">شراء مباشر</button></div></article>`;
-    }
-    return `<article class="card"><div class="cover">${x.cover?`<img src="${mediaUrl(x.cover)}">`:(esc(x.subject||'منتج'))}</div><h3>${esc(x.title)}</h3><p>${esc(x.grade||x.subject||'')}</p>${x.stock!==null?`<p class="${x.stock<=5?'low-stock':''}">${x.stock<=0?'نافد':`المخزون: ${x.stock}`}</p>`:''}<div class="price">${money(x.price)} د.ع</div><div class="product-actions"><button onclick="addToCart('${x.kind}','${x.id}')" ${x.stock===0?'disabled':''}>أضف للسلة</button><button class="secondary" onclick="openCheckout('${x.kind}','${x.id}')">شراء مباشر</button></div></article>`;
-  }).join('')||emptyState('لا توجد مواد');
-  renderCartBadge();
-};
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
 async function uploadBookletV23(){
   try{
@@ -531,111 +434,7 @@ function printOrderReceipt(orderId){
 }
 
 /* ================= ALIN V24 FINANCIAL LEDGER ================= */
-window.ALIN_VERSION='V25 Library Settlements';
-let financialEntries=[], financialPayouts=[], financialReturns=[];
-const v24OldLoad=load;
-load=async function(){
-  await v24OldLoad();
-  if(sb){ try{ [financialEntries,financialPayouts,financialReturns]=await Promise.all([query('financial_entries'),query('financial_payouts'),query('financial_returns')]); }catch(e){ console.warn('V24 migration pending',e); } }
-  adminStatsRender();
-};
-function partyPaid(role,id){ return financialPayouts.filter(x=>x.party_role===role&&x.party_id===id&&x.status==='paid').reduce((a,x)=>a+(+x.amount||0),0); }
-function partyEarned(role,id){ const key=role==='teacher'?'teacher_amount':'library_amount', idkey=role+'_id'; return financialEntries.filter(x=>x[idkey]===id).reduce((a,x)=>a+(+x[key]||0),0); }
-function calcDistribution(o){
-  const gross=+o.total||0, qty=+o.qty||1;
-  if(o.kind!=='booklet') return {platform:gross,teacher:0,library:0,teacher_id:'',mode:'platform_only',snapshot:{platform:gross}};
-  const b=db.booklets.find(x=>x.id===o.item_id)||{}, mode=b.distribution_mode||'fixed';
-  let teacher=0,library=0;
-  if(mode==='percent'){ teacher=Math.round(gross*(+b.teacher_share||0)/100); library=Math.round(gross*(+b.library_share||0)/100); }
-  else { teacher=(+b.teacher_share||0)*qty; library=(+b.library_share||0)*qty; }
-  if(!b.teacher_share&&!b.library_share){ teacher=Math.round(gross*.5); library=Math.round(gross*.2); }
-  const platform=Math.max(0,gross-teacher-library);
-  return {platform,teacher,library,teacher_id:b.teacher_id||'',mode,snapshot:{mode,teacher_share:+b.teacher_share||0,library_share:+b.library_share||0,price:+b.price||0,qty}};
-}
-ensureOrderFinancials=async function(o){
-  if(!o || o.status!=='completed' || financialEntries.some(x=>x.order_id===o.id&&x.entry_type==='sale')) return;
-  const d=calcDistribution(o);
-  await insert('financial_entries',{id:uid('FE'),order_id:o.id,order_number:o.order_number||o.id,entry_type:'sale',kind:o.kind,item_id:o.item_id,title:o.title,qty:+o.qty||1,gross:+o.total||0,platform_amount:d.platform,teacher_amount:d.teacher,library_amount:d.library,teacher_id:d.teacher_id,library_id:o.library_id||'',distribution_mode:d.mode,distribution_snapshot:d.snapshot,note:'تسوية تلقائية عند تم التسليم'});
-  if(o.kind==='booklet'&&!db.permits.some(p=>p.order_id===o.id)) await insert('permits',{id:uid('P'),order_id:o.id,booklet_id:o.item_id,library_id:o.library_id,qty:o.qty,used:0,status:'active'});
-};
-
-
-async function saveBookDistribution(id){
-  const mode=document.getElementById('distMode_'+id).value, teacher=+document.getElementById('tShare_'+id).value||0, library=+document.getElementById('lShare_'+id).value||0;
-  if(mode==='percent'&&teacher+library>100)return alert('مجموع النسب لا يجوز أن يتجاوز 100%');
-  await update('booklets',{distribution_mode:mode,teacher_share:teacher,library_share:library},{id}); await audit('finance','تعديل توزيع أرباح الملزمة '+id); await load(); renderFinanceAdmin();
-}
-async function recordPayout(role,id){
-  const earned=partyEarned(role,id),paid=partyPaid(role,id),remaining=earned-paid;
-  const amount=+(prompt('المتبقي '+money(remaining)+' د.ع\nاكتب مبلغ الدفعة')||0); if(amount<=0||amount>remaining)return alert('مبلغ الدفعة غير صحيح أو أكبر من المستحق');
-  const method=prompt('طريقة الدفع: نقدي / تحويل / زين كاش / آسيا حوالة','نقدي')||'نقدي', note=prompt('تفاصيل الدفعة','')||'';
-  const voucher='PV-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+Math.random().toString(36).slice(2,7).toUpperCase();
-  await insert('financial_payouts',{id:uid('FP'),voucher_number:voucher,party_role:role,party_id:id,amount,payment_method:method,note,status:'paid'}); await audit('finance','سند صرف '+voucher); await load(); renderFinanceAdmin(); alert('تم تسجيل سند الصرف '+voucher);
-}
-async function reversePayout(id){
-  const p=financialPayouts.find(x=>x.id===id); if(!p||p.status!=='paid'||!confirm('إنشاء قيد عكسي لهذه الدفعة؟'))return;
-  await update('financial_payouts',{status:'reversed'},{id}); await insert('financial_payouts',{id:uid('FP'),voucher_number:'RV-'+Date.now(),party_role:p.party_role,party_id:p.party_id,amount:p.amount,payment_method:p.payment_method,note:'قيد عكسي للسند '+p.voucher_number,status:'reversal',reversal_of:p.id}); await audit('finance','عكس سند '+p.voucher_number); await load(); renderFinanceAdmin();
-}
-async function returnOrder(orderId){
-  const e=financialEntries.find(x=>x.order_id===orderId&&x.entry_type==='sale'); if(!e)return alert('لا يوجد قيد بيع نهائي لهذا الطلب');
-  if(financialEntries.some(x=>x.reversed_entry_id===e.id))return alert('تم تسجيل مرتجع لهذا الطلب سابقاً');
-  const reason=prompt('سبب المرتجع')||'مرتجع';
-  await insert('financial_entries',{id:uid('FE'),order_id:e.order_id,order_number:e.order_number,entry_type:'return',kind:e.kind,item_id:e.item_id,title:e.title,qty:e.qty,gross:-Math.abs(+e.gross),platform_amount:-Math.abs(+e.platform_amount),teacher_amount:-Math.abs(+e.teacher_amount),library_amount:-Math.abs(+e.library_amount),teacher_id:e.teacher_id,library_id:e.library_id,distribution_mode:e.distribution_mode,distribution_snapshot:e.distribution_snapshot,note:reason,reversed_entry_id:e.id});
-  await insert('financial_returns',{id:uid('FR'),order_id:e.order_id,entry_id:e.id,amount:e.gross,reason}); await audit('finance','مرتجع الطلب '+e.order_number); await load(); renderFinanceAdmin();
-}
-renderFinanceAdmin=function(){
-  const sales=financialEntries.reduce((a,x)=>a+(+x.gross||0),0), platform=financialEntries.reduce((a,x)=>a+(+x.platform_amount||0),0), teachers=financialEntries.reduce((a,x)=>a+(+x.teacher_amount||0),0), libraries=financialEntries.reduce((a,x)=>a+(+x.library_amount||0),0);
-  let html=`<h2>V25 — الدفتر المالي وتسويات المكتبات</h2><div class="stats"><div><b>صافي المبيعات</b><span>${money(sales)} د.ع</span></div><div><b>حصة المنصة</b><span>${money(platform)} د.ع</span></div><div><b>مستحقات المدرسين</b><span>${money(teachers)} د.ع</span></div><div><b>مستحقات المكتبات</b><span>${money(libraries)} د.ع</span></div></div>`;
-  html+=`<h3>توزيع أرباح الملازم</h3>`+(db.booklets.map(b=>`<div class="row"><div><b>${esc(b.title)}</b><small>ثابت = مبلغ لكل نسخة، نسبة = من إجمالي الطلب</small></div><div class="row-actions"><select id="distMode_${b.id}"><option value="fixed" ${b.distribution_mode!=='percent'?'selected':''}>مبلغ ثابت</option><option value="percent" ${b.distribution_mode==='percent'?'selected':''}>نسبة %</option></select><input id="tShare_${b.id}" type="number" value="${+b.teacher_share||0}" placeholder="المدرس"><input id="lShare_${b.id}" type="number" value="${+b.library_share||0}" placeholder="المكتبة"><button onclick="saveBookDistribution('${b.id}')">حفظ</button></div></div>`).join('')||emptyState('لا توجد ملازم'));
-  html+=`<h3>قيود المبيعات والمرتجعات</h3>`+(financialEntries.slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')).map(x=>`<div class="row"><div><b>${esc(x.order_number||x.order_id)} — ${x.entry_type==='return'?'مرتجع':'بيع مكتمل'}</b><small>${esc(x.title||'')} × ${x.qty} | منصة ${money(x.platform_amount)} | مدرس ${money(x.teacher_amount)} | مكتبة ${money(x.library_amount)}</small></div>${x.entry_type==='sale'?`<button class="danger" onclick="returnOrder('${x.order_id}')">تسجيل مرتجع</button>`:''}</div>`).join('')||emptyState('لا توجد قيود مالية نهائية'));
-  html+=`<h3>مستحقات المدرسين</h3>`+db.accounts.teachers.map(t=>{const e=partyEarned('teacher',t.id),p=partyPaid('teacher',t.id);return `<div class="row"><div><b>${esc(t.name)}</b><small>مستحق ${money(e)} — مدفوع ${money(p)} — متبقي ${money(e-p)}</small></div><button onclick="recordPayout('teacher','${t.id}')">تسجيل دفعة</button></div>`}).join('');
-  html+=`<h3>مستحقات المكتبات</h3>`+db.accounts.libraries.map(l=>{const e=partyEarned('library',l.id),p=partyPaid('library',l.id);return `<div class="row"><div><b>${esc(l.name)}</b><small>مستحق ${money(e)} — مدفوع ${money(p)} — متبقي ${money(e-p)}</small></div><button onclick="recordPayout('library','${l.id}')">تسجيل دفعة</button></div>`}).join('');
-  html+=`<h3>سندات الصرف</h3>`+(financialPayouts.filter(x=>x.status==='paid').map(x=>`<div class="row"><div><b>${esc(x.voucher_number)}</b><small>${x.party_role==='teacher'?'مدرس':'مكتبة'} — ${money(x.amount)} د.ع — ${esc(x.payment_method)}</small></div><button class="danger" onclick="reversePayout('${x.id}')">قيد عكسي</button></div>`).join('')||emptyState('لا توجد سندات صرف'));
-  adminContent.innerHTML=html;
-};
-adminStatsRender=function(){ if(!window.adminStats)return; const platform=financialEntries.reduce((a,x)=>a+(+x.platform_amount||0),0); adminStats.innerHTML=`<div><b>الحسابات</b><span>${db.accounts.teachers.length+db.accounts.libraries.length}</span></div><div><b>الملازم</b><span>${db.booklets.length}</span></div><div><b>الطلبات</b><span>${db.orders.length}</span></div><div><b>صافي حصة آلين</b><span>${money(platform)} د.ع</span></div>`; };
-
-
 /* ================= ALIN V25 LIBRARY SETTLEMENTS ================= */
-window.ALIN_VERSION='V25 Library Settlements';
-let librarySettlements=[];
-const v25OldLoad=load;
-load=async function(){
-  await v25OldLoad();
-  if(sb){ try{ librarySettlements=await query('library_settlements'); }catch(e){ console.warn('V25 migration pending',e); librarySettlements=[]; } }
-  adminStatsRender();
-};
-function libDebt(id){
-  const owed=financialEntries.filter(x=>x.library_id===id).reduce((a,x)=>a+(+x.platform_amount||0)+(+x.teacher_amount||0),0);
-  const paid=librarySettlements.filter(x=>x.library_id===id&&x.status!=='reversed'&&x.status!=='reversal').reduce((a,x)=>a+(+x.amount||0),0);
-  return {owed,paid,remaining:owed-paid};
-}
-function settlementNo(){return 'RC-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+Math.random().toString(36).slice(2,7).toUpperCase();}
-
-
-
-
-
-
-
-
-const v25OldRenderFinanceAdmin=renderFinanceAdmin;
-renderFinanceAdmin=function(){
-  v25OldRenderFinanceAdmin();
-  let html=adminContent.innerHTML;
-  html+=`<h3>تسويات المكتبات</h3><p class="muted">المكتبة تستلم من الطالب. المطلوب منها تسليمه = حصة المنصة + حصة المدرسين.</p>`;
-  html+=(db.accounts.libraries||[]).map(l=>{const r=settlementRowsForLibrary(l.id);return `<div class="row settlement-row"><div><b>${esc(l.name)}</b><small>مبيعات ${money(r.gross)} — حصة المكتبة ${money(r.libShare)} — للمنصة ${money(r.platform)} — للمدرسين ${money(r.teacher)} — مدفوع ${money(r.paid)} — متبقي ${money(r.remaining)}</small></div><div class="row-actions"><button onclick="recordLibrarySettlement('${l.id}')">استلام تسوية</button><button class="secondary" onclick="printLibraryStatement('${l.id}')">طباعة كشف</button></div></div>`}).join('')||emptyState('لا توجد مكتبات');
-  html+=`<h3>سندات قبض التسويات</h3>`+(librarySettlements.slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')).map(s=>{const l=(db.accounts.libraries||[]).find(x=>x.id===s.library_id)||{};return `<div class="row"><div><b>${esc(s.receipt_number)} — ${esc(l.name||'')}</b><small>${money(s.amount)} د.ع — ${esc(s.payment_method||'')} — ${esc(s.status||'')}</small></div><div class="row-actions"><button class="secondary" onclick="printLibrarySettlement('${s.id}')">طباعة سند</button>${s.status==='received'?`<button class="danger" onclick="reverseLibrarySettlement('${s.id}')">قيد عكسي</button>`:''}</div></div>`}).join('')||emptyState('لا توجد تسويات'));
-  adminContent.innerHTML=html;
-};
-
-
-
-
-
-
-adminStatsRender=function(){ if(!window.adminStats)return; const platform=financialEntries.reduce((a,x)=>a+(+x.platform_amount||0),0); const totalDebt=(db.accounts.libraries||[]).reduce((a,l)=>a+libDebt(l.id).remaining,0); adminStats.innerHTML=`<div><b>الحسابات</b><span>${db.accounts.teachers.length+db.accounts.libraries.length}</span></div><div><b>الملازم</b><span>${db.booklets.length}</span></div><div><b>الطلبات</b><span>${db.orders.length}</span></div><div><b>متبقي التسويات</b><span>${money(totalDebt)} د.ع</span></div><div><b>صافي حصة آلين</b><span>${money(platform)} د.ع</span></div>`; };
-
 // ===== V26 Manual Mastercard Payment =====
 function manualPayInfoHtml(){
   const card=esc(db.settings.manual_card_number||'يحدد من لوحة الإدارة');
@@ -712,11 +511,6 @@ async function saveAdminSecurity(){
     alert(e.message);
   }
 }
-const _adminStatsRenderV27=adminStatsRender;
-adminStatsRender=function(){
-  _adminStatsRenderV27();
-  document.querySelectorAll('.version-badge').forEach(x=>x.textContent='منصة آلين');
-};
 
 /* ================= ALIN V28 BRAND MANAGER ================= */
 window.ALIN_VERSION='Alin Clean';
@@ -752,8 +546,6 @@ function applyBrandV28(){
 }
 const _renderAllV28=renderAll;
 renderAll=function(){_renderAllV28();setTimeout(applyBrandV28,30)};
-const _adminStatsRenderV28=adminStatsRender;
-adminStatsRender=function(){_adminStatsRenderV28();document.querySelectorAll('.version-badge').forEach(x=>x.textContent='منصة آلين')};
 const _renderSettingsAdminV28=renderSettingsAdmin;
 renderSettingsAdmin=function(){
   _renderSettingsAdminV28();
@@ -828,13 +620,6 @@ function activeCouriers(){const fn=window.AlinCourierModules&&window.AlinCourier
 
 
 
-const _adminTabV29 = adminTab;
-adminTab = function(t){
-  if(t==='libraryRequests') return renderLibraryRequestsAdmin();
-  if(t==='couriers') return renderCouriersAdmin();
-  if(t==='courierSettlements') return renderCourierSettlementsAdmin();
-  return _adminTabV29(t);
-};
 
 
 
@@ -860,190 +645,19 @@ renderSettingsAdmin = function(){
 async function saveDeliverySettings(){ await settingsSet('delivery_fee',String(+deliveryFeeInput.value||0)); await audit('settings','تحديث أجور التوصيل'); await load(); renderSettingsAdmin(); toast('تم حفظ أجور التوصيل'); }
 
 /* ================= ALIN V29.1 STOREFRONT ENHANCEMENT ================= */
-const _renderStoreV291 = renderStore;
-renderStore = function(){
-  _renderStoreV291();
-  try{
-    const navBtns=document.querySelectorAll('.store-nav button');
-    navBtns.forEach(b=>b.classList.remove('active'));
-    const idx=db.settings.storeType==='stationery'?2:db.settings.storeType==='gift'?3:1;
-    if(navBtns[idx])navBtns[idx].classList.add('active');
-    const h=document.getElementById('storeHeading');
-    if(h) h.textContent=db.settings.storeType==='booklet'?'الملازم':db.settings.storeType==='stationery'?'القرطاسية':'الهدايا';
-    const sb=document.getElementById('alinStatBooklets'), so=document.getElementById('alinStatOrders'), st=document.getElementById('alinStatTeachers'), sl=document.getElementById('alinStatLibraries');
-    if(sb) sb.textContent=(db.booklets||[]).filter(x=>x.status==='published').length;
-    if(so) so.textContent=(db.orders||[]).filter(x=>['delivered','completed','تم التسليم'].includes(x.status)).length;
-    if(st) st.textContent=(db.accounts?.teachers||[]).filter(x=>x.status==='active').length;
-    if(sl) sl.textContent=(db.accounts?.libraries||[]).filter(x=>x.status==='active').length;
-    const fab=document.getElementById('cartCountFab'); if(fab)fab.textContent=cart.reduce((a,x)=>a+x.qty,0);
-  }catch(e){}
-};
+/* PLATFORM STEP 10: legacy storefront override removed. */
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
 
 
 /* ================= ALIN V29.2 CLEAN STOREFRONT FIX ================= */
-(function(){
-  const typeLabel={booklet:'الملازم',stationery:'القرطاسية',gift:'الهدايا'};
-  window.setStoreType=function(type,btn){
-    db.settings.storeType=type||'booklet';
-    document.querySelectorAll('.store-nav button').forEach(b=>b.classList.remove('active'));
-    if(btn){ btn.classList.add('active'); }
-    else{
-      const idx=db.settings.storeType==='stationery'?2:db.settings.storeType==='gift'?3:1;
-      const navBtn=document.querySelector(`.store-nav button:nth-child(${idx+1})`);
-      if(navBtn) navBtn.classList.add('active');
-    }
-    renderStore();
-  };
-  window.storeItems=function(){
-    const type=db.settings.storeType||'booklet';
-    if(type==='booklet'){
-      const fromBooklets=(db.booklets||[]).filter(x=>x.status==='published').map(x=>({
-        kind:'booklet',id:x.id,title:x.title,subject:x.subject,grade:x.grade,
-        teacher:teacherName(x.teacher_id),teacher_phone:x.teacher_phone||teacherObj?.(x.teacher_id)?.phone||'',
-        price:x.price,cover:x.cover_path,stock:null
-      }));
-      const fromProducts=(db.products||[]).filter(x=>x.status==='published' && ['booklet','booklets','ملزمة','ملازم'].includes(String(x.type||'').trim())).map(x=>({
-        kind:'booklet_product',id:x.id,title:x.name,subject:x.category,grade:x.category,teacher:'',teacher_phone:'',price:x.price,cover:x.image_path,stock:x.stock
-      }));
-      return [...fromBooklets,...fromProducts];
-    }
-    return (db.products||[]).filter(x=>x.type===type && x.status==='published').map(x=>({kind:x.type,id:x.id,title:x.name,subject:x.category,grade:x.category,teacher:'',price:x.price,cover:x.image_path,stock:x.stock}));
-  };
-  window.renderStore=function(){
-    if(!window.storeGrid || !db.booklets)return;
-    if(window.bannerBox) bannerBox.innerHTML=(db.banners||[]).filter(x=>x.active).map(x=>`<div class="banner-card"><div><h2>${esc(x.title)}</h2><p>${esc(x.text||'')}</p></div><b>آ</b></div>`).join('');
-    const type=db.settings.storeType||'booklet';
-    const items=storeItems();
-    const q=(searchInput?.value||'').toLowerCase();
-    const cats=[...new Set(items.map(x=>x.grade||x.subject).filter(Boolean))];
-    const teachers=[...new Set(items.map(x=>x.teacher).filter(Boolean))];
-    const oldCat=filterCategory?.value||'', oldTeacher=filterTeacher?.value||'';
-    if(window.filterCategory) filterCategory.innerHTML='<option value="">كل الأقسام</option>'+cats.map(x=>`<option ${x===oldCat?'selected':''}>${esc(x)}</option>`).join('');
-    if(window.filterTeacher){
-      filterTeacher.style.display=type==='booklet'?'':'none';
-      filterTeacher.innerHTML='<option value="">كل المدرسين</option>'+teachers.map(x=>`<option ${x===oldTeacher?'selected':''}>${esc(x)}</option>`).join('');
-    }
-    const list=items.filter(x=>(!filterCategory?.value||x.grade===filterCategory.value||x.subject===filterCategory.value)&&(!filterTeacher?.value||x.teacher===filterTeacher.value)&&(`${x.title||''} ${x.teacher||''} ${x.subject||''}`).toLowerCase().includes(q));
-    if(window.storeHeading) storeHeading.textContent=typeLabel[type]||'المتجر';
-    document.querySelectorAll('.store-nav button').forEach(b=>b.classList.remove('active'));
-    const navIndex=type==='stationery'?3:type==='gift'?4:2;
-    const navBtn=document.querySelector(`.store-nav button:nth-child(${navIndex})`); if(navBtn) navBtn.classList.add('active');
-    storeGrid.innerHTML=list.map(x=>{
-      const img=x.cover?`<img src="${mediaUrl(x.cover)}" alt="${esc(x.title||'')}">`:esc(x.subject||'منتج');
-      const teacher=x.teacher?`<div class="teacher-card-mini"><div class="teacher-avatar">م</div><div><b>${esc(x.teacher)}</b>${x.teacher_phone?`<small>${esc(x.teacher_phone)}</small>`:''}</div></div>`:'';
-      return `<article class="card clean-product-card"><div class="cover">${img}</div><h3>${esc(x.title||'')}</h3>${teacher}<p>${esc(x.grade||x.subject||'')}</p>${x.stock!==null?`<p class="stock-line">المخزون: ${money(x.stock)}</p>`:''}<div class="price">${money(x.price)} د.ع</div><div class="product-actions"><button onclick="addToCart('${x.kind}','${x.id}')">أضف للسلة</button><button class="secondary" onclick="openCheckout('${x.kind}','${x.id}')">شراء مباشر</button></div></article>`;
-    }).join('')||emptyState('لا توجد مواد في هذا القسم');
-    if(window.alinStatBooklets) alinStatBooklets.textContent=(db.booklets||[]).filter(x=>x.status==='published').length;
-    if(window.alinStatOrders) alinStatOrders.textContent=(db.orders||[]).filter(x=>['completed','ready','processing','new'].includes(x.status)).length;
-    if(window.alinStatTeachers) alinStatTeachers.textContent=(db.accounts?.teachers||[]).filter(x=>x.status==='active').length;
-    if(window.alinStatLibraries) alinStatLibraries.textContent=(db.accounts?.libraries||[]).filter(x=>x.status==='active').length;
-    renderCartBadge?.();
-  };
-window.renderSettingsAdmin=function(){
-    adminContent.innerHTML=`<h2>إعدادات المنصة</h2><div class="form-grid"><input id="platformName" value="${esc(db.settings.platform_name||'منصة آلين')}" placeholder="اسم المنصة"><input id="platformPhone" value="${esc(db.settings.platform_phone||'')}" placeholder="رقم الهاتف"><input id="heroTitle" value="${esc(db.settings.hero_title||'')}" placeholder="عنوان الواجهة"><input id="heroText" value="${esc(db.settings.hero_text||'')}" placeholder="نص الواجهة"><input id="lowStockDefault" type="number" value="${esc(db.settings.low_stock_default||'5')}" placeholder="حد المخزون المنخفض"><button onclick="savePlatformSettings()">حفظ الإعدادات</button></div><div class="settings-preview"><b>معاينة</b><h3>${esc(db.settings.hero_title||'')}</h3><p>${esc(db.settings.hero_text||'')}</p></div>`;
-  };
-})();
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
 /* ================= ALIN V31 STORE + OPERATIONS ================= */
-(function(){
-  const statusLabels={pending:'تم استلام الطلب',new:'تم استلام الطلب',payment_pending:'بانتظار التأكيد',processing:'قيد التجهيز',ready:'جاهز بالمكتبة',out_delivery:'خرج للتوصيل',completed:'تم التسليم',delivered:'تم التسليم',cancelled:'ملغي'};
-  const statusSteps=['pending','processing','ready','out_delivery','completed'];
-  function orderNo(o){return o?.order_number||o?.id||''}
-  function lowStockLimit(){return +(db?.settings?.low_stock_default||5)}
-window.trackOrder=function(){
-    const q=(window.trackOrderInput?.value||'').trim().toLowerCase();
-    const box=window.trackOrderResult; if(!box)return;
-    if(!q){box.className='track-result show';box.innerHTML='اكتب رقم الطلب أولاً';return;}
-    const o=(db.orders||[]).find(x=>String(x.id||'').toLowerCase()===q||String(x.order_number||'').toLowerCase()===q);
-    if(!o){box.className='track-result show';box.innerHTML='لم يتم العثور على الطلب. تأكد من الرقم واكتب نفس الرقم الظاهر عند إنشاء الطلب.';return;}
-    const current=o.status||'pending';
-    const reached=statusSteps.indexOf(current);
-    box.className='track-result show';
-    box.innerHTML=`<b>${esc(orderNo(o))} — ${esc(o.title||'')}</b><br><small>${esc(o.student_name||'')} • ${money(o.total||0)} د.ع</small><div class="timeline v31">${statusSteps.map((s,i)=>`<span class="${i<=Math.max(0,reached)?'done':''}">${statusLabels[s]}</span>`).join('')}</div>`;
-  };
-
-  window.storeItems=function(){
-    const type=db.settings.storeType||'booklet';
-    if(type==='booklet'){
-      return (db.booklets||[]).filter(x=>x.status==='published').map(x=>({kind:'booklet',id:x.id,title:x.title,subject:x.subject,grade:x.grade,edition:x.edition||x.year||'نسخة 2027',teacher:teacherName(x.teacher_id),price:x.price,cover:x.cover_path,stock:null}));
-    }
-    return (db.products||[]).filter(x=>x.type===type&&x.status==='published').map(x=>({kind:x.type,id:x.id,title:x.name,subject:x.category,grade:x.category,edition:'',teacher:'',price:x.price,cover:x.image_path,stock:+(x.stock||0)}));
-  };
-
-  window.renderStore=function(){
-    if(!window.storeGrid||!db.booklets)return;
-    const type=db.settings.storeType||'booklet', label=type==='booklet'?'الملازم':type==='stationery'?'القرطاسية':'الهدايا';
-    if(window.bannerBox)bannerBox.innerHTML=(db.banners||[]).filter(x=>x.active).map(x=>`<div class="banner-card"><div><h2>${esc(x.title)}</h2><p>${esc(x.text||'')}</p></div><b>آ</b></div>`).join('');
-    const items=storeItems(), q=(searchInput?.value||'').toLowerCase();
-    const cats=[...new Set(items.map(x=>x.grade||x.subject).filter(Boolean))], teachers=[...new Set(items.map(x=>x.teacher).filter(Boolean))];
-    const oldCat=filterCategory?.value||'', oldTeacher=filterTeacher?.value||'';
-    if(window.filterCategory) filterCategory.innerHTML='<option value="">كل الأقسام</option>'+cats.map(x=>`<option ${x===oldCat?'selected':''}>${esc(x)}</option>`).join('');
-    if(window.filterTeacher){filterTeacher.style.display=type==='booklet'?'':'none';filterTeacher.innerHTML='<option value="">كل المدرسين</option>'+teachers.map(x=>`<option ${x===oldTeacher?'selected':''}>${esc(x)}</option>`).join('');}
-    const list=items.filter(x=>(!filterCategory?.value||x.grade===filterCategory.value||x.subject===filterCategory.value)&&(!filterTeacher?.value||x.teacher===filterTeacher.value)&&(`${x.title||''} ${x.teacher||''} ${x.subject||''} ${x.grade||''}`).toLowerCase().includes(q));
-    if(window.storeHeading)storeHeading.textContent=label;
-    document.querySelectorAll('.store-nav button').forEach(b=>b.classList.remove('active'));
-    const navIndex=type==='stationery'?3:type==='gift'?4:2; const nb=document.querySelector(`.store-nav button:nth-child(${navIndex})`); if(nb)nb.classList.add('active');
-    storeGrid.innerHTML=list.map(x=>{
-      const low=x.stock!==null&&x.stock<=lowStockLimit();
-      const img=x.cover?`<img src="${mediaUrl(x.cover)}" alt="${esc(x.title||'')}">`:esc(x.subject||label);
-      const teacher=x.teacher?`<div class="teacher-card-mini"><div class="teacher-avatar">${esc((x.teacher||'م').slice(0,1))}</div><div><b>${esc(x.teacher)}</b><small>${esc(x.subject||'')} • ${esc(x.edition||'')}</small></div></div>`:'';
-      return `<article class="card clean-product-card"><div class="cover">${img}</div><h3>${esc(x.title||'')}</h3>${teacher}<p>${esc(x.grade||x.subject||'')}</p>${x.stock!==null?`<p class="stock-line ${low?'low-stock':''}">${low?'قرب النفاد — ':''}المخزون: ${money(x.stock)}</p>`:''}<div class="price">${money(x.price)} د.ع</div><div class="product-actions"><button onclick="addToCart('${x.kind}','${x.id}')">أضف للسلة</button><button class="secondary" onclick="openCheckout('${x.kind}','${x.id}')">شراء مباشر</button></div></article>`;
-    }).join('')||emptyState('لا توجد مواد في هذا القسم حالياً');
-    if(window.alinStatBooklets)alinStatBooklets.textContent=(db.booklets||[]).filter(x=>x.status==='published').length;
-    if(window.alinStatOrders)alinStatOrders.textContent=(db.orders||[]).length;
-    if(window.alinStatTeachers)alinStatTeachers.textContent=(db.accounts?.teachers||[]).filter(x=>x.status==='active').length;
-    if(window.alinStatLibraries)alinStatLibraries.textContent=(db.accounts?.libraries||[]).filter(x=>x.status==='active').length;
-    renderCartBadge();
-  };
-    
-  
-/* platform step 5: removed legacy renderOrdersAdmin; authoritative code is modules/admin/orders.js */
-
-  window.renderFinanceAdmin=function(){
-    const orders=db.orders||[], led=db.ledger||[]; const total=orders.reduce((a,x)=>a+(+x.total||0),0); const platform=led.reduce((a,x)=>a+(+x.alin||0),0); const teachers=led.reduce((a,x)=>a+(+x.teacher||0),0); const libraries=led.reduce((a,x)=>a+(+x.library||0),0); const delivery=orders.filter(x=>x.fulfillment_type==='home_delivery').length;
-    adminContent.innerHTML=`<h2>المالية والمستحقات</h2><div class="v31-finance-grid"><div><b>إجمالي المبيعات</b><span>${money(total)} د.ع</span></div><div><b>ربح المنصة</b><span>${money(platform)} د.ع</span></div><div><b>مستحقات المدرسين</b><span>${money(teachers)} د.ع</span></div><div><b>مستحقات المكتبات</b><span>${money(libraries)} د.ع</span></div><div><b>طلبات التوصيل</b><span>${delivery}</span></div></div><h3>كشف المدرسين</h3>${(db.accounts?.teachers||[]).map(t=>{const ids=(db.booklets||[]).filter(b=>b.teacher_id===t.id).map(b=>b.id);const val=orders.filter(o=>ids.includes(o.item_id)).reduce((a,o)=>a+(+o.total||0),0);return `<div class="row"><b>${esc(t.name)}</b><span>${money(val)} د.ع</span></div>`}).join('')||emptyState('لا توجد حسابات')}`;
-  };
-
-})();
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
 /* ================= ALIN V32 CLEAN STORE HEADER + EDITABLE FOOTER SECTIONS ================= */
-(function(){
-  function renderBottomInfo(){
-    try{
-      const about=document.getElementById('aboutPlatformBox');
-      const contact=document.getElementById('contactPlatformBox');
-      if(about){
-        about.innerHTML=`<h2>${esc(db.settings.about_title||'عن المنصة')}</h2><p>${esc(db.settings.about_text||'منصة آلين تجمع الملازم والقرطاسية والهدايا في مكان واحد، مع طلب سريع وتواصل واضح بين الطالب والمكتبة والإدارة.')}</p>`;
-      }
-      if(contact){
-        contact.innerHTML=`<h2>${esc(db.settings.contact_title||'تواصل معنا')}</h2><p>${esc(db.settings.contact_text||'للاستفسار أو الانضمام كمدرس أو مكتبة، تواصل مع إدارة منصة آلين.')}</p>`;
-      }
-    }catch(e){}
-  }
-  const oldRenderStore=window.renderStore;
-  window.renderStore=function(){
-    oldRenderStore&&oldRenderStore();
-    renderBottomInfo();
-  };
-  const oldSettings=window.renderSettingsAdmin;
-  window.renderSettingsAdmin=function(){
-    if(oldSettings) oldSettings();
-    const extra=`<div class="settings-section footer-editor"><h3>تعديل فقرات نهاية المتجر</h3><p class="muted">هذه الفقرات تظهر أسفل صفحة المتجر فقط.</p><div class="form-grid"><input id="aboutTitleInput" value="${esc(db.settings.about_title||'عن المنصة')}" placeholder="عنوان عن المنصة"><input id="contactTitleInput" value="${esc(db.settings.contact_title||'تواصل معنا')}" placeholder="عنوان التواصل"><textarea id="aboutTextInput" placeholder="نص عن المنصة">${esc(db.settings.about_text||'منصة آلين تجمع الملازم والقرطاسية والهدايا في مكان واحد، مع طلب سريع وتواصل واضح بين الطالب والمكتبة والإدارة.')}</textarea><textarea id="contactTextInput" placeholder="نص تواصل معنا">${esc(db.settings.contact_text||'للاستفسار أو الانضمام كمدرس أو مكتبة، تواصل مع إدارة منصة آلين.')}</textarea></div><button onclick="saveFooterSections()">حفظ فقرات المتجر</button></div>`;
-    adminContent.innerHTML+=extra;
-  };
-  window.saveFooterSections=async function(){
-    await settingsSet('about_title',aboutTitleInput.value.trim()||'عن المنصة');
-    await settingsSet('about_text',aboutTextInput.value.trim());
-    await settingsSet('contact_title',contactTitleInput.value.trim()||'تواصل معنا');
-    await settingsSet('contact_text',contactTextInput.value.trim());
-    await audit('settings','تحديث فقرات نهاية المتجر');
-    await load();
-    renderSettingsAdmin();
-    toast('تم حفظ فقرات نهاية المتجر');
-  };
-  window.addEventListener('alin:page-open',()=>{renderBottomInfo();});
-})();
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
 /* ================= ALIN V37 ADMIN SETTINGS RESTORE ================= */
 (function(){
@@ -1073,39 +687,12 @@ window.trackOrder=function(){
   /* booklet admin implementation moved to modules/admin/booklets.js */
 })();
 
-/* ================= ALIN V39 BOOKLET SECTIONS + CLEAN CHECKOUT ================= */
-let selectedBookletSection = '';
-function bookletSectionName(b){ return (b.grade || b.subject || 'ملازم عامة').trim(); }
-function bookletSections(){ return [...new Set((db.booklets||[]).filter(x=>x.status==='published').map(bookletSectionName).filter(Boolean))]; }
-function chooseBookletSection(sec){ selectedBookletSection=sec||''; renderStore(); document.getElementById('storeGrid')?.scrollIntoView({behavior:'smooth',block:'start'}); }
-const v39SetStoreType = window.setStoreType;
-window.setStoreType = async function(type,btn){ selectedBookletSection=''; await v39SetStoreType(type,btn); };
+/* PLATFORM STEP 10: legacy storefront override removed. */
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
-window.storeItems=function(){
-  if(db.settings.storeType==='booklet'){
-    return (db.booklets||[]).filter(x=>x.status==='published' && (!selectedBookletSection || bookletSectionName(x)===selectedBookletSection)).map(x=>({kind:'booklet',id:x.id,title:x.title,subject:x.subject,grade:bookletSectionName(x),teacher:teacherName(x.teacher_id),price:x.price,cover:x.cover_path,stock:null}));
-  }
-  return (db.products||[]).filter(x=>x.type===db.settings.storeType&&x.status==='published').map(x=>({kind:x.type,id:x.id,title:x.name,subject:x.category,grade:x.category,teacher:'',price:x.price,cover:x.image_path,stock:x.stock}));
-};
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
-window.renderStore=function(){
-  if(!window.storeGrid)return;
-  try{ bannerBox.innerHTML=(db.banners||[]).filter(x=>x.active).map(x=>`<div class="banner-card"><div><h2>${esc(x.title)}</h2><p>${esc(x.text||'')}</p></div><b>آ</b></div>`).join(''); }catch(e){}
-  const head=document.getElementById('storeProducts');
-  if(db.settings.storeType==='booklet' && !selectedBookletSection){
-    const secs=bookletSections();
-    if(head) head.innerHTML=`<div class="section-title"><h2>أقسام الملازم</h2><p>اختر القسم حتى تظهر الملازم الخاصة به فقط</p></div>`;
-    storeGrid.innerHTML=secs.map(sec=>`<article class="card section-card" onclick="chooseBookletSection('${esc(String(sec)).replace(/'/g,'&#39;')}')"><div class="cover">📘</div><h3>${esc(sec)}</h3><p>فتح ملازم هذا القسم</p><div class="product-actions"><button>دخول القسم</button></div></article>`).join('') || emptyState('لا توجد أقسام ملازم');
-    renderCartBadge();
-    return;
-  }
-  const titleMap={booklet:selectedBookletSection||'الملازم',stationery:'القرطاسية',gift:'الهدايا'};
-  if(head) head.innerHTML=`<div class="section-title"><h2>${esc(titleMap[db.settings.storeType]||'المتجر')}</h2>${db.settings.storeType==='booklet'?`<button class="secondary" onclick="chooseBookletSection('')">رجوع للأقسام</button>`:''}</div>`;
-  const list=storeItems();
-  storeGrid.innerHTML=list.map(x=>`<article class="card"><div class="cover">${x.cover?`<img src="${mediaUrl(x.cover)}">`:(x.subject||'منتج')}</div><h3>${esc(x.title)}</h3>${x.teacher?`<p>${esc(x.teacher)}</p>`:''}<p>${esc(x.grade||x.subject||'')}</p>${x.stock!==null?`<p class="${x.stock<=5?'low-stock':''}">${x.stock<=0?'نافد':`المخزون: ${x.stock}`}</p>`:''}<div class="price">${money(x.price)} د.ع</div><div class="product-actions"><button onclick="addToCart('${x.kind}','${x.id}')" ${x.stock===0?'disabled':''}>أضف للسلة</button><button class="secondary" onclick="openCheckout('${x.kind}','${x.id}')">شراء مباشر</button></div></article>`).join('')||emptyState('لا توجد مواد داخل هذا القسم');
-  renderCartBadge();
-  try{ const about=document.getElementById('aboutPlatformBox'); if(about) about.innerHTML=`<h2>${esc(db.settings.about_title||'عن المنصة')}</h2><p>${esc(db.settings.about_text||'منصة آلين تجمع الملازم والقرطاسية والهدايا في مكان واحد، مع طلب سريع وتواصل واضح بين الطالب والمكتبة والإدارة.')}</p>`; const contact=document.getElementById('contactPlatformBox'); if(contact) contact.innerHTML=`<h2>${esc(db.settings.contact_title||'تواصل معنا')}</h2><p>${esc(db.settings.contact_text||'للاستفسار أو الانضمام كمدرس أو مكتبة، تواصل مع إدارة منصة آلين.')}</p>`; }catch(e){}
-};
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
 
 
@@ -1129,37 +716,8 @@ function orderExtraV42(){
   if(!deliveryArea.value.trim()||!deliveryLandmark.value.trim()) throw Error('اختر المنطقة واكتب أقرب نقطة دالة');
   return {fulfillment_type:'home_delivery',library_id:null,courier_id:courierSelect?.value||null,delivery_area:deliveryArea.value.trim(),delivery_address:null,delivery_landmark:deliveryLandmark.value.trim(),delivery_fee:deliveryFee(),payment_method:'cash_to_courier',payment_status:'cod_pending'};
 }
-window.renderStore=function(){
-  if(!window.storeGrid)return;
-  try{ bannerBox.innerHTML=(db.banners||[]).filter(x=>x.active).map(x=>`<div class="banner-card"><div><h2>${esc(x.title)}</h2><p>${esc(x.text||'')}</p></div><b>آ</b></div>`).join(''); }catch(e){}
-  const head=document.getElementById('storeProducts');
-  if(db.settings.storeType==='booklet' && !selectedBookletSection){
-    const secs=bookletSections();
-    if(head) head.innerHTML=`<div class="section-title"><h2>أقسام الملازم</h2><p>اختر القسم حتى تظهر الملازم الخاصة به فقط</p></div>`;
-    storeGrid.innerHTML=secs.map(sec=>`<article class="card section-card" onclick="chooseBookletSection('${esc(String(sec)).replace(/'/g,'&#39;')}')"><div class="cover">📘</div><h3>${esc(sec)}</h3><p>فتح ملازم هذا القسم</p><div class="product-actions"><button>دخول القسم</button></div></article>`).join('') || emptyState('لا توجد أقسام ملازم');
-    renderCartBadge();
-    return;
-  }
-  const titleMap={booklet:selectedBookletSection||'الملازم',stationery:'القرطاسية',gift:'الهدايا'};
-  if(head) head.innerHTML=`<div class="section-title"><h2>${esc(titleMap[db.settings.storeType]||'المتجر')}</h2>${db.settings.storeType==='booklet'?`<button class="secondary" onclick="chooseBookletSection('')">رجوع للأقسام</button>`:''}</div>`;
-  const list=storeItems();
-  storeGrid.innerHTML=list.map(x=>`<article class="card"><div class="cover">${x.cover?`<img src="${mediaUrl(x.cover)}">`:(x.subject||'منتج')}</div><h3>${esc(x.title)}</h3>${x.teacher?`<p>${esc(x.teacher)}</p>`:''}<p>${esc(x.grade||x.subject||'')}</p>${x.stock!==null?`<p class="${x.stock<=5?'low-stock':''}">${x.stock<=0?'نافد':`المخزون: ${x.stock}`}</p>`:''}<div class="price">${money(x.price)} د.ع</div><div class="product-actions"><button onclick="addToCart('${x.kind}','${x.id}')" ${x.stock===0?'disabled':''}>أضف للسلة</button></div></article>`).join('')||emptyState('لا توجد مواد داخل هذا القسم');
-  renderCartBadge();
-  try{ const about=document.getElementById('aboutPlatformBox'); if(about) about.innerHTML=`<h2>${esc(db.settings.about_title||'عن المنصة')}</h2><p>${esc(db.settings.about_text||'منصة آلين تجمع الملازم والقرطاسية والهدايا في مكان واحد، مع طلب سريع وتواصل واضح بين الطالب والمكتبة والإدارة.')}</p>`; const contact=document.getElementById('contactPlatformBox'); if(contact) contact.innerHTML=`<h2>${esc(db.settings.contact_title||'تواصل معنا')}</h2><p>${esc(db.settings.contact_text||'للاستفسار أو الانضمام كمدرس أو مكتبة، تواصل مع إدارة منصة آلين.')}</p>`; }catch(e){}
-};
-window.maybeCreateFinancialEntry=async function(id){
-  const o=(db.orders||[]).find(x=>x.id===id); if(!o) return;
-  o.status='completed'; o.payment_status='paid';
-  if(typeof ensureOrderFinancials==='function') await ensureOrderFinancials(o);
-};
-
+/* PLATFORM STEP 10: legacy storefront override removed. */
 /* platform step 5: removed legacy orderStatus; authoritative code is modules/admin/orders.js */
-function recordCourierSettlementForOrder(){const fn=window.AlinCourierModules&&window.AlinCourierModules['recordCourierSettlementForOrder'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] recordCourierSettlementForOrder is not loaded yet');}
-window.renderCourierSettlementsAdmin=function(){
-  const deliveryOrders=(db.orders||[]).filter(o=>o.fulfillment_type==='home_delivery');
-  adminContent.innerHTML='<h2>تسويات المندوبين</h2><p class="muted">كل طلب توصيل يظهر هنا. المندوب يستلم المبلغ من الطالب ثم يسلم للإدارة بسند تسوية.</p>'+deliveryOrders.map(o=>`<div class="row"><div><b>${esc(o.order_number||o.id)} — ${esc(o.title)}</b><small>الطالب: ${esc(o.student_name)} • ${esc(o.delivery_area||'')} — ${esc(o.delivery_landmark||'')} • المبلغ ${money(o.total)} د.ع • الحالة ${esc(o.status||'')}</small></div><div class="row-actions"><select id="assign_${o.id}"><option value="">مندوب</option>${couriers.map(c=>`<option value="${c.id}" ${o.courier_id===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select><button onclick="assignCourier('${o.id}')">حفظ</button><button onclick="courierOrderStatus('${o.id}','out_for_delivery')">قيد التوصيل</button><button onclick="courierOrderStatus('${o.id}','completed')">تم التسليم</button><button onclick="recordCourierSettlementForOrder('${o.id}')">تسجيل تسوية</button></div></div>`).join('')+(deliveryOrders.length?'':'لا توجد طلبات توصيل')+'<h3>سندات تسوية المندوبين</h3>'+(courierSettlements.map(s=>`<div class="row"><div><b>${esc(s.receipt_number)}</b><small>${esc((couriers.find(c=>c.id===s.courier_id)||{}).name||'مندوب')} — ${esc(s.payment_method||'')}</small></div><span>${money(s.amount)} د.ع</span></div>`).join('')||emptyState('لا توجد تسويات'));
-};
-
 /* platform step 5: removed legacy renderOrdersAdmin; authoritative code is modules/admin/orders.js */
 
 
@@ -1168,38 +726,9 @@ window.ALIN_VERSION='Alin V43 Store Search No Booklet Section';
 function alinStoreSearchText(){ return String(document.getElementById('searchInput')?.value||'').trim().toLowerCase(); }
 
 
-window.storeItems=function(){
-  if(db.settings.storeType==='booklet'){
-    const q=alinStoreSearchText();
-    return (db.booklets||[])
-      .filter(x=>x.status==='published')
-      .map(x=>({kind:'booklet',id:x.id,title:x.title||'',subject:x.subject||'',grade:x.subject||'',teacher:alinBookletTeacher(x),price:x.price,cover:x.cover_path,stock:null}))
-      .filter(x=>!q || (`${x.title} ${x.teacher} ${x.subject}`).toLowerCase().includes(q));
-  }
-  return (db.products||[])
-    .filter(x=>x.type===db.settings.storeType&&x.status==='published')
-    .map(x=>({kind:x.type,id:x.id,title:x.name||'',subject:x.category||'',grade:x.category||'',teacher:'',price:x.price,cover:x.image_path,stock:x.stock}));
-};
-window.setStoreType=async function(type){
-  selectedBookletSection='';
-  db.settings.storeType=type;
-  try{ await saveSetting('storeType',type); }catch(e){}
-  renderStore();
-};
-window.renderStore=function(){
-  if(!window.storeGrid)return;
-  try{ bannerBox.innerHTML=(db.banners||[]).filter(x=>x.active).map(x=>`<div class="banner-card"><div><h2>${esc(x.title)}</h2><p>${esc(x.text||'')}</p></div><b>آ</b></div>`).join(''); }catch(e){}
-  const head=document.getElementById('storeProducts');
-  const q=alinStoreSearchText();
-  const titleMap={booklet:'الملازم',stationery:'القرطاسية',gift:'الهدايا'};
-  if(head){
-    head.innerHTML=`<div class="section-title"><h2>${esc(titleMap[db.settings.storeType]||'المتجر')}</h2>${db.settings.storeType==='booklet'&&q?`<p>نتائج البحث عن: ${esc(q)}</p>`:''}</div>`;
-  }
-  const list=storeItems();
-  storeGrid.innerHTML=list.map(x=>`<article class="card"><div class="cover">${x.cover?`<img src="${mediaUrl(x.cover)}">`:(x.subject||'منتج')}</div><h3>${esc(x.title)}</h3>${x.teacher?`<p>${esc(x.teacher)}</p>`:''}<p>${esc(x.subject||'')}</p>${x.stock!==null?`<p class="${x.stock<=5?'low-stock':''}">${x.stock<=0?'نافد':`المخزون: ${x.stock}`}</p>`:''}<div class="price">${money(x.price)} د.ع</div><div class="product-actions"><button onclick="addToCart('${x.kind}','${x.id}')" ${x.stock===0?'disabled':''}>أضف للسلة</button></div></article>`).join('')||emptyState(db.settings.storeType==='booklet'?'لا توجد ملازم مطابقة للبحث':'لا توجد مواد');
-  renderCartBadge();
-  try{ const about=document.getElementById('aboutPlatformBox'); if(about) about.innerHTML=`<h2>${esc(db.settings.about_title||'عن المنصة')}</h2><p>${esc(db.settings.about_text||'منصة آلين تجمع الملازم والقرطاسية والهدايا في مكان واحد، مع طلب سريع وتواصل واضح بين الطالب والمكتبة والإدارة.')}</p>`; const contact=document.getElementById('contactPlatformBox'); if(contact) contact.innerHTML=`<h2>${esc(db.settings.contact_title||'تواصل معنا')}</h2><p>${esc(db.settings.contact_text||'للاستفسار أو الانضمام كمدرس أو مكتبة، تواصل مع إدارة منصة آلين.')}</p>`; }catch(e){}
-};
+/* PLATFORM STEP 10: legacy storefront override removed. */
+/* PLATFORM STEP 10: legacy storefront override removed. */
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
 /* ================= ALIN V44 CLEAN BOOKLETS + STUDENT TRACK CODE ================= */
 window.ALIN_VERSION='Alin V44 Tracking Code Fix';
@@ -1213,25 +742,8 @@ function alinTrackingResultHtml(numbers, msg){
 window.copyText=function(t){ try{ navigator.clipboard.writeText(t); toast('تم نسخ كود التتبع'); }catch(e){ alert(t); } };
 
 // إبقاء صفحة الملازم نظيفة بدون نظام الأقسام القديم
-window.storeItems=function(){
-  if(db.settings.storeType==='booklet'){
-    const q=String(document.getElementById('searchInput')?.value||'').trim().toLowerCase();
-    return (db.booklets||[]).filter(x=>x.status==='published').map(x=>({kind:'booklet',id:x.id,title:x.title||'',subject:x.subject||'',grade:x.subject||'',teacher:teacherName(x.teacher_id),price:x.price,cover:x.cover_path,stock:null})).filter(x=>!q || (`${x.title} ${x.teacher} ${x.subject}`).toLowerCase().includes(q));
-  }
-  return (db.products||[]).filter(x=>x.type===db.settings.storeType&&x.status==='published').map(x=>({kind:x.type,id:x.id,title:x.name||'',subject:x.category||'',grade:x.category||'',teacher:'',price:x.price,cover:x.image_path,stock:x.stock}));
-};
-window.renderStore=function(){
-  if(!window.storeGrid)return;
-  try{ bannerBox.innerHTML=(db.banners||[]).filter(x=>x.active).map(x=>`<div class="banner-card"><div><h2>${esc(x.title)}</h2><p>${esc(x.text||'')}</p></div><b>آ</b></div>`).join(''); }catch(e){}
-  const head=document.getElementById('storeProducts');
-  const q=String(document.getElementById('searchInput')?.value||'').trim();
-  const titleMap={booklet:'الملازم',stationery:'القرطاسية',gift:'الهدايا'};
-  if(head) head.innerHTML=`<div class="section-title"><h2>${esc(titleMap[db.settings.storeType]||'المتجر')}</h2>${db.settings.storeType==='booklet'&&q?`<p>نتائج البحث عن: ${esc(q)}</p>`:''}</div>`;
-  const list=storeItems();
-  storeGrid.innerHTML=list.map(x=>`<article class="card"><div class="cover">${x.cover?`<img src="${mediaUrl(x.cover)}">`:(x.subject||'منتج')}</div><h3>${esc(x.title)}</h3>${x.teacher?`<p>${esc(x.teacher)}</p>`:''}<p>${esc(x.subject||'')}</p>${x.stock!==null?`<p class="${x.stock<=5?'low-stock':''}">${x.stock<=0?'نافد':`المخزون: ${x.stock}`}</p>`:''}<div class="price">${money(x.price)} د.ع</div><div class="product-actions"><button onclick="addToCart('${x.kind}','${x.id}')" ${x.stock===0?'disabled':''}>أضف للسلة</button></div></article>`).join('')||emptyState(db.settings.storeType==='booklet'?'لا توجد ملازم مطابقة للبحث':'لا توجد مواد');
-  renderCartBadge();
-  try{ const about=document.getElementById('aboutPlatformBox'); if(about) about.innerHTML=`<h2>${esc(db.settings.about_title||'عن المنصة')}</h2><p>${esc(db.settings.about_text||'منصة آلين تجمع الملازم والقرطاسية والهدايا في مكان واحد، مع طلب سريع وتواصل واضح بين الطالب والمكتبة والإدارة.')}</p>`; const contact=document.getElementById('contactPlatformBox'); if(contact) contact.innerHTML=`<h2>${esc(db.settings.contact_title||'تواصل معنا')}</h2><p>${esc(db.settings.contact_text||'للاستفسار أو الانضمام كمدرس أو مكتبة، تواصل مع إدارة منصة آلين.')}</p>`; }catch(e){}
-};
+/* PLATFORM STEP 10: legacy storefront override removed. */
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
 
 // كل طلب من السلة يظهر للطالب كود تتبع واضح بعد تأكيد الشراء
@@ -1297,8 +809,8 @@ window.showStudentOrders=function(){
 };
 
 // تحديث شريط حساب الطالب بعد كل عرض متجر
-const renderStoreBeforeStudentAuth=window.renderStore;
-window.renderStore=function(){ renderStoreBeforeStudentAuth(); updateStudentAuthBar(); };
+/* PLATFORM STEP 10: legacy storefront override removed. */
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
 // تعبئة بيانات الطالب وربط الطلب بالحساب من خلال أحداث السلة المركزية.
 document.addEventListener('alin:cart-rendered',()=>{
@@ -1314,92 +826,30 @@ document.addEventListener('alin:order-created',()=>{
 document.addEventListener('DOMContentLoaded', updateStudentAuthBar);
 
 
-/* ================= ALIN V46 STORE SEARCH VISIBLE ================= */
-document.addEventListener('DOMContentLoaded', function(){
-  const si=document.getElementById('searchInput');
-  if(si && !si.dataset.alinBound){
-    si.dataset.alinBound='1';
-    si.addEventListener('input', function(){ try{ renderStore(); }catch(e){} });
-  }
-});
-
 
 /* ================= ALIN V47 FULL CHECK + FINAL OVERRIDES ================= */
 window.ALIN_VERSION='Alin V47 Full Check Fix';
 
 function alinSafe(id){ return document.getElementById(id); }
-function alinSearchText(){ return String(alinSafe('searchInput')?.value || '').trim().toLowerCase(); }
-function alinItemTitle(x){ return x.title || x.name || ''; }
 function alinOpenLibraries(){ return (db.accounts?.libraries||[]).filter(x=>x.status==='active'); }
 function alinLibOpen(x){ try{return typeof libIsOpen==='function' ? libIsOpen(x) : x?.is_open!==false;}catch(e){return x?.is_open!==false;} }
 
 
 window.libraryOptionsClean=alinLibraryOptions;
 
-window.setStoreType=async function(type){
-  db.settings.storeType=type||'booklet';
-  try{ if(typeof saveSetting==='function') await saveSetting('storeType',db.settings.storeType); }catch(e){}
-  renderStore();
-};
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
-window.storeItems=function(){
-  const type=db.settings?.storeType||'booklet';
-  const q=alinSearchText();
-  if(type==='booklet'){
-    return (db.booklets||[])
-      .filter(x=>x.status==='published')
-      .map(x=>({kind:'booklet',id:x.id,title:x.title||'',subject:x.subject||'',teacher:teacherName(x.teacher_id),price:+x.price||0,cover:x.cover_path,stock:null}))
-      .filter(x=>!q || (`${x.title} ${x.teacher} ${x.subject}`).toLowerCase().includes(q));
-  }
-  return (db.products||[])
-    .filter(x=>x.type===type && x.status==='published')
-    .map(x=>({kind:x.type,id:x.id,title:x.name||'',subject:x.category||'',teacher:'',price:+x.price||0,cover:x.image_path,stock:+x.stock||0}));
-};
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
-window.renderStore=function(){
-  if(!alinSafe('storeGrid')) return;
-  try{
-    if(window.bannerBox) bannerBox.innerHTML=(db.banners||[]).filter(x=>x.active).map(x=>`<div class="banner-card"><div><h2>${esc(x.title)}</h2><p>${esc(x.text||'')}</p></div><b>آ</b></div>`).join('');
-  }catch(e){}
-  const type=db.settings?.storeType||'booklet';
-  const labels={booklet:'الملازم',stationery:'القرطاسية',gift:'الهدايا'};
-  const q=alinSearchText();
-  const head=alinSafe('storeProducts');
-  if(head) head.innerHTML=`<div class="section-title"><h2>${esc(labels[type]||'المتجر')}</h2>${type==='booklet'&&q?`<p>نتائج البحث عن: ${esc(q)}</p>`:''}</div>`;
-  const list=storeItems();
-  storeGrid.innerHTML=list.map(x=>`<article class="card"><div class="cover">${x.cover?`<img src="${mediaUrl(x.cover)}" alt="${esc(x.title)}">`:esc(x.subject||'منتج')}</div><h3>${esc(x.title)}</h3>${x.teacher?`<p>${esc(x.teacher)}</p>`:''}<p>${esc(x.subject||'')}</p>${x.stock!==null?`<p class="${x.stock<=5?'low-stock':''}">${x.stock<=0?'نافد':`المخزون: ${x.stock}`}</p>`:''}<div class="price">${money(x.price)} د.ع</div><div class="product-actions"><button onclick="addToCart('${x.kind}','${x.id}')" ${x.stock===0?'disabled':''}>أضف للسلة</button></div></article>`).join('') || emptyState(type==='booklet'?'لا توجد ملازم مطابقة للبحث':'لا توجد مواد');
-  try{
-    if(window.alinStatBooklets) alinStatBooklets.textContent=(db.booklets||[]).filter(x=>x.status==='published').length;
-    if(window.alinStatOrders) alinStatOrders.textContent=(db.orders||[]).length;
-    if(window.alinStatTeachers) alinStatTeachers.textContent=(db.accounts?.teachers||[]).filter(x=>x.status==='active').length;
-    if(window.alinStatLibraries) alinStatLibraries.textContent=(db.accounts?.libraries||[]).filter(x=>x.status==='active').length;
-    const about=alinSafe('aboutPlatformBox'); if(about) about.innerHTML=`<h2>${esc(db.settings.about_title||'عن المنصة')}</h2><p>${esc(db.settings.about_text||'منصة آلين تجمع الملازم والقرطاسية والهدايا في مكان واحد، مع طلب سريع وتواصل واضح بين الطالب والمكتبة والإدارة.')}</p>`;
-    const contact=alinSafe('contactPlatformBox'); if(contact) contact.innerHTML=`<h2>${esc(db.settings.contact_title||'تواصل معنا')}</h2><p>${esc(db.settings.contact_text||'للاستفسار أو الانضمام كمدرس أو مكتبة، تواصل مع إدارة منصة آلين.')}</p>`;
-    if(typeof updateStudentAuthBar==='function') updateStudentAuthBar();
-  }catch(e){}
-  try{ renderCartBadge(); }catch(e){}
-};
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
 
 
 function alinCouriersOptions(){const fn=window.AlinCourierModules&&window.AlinCourierModules['alinCouriersOptions'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] alinCouriersOptions is not loaded yet');}
 
-const alinAdminTabBeforeV47=window.adminTab;
-window.adminTab=function(t){
-  window.activeAdminTab=t;
-  if(t==='booklets') return renderBookletsAdmin();
-  if(t==='teacherRequests' && typeof renderTeacherRequestsAdmin==='function') return renderTeacherRequestsAdmin();
-  if(t==='libraryRequests' && typeof renderLibraryRequestsAdmin==='function') return renderLibraryRequestsAdmin();
-  if(t==='couriers' && typeof renderCouriersAdmin==='function') return renderCouriersAdmin();
-  if(t==='courierSettlements' && typeof renderCourierSettlementsAdmin==='function') return renderCourierSettlementsAdmin();
-  if(t==='coupons' && typeof renderCouponsAdmin==='function') return renderCouponsAdmin();
-  if(t==='notifications' && typeof renderNotificationsAdmin==='function') return renderNotificationsAdmin();
-  return alinAdminTabBeforeV47 ? alinAdminTabBeforeV47(t) : null;
-};
 
 window.addEventListener('error', function(e){ console.warn('ALIN caught error:', e.message); });
 document.addEventListener('DOMContentLoaded', function(){
-  const si=alinSafe('searchInput'); if(si && !si.dataset.v47){ si.dataset.v47='1'; si.addEventListener('input', ()=>{try{renderStore()}catch(e){}}); }
   try{ if('serviceWorker' in navigator){ navigator.serviceWorker.getRegistrations?.().then(rs=>rs.forEach(r=>r.update())); } }catch(e){}
 });
 
@@ -1461,276 +911,15 @@ async function alinResolveStoredFile(value, preferredFolder='booklets'){
 /* ===== end ALIN V50 ===== */
 
 /* ===== ALIN V55: automatic profit and settlement distribution ===== */
-function alinNumberV55(v){ return Number(v||0) || 0; }
-
-function alinOrderTotalV55(order){
-  if(!order) return 0;
-  if(order.total) return alinNumberV55(order.total);
-  const qty = alinNumberV55(order.quantity || order.qty || 1) || 1;
-  if(order.price) return alinNumberV55(order.price) * qty;
-  const itemId = order.item_id || order.booklet_id || order.product_id;
-  const b = (db.booklets||[]).find(x => x.id === itemId);
-  const p = (db.products||[]).find(x => x.id === itemId);
-  return alinNumberV55((b||p||{}).price) * qty;
-}
-
-function alinBookletFromOrderV55(order){
-  const itemId = order?.item_id || order?.booklet_id || order?.product_id;
-  return (db.booklets||[]).find(x => x.id === itemId) || null;
-}
-
-function alinDeliveryTypeV55(order){
-  const v = String(order?.delivery_type || order?.fulfillment_type || order?.delivery || '').toLowerCase();
-  if(v.includes('delegate') || v.includes('مندوب') || v === 'courier') return 'delegate';
-  if(v.includes('library') || v.includes('pickup') || v.includes('مكتبة')) return 'library';
-  if(order?.library_id || order?.library_name) return 'library';
-  return 'delegate';
-}
-
-async function alinInsertSafeV55(table, payload){
-  try{
-    const {error} = await sb.from(table).insert(payload);
-    if(error) return false;
-    return true;
-  }catch(e){ return false; }
-}
-
-async function alinMarkOrderSettledV55(order, payload){
-  const updatePayload = Object.assign({
-    settlement_done: true,
-    settlement_at: new Date().toISOString()
-  }, payload || {});
-  try{ await update('orders', updatePayload, {id: order.id}); Object.assign(order, updatePayload); }catch(e){}
-}
-
-async function alinApplySettlementV55(order){
-  if(!order || order.settlement_done) return;
-  const status = String(order.status || '').trim();
-  const deliveredWords = ['تم التسليم','مكتمل','delivered','completed'];
-  if(!deliveredWords.some(w => status.includes(w))) return;
-
-  const total = alinOrderTotalV55(order);
-  if(total <= 0) return;
-
-  const booklet = alinBookletFromOrderV55(order);
-  const teacherId = order.teacher_id || booklet?.teacher_id || booklet?.teacher || null;
-  const libraryId = order.library_id || null;
-  const delegateId = order.delegate_id || order.courier_id || null;
-  const deliveryType = alinDeliveryTypeV55(order);
-
-  const platformShare = alinNumberV55(order.platform_share ?? order.admin_share ?? order.manager_profit ?? Math.round(total * 0.20));
-  const teacherShare = alinNumberV55(order.teacher_share ?? booklet?.teacher_share ?? Math.round(total * 0.50));
-  let remaining = total - platformShare - teacherShare;
-  if(remaining < 0) remaining = 0;
-
-  const libraryShare = deliveryType === 'library' ? alinNumberV55(order.library_share ?? remaining) : 0;
-  const delegateShare = deliveryType === 'delegate' ? alinNumberV55(order.delegate_share ?? remaining) : 0;
-
-  const common = {
-    order_id: order.id,
-    order_number: order.order_number || order.tracking_code || order.id,
-    amount: total,
-    created_at: new Date().toISOString(),
-    note: 'تسوية تلقائية عند تسليم الطلب'
-  };
-
-  await alinInsertSafeV55('admin_settlements', Object.assign({}, common, {
-    type: 'platform_profit',
-    profit: platformShare,
-    party: 'admin'
-  }));
-
-  if(teacherId){
-    await alinInsertSafeV55('teacher_settlements', Object.assign({}, common, {
-      teacher_id: teacherId,
-      profit: teacherShare,
-      type: 'teacher_profit'
-    }));
-  }
-
-  if(deliveryType === 'library' && libraryId){
-    await alinInsertSafeV55('library_settlements', Object.assign({}, common, {
-      library_id: libraryId,
-      profit: libraryShare,
-      type: 'library_collection'
-    }));
-  }
-
-  if(deliveryType === 'delegate' && delegateId){
-    await alinInsertSafeV55('delegate_settlements', Object.assign({}, common, {
-      delegate_id: delegateId,
-      profit: delegateShare,
-      type: 'delegate_collection'
-    }));
-  }
-
-  await alinMarkOrderSettledV55(order, {
-    platform_profit: platformShare,
-    teacher_profit: teacherShare,
-    library_profit: libraryShare,
-    delegate_profit: delegateShare,
-    settlement_party: deliveryType
-  });
-}
-
-async function alinSetOrderStatusV55(orderId, status){
-  const order = (db.orders||[]).find(o => o.id === orderId);
-  if(!order) return alert('الطلب غير موجود');
-  try{
-    await update('orders', {status, updated_at:new Date().toISOString()}, {id:orderId});
-    order.status = status;
-    if(String(status).includes('تم التسليم')) await alinApplySettlementV55(order);
-    alert('تم تحديث حالة الطلب');
-    renderAdmin && renderAdmin();
-  }catch(e){
-    alert('تعذر تحديث الطلب: ' + (e.message || 'خطأ غير معروف'));
-  }
-}
-
-window.alinApplySettlementV55 = alinApplySettlementV55;
-window.alinSetOrderStatusV55 = alinSetOrderStatusV55;
-
 /* ===== end ALIN V55 ===== */
 
-document.addEventListener('click', async (e)=>{
-  const btn=e.target.closest('[data-order-status][data-order-id]');
-  if(!btn) return;
-  const st=btn.getAttribute('data-order-status');
-  const id=btn.getAttribute('data-order-id');
-  if(st && id && String(st).includes('تم التسليم')){
-    setTimeout(async()=>{
-      const order=(db.orders||[]).find(o=>o.id===id);
-      if(order){ order.status=st; await alinApplySettlementV55(order); }
-    },300);
-  }
-});
+/* ===== ALIN V57});
 
 /* ===== ALIN V57: library print-only PDF + clean finance + preview publish ===== */
-function alinV57Num(v){ return Number(v||0)||0; }
-function alinV57SettingNum(key, fallback){
-  const v = db?.settings?.[key];
-  const n = Number(v);
-  return Number.isFinite(n) ? n : fallback;
-}
-function alinV57Ratios(){
-  let admin = alinV57SettingNum('admin_profit_percent', 20);
-  let teacher = alinV57SettingNum('teacher_profit_percent', 50);
-  let library = alinV57SettingNum('library_profit_percent', 30);
-  let delegate = alinV57SettingNum('delegate_profit_percent', 30);
-  return {admin, teacher, library, delegate};
-}
 function alinV57BookletVisible(b){
   return String(b?.status||'') === 'published' || String(b?.publish_status||'') === 'published' || b?.published === true || b?.is_published === true;
 }
 function alinV57BookletApproved(b){ return b?.teacher_approved === true || String(b?.publish_status||'') === 'approved' || String(b?.status||'') === 'approved'; }
-function alinV57OrderDelivery(o){
-  const v = String(o?.fulfillment_type || o?.delivery_type || o?.delivery_method || '').toLowerCase();
-  if(v.includes('delegate') || v.includes('مندوب') || v.includes('courier')) return 'delegate';
-  if(v.includes('library') || v.includes('pickup') || v.includes('مكتبة')) return 'library';
-  if(o?.library_id) return 'library';
-  return 'delegate';
-}
-function alinV57OrderBooklet(o){ return (db.booklets||[]).find(b => b.id === (o?.item_id || o?.booklet_id)); }
-function alinV57Shares(o){
-  const total = alinV57Num(o?.total);
-  const r = alinV57Ratios();
-  const admin = Math.round(total * r.admin / 100);
-  const teacher = o?.kind === 'booklet' ? Math.round(total * r.teacher / 100) : 0;
-  const delivery = alinV57OrderDelivery(o);
-  const library = delivery === 'library' ? Math.max(0, total - admin - teacher) : 0;
-  const delegate = delivery === 'delegate' ? Math.max(0, total - admin - teacher) : 0;
-  return {total, admin, teacher, library, delegate, delivery};
-}
-async function alinV57SaveSetting(key,value){
-  try{
-    const existing = await query('settings');
-    const row = (existing||[]).find(x=>x.key===key);
-    if(row) await update('settings',{value:String(value)},{key});
-    else await insert('settings',{key,value:String(value)});
-    db.settings[key]=String(value);
-  }catch(e){ console.warn('setting save',key,e); }
-}
-async function saveFinanceRatiosV57(){
-  await alinV57SaveSetting('admin_profit_percent', adminProfitPercent.value||20);
-  await alinV57SaveSetting('teacher_profit_percent', teacherProfitPercent.value||50);
-  await alinV57SaveSetting('library_profit_percent', libraryProfitPercent.value||30);
-  await alinV57SaveSetting('delegate_profit_percent', delegateProfitPercent.value||30);
-  toast('تم حفظ نسب الأرباح');
-}
-window.saveFinanceRatiosV57 = saveFinanceRatiosV57;
-
-const alinV57OldRenderSettings = window.renderSettingsAdmin || renderSettingsAdmin;
-window.renderSettingsAdmin = renderSettingsAdmin = function(){
-  try{ alinV57OldRenderSettings(); }catch(e){ adminContent.innerHTML='<h2>إعدادات المنصة</h2>'; }
-  const r = alinV57Ratios();
-  adminContent.innerHTML += `<h3>نسب الأرباح والتسويات</h3>
-  <p class="muted">تُحسب عند ضغط تسليم الطلب. المتبقي بعد ربح المدير والمدرس يذهب للمكتبة أو المندوب حسب طريقة التسليم.</p>
-  <div class="form-grid">
-    <input id="adminProfitPercent" type="number" value="${r.admin}" placeholder="نسبة المدير %">
-    <input id="teacherProfitPercent" type="number" value="${r.teacher}" placeholder="نسبة المدرس %">
-    <input id="libraryProfitPercent" type="number" value="${r.library}" placeholder="نسبة المكتبة %">
-    <input id="delegateProfitPercent" type="number" value="${r.delegate}" placeholder="نسبة المندوب %">
-    <button onclick="saveFinanceRatiosV57()">حفظ النسب</button>
-  </div>`;
-};
-
-async function alinV57InsertLedger(o){
-  if(!o || db.ledger?.some(x=>x.order_id===o.id)) return;
-  const b = alinV57OrderBooklet(o);
-  const s = alinV57Shares(o);
-  const row = {
-    id: uid('LG'),
-    order_id: o.id,
-    order_number: o.order_number || o.id,
-    alin: s.admin,
-    admin: s.admin,
-    teacher: s.teacher,
-    teacher_id: b?.teacher_id || o.teacher_id || '',
-    library: s.library,
-    library_id: o.library_id || '',
-    delegate: s.delegate,
-    delegate_id: o.delegate_id || '',
-    total: s.total,
-    delivery_type: s.delivery,
-    settlement_status: 'unsettled',
-    created_at: new Date().toISOString()
-  };
-  await insert('ledger', row);
-  db.ledger = db.ledger || [];
-  db.ledger.unshift(row);
-  if(o.kind === 'booklet' && o.library_id && !db.permits?.some(p=>p.order_id===o.id)){
-    try{ await insert('permits',{id:uid('P'),order_id:o.id,booklet_id:o.item_id,library_id:o.library_id,qty:o.qty,used:0,status:'active'}); }catch(e){}
-  }
-}
-async function alinV57SettleOrder(o){
-  if(!o) return;
-  await alinV57InsertLedger(o);
-  const s = alinV57Shares(o);
-  const payload = {
-    settlement_done: true,
-    settlement_at: new Date().toISOString(),
-    platform_profit: s.admin,
-    teacher_profit: s.teacher,
-    library_profit: s.library,
-    delegate_profit: s.delegate,
-    settlement_party: s.delivery
-  };
-  try{ await update('orders', payload, {id:o.id}); Object.assign(o,payload); }catch(e){}
-  const lg = (db.ledger||[]).find(x=>x.order_id===o.id);
-  if(lg && lg.settlement_status !== 'settled'){
-    try{ await update('ledger',{settlement_status:'settled',settled_at:new Date().toISOString()},{id:lg.id}); Object.assign(lg,{settlement_status:'settled'}); }catch(e){}
-  }
-  try{
-    if(typeof alinApplySettlementV55 === 'function') await alinApplySettlementV55(Object.assign({}, o, {status:'تم التسليم'}));
-  }catch(e){}
-}
-window.alinV57SettleOrder = alinV57SettleOrder;
-
-window.ensureOrderFinancials = async function(o){ if(o) await alinV57InsertLedger(o); };
-
-
-
-
 /* platform step 5: removed legacy v57 order alias; authoritative code is modules/admin/orders.js */
 
 
@@ -1758,110 +947,11 @@ window.printReceipt = function(orderId){
   checkoutModal.classList.remove('hidden');
 };
 
-window.renderFinanceAdmin = renderFinanceAdmin = function(){
-  const rows=db.ledger||[];
-  const adminTotal=rows.reduce((a,x)=>a+alinV57Num(x.alin||x.admin),0);
-  const teacherTotal=rows.reduce((a,x)=>a+alinV57Num(x.teacher),0);
-  const libraryTotal=rows.reduce((a,x)=>a+alinV57Num(x.library),0);
-  const delegateTotal=rows.reduce((a,x)=>a+alinV57Num(x.delegate),0);
-  adminContent.innerHTML=`<h2>الدفتر المالي والتسويات</h2>
-  <div class="stats"><div><b>ربح المدير</b><span>${money(adminTotal)} د.ع</span></div><div><b>المدرسين</b><span>${money(teacherTotal)} د.ع</span></div><div><b>المكتبات</b><span>${money(libraryTotal)} د.ع</span></div><div><b>المندوبين</b><span>${money(delegateTotal)} د.ع</span></div></div>
-  ${rows.map(x=>`<div class="row"><div><b>${esc(x.order_number||x.order_id)}</b><small>مدير ${money(x.alin||x.admin)} — مدرس ${money(x.teacher)} — مكتبة ${money(x.library)} — مندوب ${money(x.delegate||0)}</small></div><span>${esc(x.settlement_status||'unsettled')}</span></div>`).join('')||emptyState('لا توجد تسويات')}
-  <h3>طلبات السحب</h3>${(db.withdrawals||[]).map(x=>`<div class="row"><div><b>${esc(x.role)} — ${money(x.amount)} د.ع</b><small>${esc(x.status)}</small></div><div class="row-actions"><button onclick="withdrawStatus('${x.id}','approved')">موافقة</button><button onclick="withdrawStatus('${x.id}','paid')">تم الدفع</button><button class="danger" onclick="withdrawStatus('${x.id}','rejected')">رفض</button></div></div>`).join('')}`;
-};
-
-
-
-
-
-
-
-
-window.storeItems = function(){
-  const type=db.settings?.storeType||'booklet';
-  const q=(String(document.getElementById('searchInput')?.value||'').trim().toLowerCase());
-  if(type==='booklet'){
-    return (db.booklets||[]).filter(alinV57BookletVisible).map(x=>({kind:'booklet',id:x.id,title:x.title||'',subject:x.subject||'',teacher:teacherName(x.teacher_id),price:+x.price||0,cover:x.cover_path,stock:null})).filter(x=>!q || (`${x.title} ${x.teacher} ${x.subject}`).toLowerCase().includes(q));
-  }
-  return (db.products||[]).filter(x=>x.status==='active'&&x.type===type).map(x=>({kind:'product',id:x.id,title:x.name||'',subject:x.category||'',teacher:'',price:+x.price||0,cover:x.image_path,stock:+(x.stock||0)})).filter(x=>!q||(`${x.title} ${x.subject}`).toLowerCase().includes(q));
-};
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
 /* ===== end ALIN V57 ===== */
 
 /* ================= ALIN V59 FIX: library print-only, clean settlement, teacher approval publish ================= */
-window.ALIN_VERSION='Alin V60 Receipt Settlement Fix';
-
-function alinV59IsDeliveredStatus(status){
-  const s=String(status||'').toLowerCase();
-  return s==='completed' || s==='تم التسليم' || s.includes('delivered');
-}
-function alinV59IsCancelledStatus(status){
-  const s=String(status||'').toLowerCase();
-  return s==='cancelled' || s==='canceled' || s.includes('ملغي') || s.includes('إلغاء');
-}
-function alinV59OrderBooklet(o){ return (db.booklets||[]).find(b=>b.id===(o?.item_id||o?.booklet_id)); }
-function alinV59Delivery(o){ return alinV57OrderDelivery ? alinV57OrderDelivery(o) : (o?.library_id?'library':'delegate'); }
-function alinV59Shares(o){
-  const total=Number(o?.total||0)||0;
-  const r=typeof alinV57Ratios==='function'?alinV57Ratios():{admin:20,teacher:50,library:30,delegate:30};
-  const delivery=alinV59Delivery(o);
-  const admin=Math.round(total*(Number(r.admin)||0)/100);
-  const teacher=(o?.kind==='booklet')?Math.round(total*(Number(r.teacher)||0)/100):0;
-  const remainder=Math.max(0,total-admin-teacher);
-  return {total,admin,teacher,library:delivery==='library'?remainder:0,delegate:delivery==='delegate'?remainder:0,delivery};
-}
-async function alinV59SaveSetting(key,value){
-  if(typeof alinV57SaveSetting==='function') return alinV57SaveSetting(key,value);
-  const row=(await query('settings')).find(x=>x.key===key);
-  if(row) await update('settings',{value:String(value)},{key}); else await insert('settings',{key,value:String(value)});
-  db.settings[key]=String(value);
-}
-window.saveFinanceRatiosV57 = async function(){
-  await alinV59SaveSetting('admin_profit_percent', document.getElementById('adminProfitPercent')?.value||20);
-  await alinV59SaveSetting('teacher_profit_percent', document.getElementById('teacherProfitPercent')?.value||50);
-  await alinV59SaveSetting('library_profit_percent', document.getElementById('libraryProfitPercent')?.value||30);
-  await alinV59SaveSetting('delegate_profit_percent', document.getElementById('delegateProfitPercent')?.value||30);
-  toast('تم حفظ نسب الأرباح المعتمدة');
-};
-
-async function alinV59CreatePermit(o){
-  if(o?.kind!=='booklet' || !o.library_id) return;
-  if((db.permits||[]).some(p=>p.order_id===o.id)) return;
-  const p={id:uid('P'),order_id:o.id,booklet_id:o.item_id,library_id:o.library_id,qty:Number(o.qty||1)||1,used:0,status:'active'};
-  try{ await insert('permits',p); db.permits=db.permits||[]; db.permits.unshift(p); }catch(e){}
-}
-async function alinV59SettleOrder(o){
-  if(!o || alinV59IsCancelledStatus(o.status)) return;
-  const s=alinV59Shares(o), b=alinV59OrderBooklet(o);
-  if(s.total<=0) return;
-  let row=(db.ledger||[]).find(x=>x.order_id===o.id);
-  const payload={
-    order_id:o.id, order_number:o.order_number||o.id,
-    alin:s.admin, admin:s.admin, teacher:s.teacher, teacher_id:b?.teacher_id||o.teacher_id||'',
-    library:s.library, library_id:o.library_id||'', delegate:s.delegate, delegate_id:o.delegate_id||o.courier_id||'',
-    total:s.total, delivery_type:s.delivery, settlement_status:'settled', settled_at:new Date().toISOString(), created_at: row?.created_at||new Date().toISOString()
-  };
-  if(row){ await update('ledger',payload,{id:row.id}); Object.assign(row,payload); }
-  else { row=Object.assign({id:uid('LG')},payload); await insert('ledger',row); db.ledger=db.ledger||[]; db.ledger.unshift(row); }
-  await alinV59CreatePermit(o);
-  const op={settlement_done:true,settlement_at:new Date().toISOString(),platform_profit:s.admin,teacher_profit:s.teacher,library_profit:s.library,delegate_profit:s.delegate,settlement_party:s.delivery,payment_status:o.payment_status||'paid'};
-  try{ await update('orders',op,{id:o.id}); Object.assign(o,op); }catch(e){}
-}
-async function alinV59CancelDelivery(orderId){
-  const o=(db.orders||[]).find(x=>x.id===orderId); if(!o)return;
-  if(!confirm('إلغاء التسليم؟ هذا الإيعاز لا يحتسب أي مبلغ بالحسابات.')) return;
-  const h=[...(o.status_history||[]),{status:'cancelled',at:new Date().toISOString(),note:'إلغاء التسليم من المكتبة بدون احتساب مبلغ'}];
-  try{ await update('orders',{status:'cancelled',status_history:h,settlement_done:false,settlement_cancelled:true},{id:orderId}); }catch(e){}
-  const lg=(db.ledger||[]).find(x=>x.order_id===orderId);
-  if(lg){ try{ await update('ledger',{settlement_status:'cancelled',alin:0,admin:0,teacher:0,library:0,delegate:0,total:0,note:'إلغاء التسليم بدون احتساب مبلغ'},{id:lg.id}); }catch(e){} }
-  await audit('order','إلغاء تسليم بدون احتساب '+(o.order_number||orderId));
-  await load(); window.renderLibrary?.();
-}
-window.alinV59CancelDelivery=alinV59CancelDelivery;
-
-
-
-
 /* platform step 5: removed legacy orderStatus; authoritative code is modules/admin/orders.js */
 
 
@@ -1889,14 +979,8 @@ window.printReceipt = window.printOrderReceipt = function(orderId){
 
 
 
-const alinV59AdminTabOld=adminTab;
-window.adminTab = adminTab = function(t){ window.activeAdminTab=t; if(t==='teacherRequests') return renderTeacherRequestsAdmin(); if(t==='finance') return renderFinanceAdmin(); return alinV59AdminTabOld(t); };
+/* v2.2.3: legacy load wrapper removed; base load fetches teacher and finance tables. */
 
-const alinV59LoadOld=load;
-load=async function(){
-  await alinV59LoadOld();
-  if(sb){ try{ db.teacherRequests=await query('teacher_requests'); }catch(e){ db.teacherRequests=db.teacherRequests||[]; } }
-};
 
 
 /* ================= ALIN V60 LIBRARY RECEIPT / SETTLEMENT CLEANUP ================= */
@@ -1986,246 +1070,9 @@ window.printPdfFrame = async function(){
 
 
 
-window.alinV63PayLibrarySettlement=alinV63PayLibrarySettlement;
-
-
-
-
-
-
-
 /* ================= ALIN V64 ADMIN-ONLY LIBRARY SETTLEMENT ================= */
-function alinV64LocalSettlements(){
-  try{return JSON.parse(localStorage.getItem('alin_v64_library_settlements')||localStorage.getItem('alin_v63_library_settlements')||'[]');}
-  catch(e){return [];}
-}
-function alinV64SaveLocalSettlements(rows){
-  localStorage.setItem('alin_v64_library_settlements', JSON.stringify(rows||[]));
-}
-function alinV64AllSettlements(){
-  let rows=[];
-  try{ if(typeof librarySettlements!=='undefined') rows=rows.concat(librarySettlements||[]); }catch(e){}
-  rows=rows.concat(alinV64LocalSettlements());
-  const seen=new Set();
-  return rows.filter(x=>{
-    const k=x.id||x.receipt_number;
-    if(!k || seen.has(k)) return false;
-    seen.add(k); return true;
-  });
-}
-
-
-
-
-function alinV64PrintSettlement(id){
-  const s=alinV64AllSettlements().find(x=>x.id===id || x.receipt_number===id);
-  if(!s) return;
-  const lib=(db.accounts?.libraries||[]).find(x=>x.id===s.library_id)||{};
-  const html=`<div dir="rtl" style="font-family:Arial;padding:24px">
-    <h2>سند تسوية مكتبة</h2>
-    <p><b>رقم السند:</b> ${esc(s.receipt_number||s.id)}</p>
-    <p><b>المكتبة:</b> ${esc(lib.name||'')}</p>
-    <p><b>المبلغ المستلم:</b> ${money(+s.amount||0)} د.ع</p>
-    <p><b>طريقة الاستلام:</b> ${esc(s.payment_method||'نقدي')}</p>
-    <p><b>التاريخ:</b> ${new Date(s.created_at||Date.now()).toLocaleString('ar-IQ')}</p>
-    <hr><p>توقيع الإدارة: ____________</p>
-  </div>`;
-  const w=window.open('','_blank'); w.document.write(html); w.document.close(); w.print();
-}
-window.alinV64AdminSettleLibrary=alinV64AdminSettleLibrary;
-window.alinV64PrintSettlement=alinV64PrintSettlement;
-
-
-
-
-
-
-const alinV64RenderFinanceBase = window.renderFinanceAdmin;
-window.renderFinanceAdmin = renderFinanceAdmin = function(){
-  try{ alinV64RenderFinanceBase(); }catch(e){ adminContent.innerHTML='<h2>الدفتر المالي والتسويات</h2>'; }
-  const libs=(db.accounts?.libraries||[]);
-  const settlements=alinV64AllSettlements().slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
-  let html=`<h3>تسوية المكتبات</h3>
-  <p class="muted">التسوية تثبت من المدير فقط. عند تثبيتها يتحدث المتبقي تلقائياً في صفحة المكتبة.</p>`;
-  html+=libs.map(l=>{
-    const d=alinV64LibraryDebt(l.id);
-    return `<div class="row settlement-row"><div><b>${esc(l.name)}</b>
-      <small>إجمالي المطلوب ${money(d.owed)} د.ع — المسدد ${money(d.paid)} د.ع — المتبقي ${money(d.remaining)} د.ع</small></div>
-      <div class="row-actions"><button ${d.remaining<=0?'disabled':''} onclick="alinV64AdminSettleLibrary('${l.id}')">تثبيت تسوية</button></div></div>`;
-  }).join('') || emptyState('لا توجد مكتبات');
-  html+=`<h3>سجل سندات تسوية المكتبات</h3>`;
-  html+=settlements.map(s=>{
-    const l=libs.find(x=>x.id===s.library_id)||{};
-    return `<div class="row"><div><b>${esc(s.receipt_number||s.id)} — ${esc(l.name||'')}</b>
-      <small>${money(+s.amount||0)} د.ع — ${esc(s.payment_method||'نقدي')} — ${new Date(s.created_at||Date.now()).toLocaleString('ar-IQ')}</small></div>
-      <div class="row-actions"><button class="secondary" onclick="alinV64PrintSettlement('${s.id||s.receipt_number}')">طباعة سند</button></div></div>`;
-  }).join('') || emptyState('لا توجد سندات تسوية');
-  adminContent.innerHTML += html;
-};
-
-
 /* ================= ALIN V65 FINANCIAL BALANCES / PAYOUTS ================= */
-function alinV65LocalPayouts(){ try{return JSON.parse(localStorage.getItem('alin_v65_financial_payouts')||'[]');}catch(e){return [];} }
-function alinV65SaveLocalPayouts(rows){ localStorage.setItem('alin_v65_financial_payouts', JSON.stringify(rows||[])); }
-function alinV65AllPayouts(){
-  let rows=[];
-  try{ if(typeof financialPayouts!=='undefined') rows=rows.concat(financialPayouts||[]); }catch(e){}
-  rows=rows.concat(alinV65LocalPayouts());
-  const seen=new Set();
-  return rows.filter(x=>{ const k=x.id||x.voucher_number; if(!k||seen.has(k)) return false; seen.add(k); return true; });
-}
-function alinV65LedgerRows(){ return (db.ledger||[]).filter(x=>x.settlement_status!=='cancelled'); }
-function alinV65PartyName(role,id){
-  if(role==='admin') return 'المدير';
-  if(role==='teacher') return (db.accounts?.teachers||[]).find(x=>x.id===id)?.name || 'مدرس';
-  if(role==='library') return (db.accounts?.libraries||[]).find(x=>x.id===id)?.name || 'مكتبة';
-  if(role==='delegate') return (db.delegates||db.couriers||[]).find(x=>x.id===id)?.name || 'مندوب';
-  return id||role;
-}
-function alinV65Earned(role,id){
-  const rows=alinV65LedgerRows();
-  if(role==='admin') return rows.reduce((a,x)=>a+(+x.admin||+x.alin||0),0);
-  if(role==='teacher') return rows.filter(x=>x.teacher_id===id).reduce((a,x)=>a+(+x.teacher||0),0);
-  if(role==='library') return rows.filter(x=>x.library_id===id && (x.delivery_type==='delegate'||x.delivery_type==='courier'||x.delegate_id||x.courier_id)).reduce((a,x)=>a+(+x.library||0),0);
-  if(role==='delegate') return rows.filter(x=>(x.delegate_id||x.courier_id)===id).reduce((a,x)=>a+(+x.delegate||0),0);
-  return 0;
-}
-function alinV65Paid(role,id){
-  return alinV65AllPayouts().filter(x=>x.party_role===role && (role==='admin'||x.party_id===id) && (x.status==='paid'||x.status==='received')).reduce((a,x)=>a+(+x.amount||0),0);
-}
-function alinV65Balance(role,id){ const earned=alinV65Earned(role,id), paid=alinV65Paid(role,id); return {earned,paid,remaining:Math.max(0,earned-paid)}; }
-async function alinV65PayBalance(role,id){
-  const b=alinV65Balance(role,id);
-  if(b.remaining<=0) return toast('لا يوجد مبلغ مستحق حالياً');
-  const name=alinV65PartyName(role,id);
-  const label=role==='admin'?'استلام ربح المدير':'تسديد أرباح '+name;
-  const amount=+(prompt(label+'\nالمبلغ المستحق: '+money(b.remaining)+' د.ع\nاكتب مبلغ التسديد', b.remaining)||0);
-  if(!amount || amount<=0 || amount>b.remaining) return alert('المبلغ غير صحيح');
-  const method=prompt('طريقة الدفع/الاستلام','نقدي')||'نقدي';
-  const voucher=(role==='admin'?'AR':'PV')+'-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
-  const row={id:uid('FP'),voucher_number:voucher,party_role:role,party_id:role==='admin'?'admin':id,party_name:name,amount,payment_method:method,status:role==='admin'?'received':'paid',note:label,created_at:new Date().toISOString()};
-  try{ await insert('financial_payouts',row); if(typeof financialPayouts!=='undefined') financialPayouts.unshift(row); }
-  catch(e){ const local=alinV65LocalPayouts(); local.unshift(row); alinV65SaveLocalPayouts(local); }
-  await audit('finance',label+' سند '+voucher+' مبلغ '+amount);
-  toast('تم تسجيل السند وتحديث الرصيد الجاري');
-  await load(); renderFinanceAdmin();
-}
-function alinV65PrintPayout(id){
-  const p=alinV65AllPayouts().find(x=>x.id===id || x.voucher_number===id); if(!p) return;
-  const title=p.party_role==='admin'?'سند استلام ربح المدير':'سند صرف أرباح';
-  const html=`<div dir="rtl" style="font-family:Arial;padding:24px"><h2>${title}</h2><p><b>رقم السند:</b> ${esc(p.voucher_number||p.id)}</p><p><b>الجهة:</b> ${esc(p.party_name||alinV65PartyName(p.party_role,p.party_id))}</p><p><b>النوع:</b> ${esc(p.party_role||'')}</p><p><b>المبلغ:</b> ${money(+p.amount||0)} د.ع</p><p><b>طريقة الدفع:</b> ${esc(p.payment_method||'نقدي')}</p><p><b>التاريخ:</b> ${new Date(p.created_at||Date.now()).toLocaleString('ar-IQ')}</p><hr><p>توقيع الإدارة: ____________</p><p>توقيع المستلم: ____________</p></div>`;
-  const w=window.open('','_blank'); w.document.write(html); w.document.close(); w.print();
-}
-window.alinV65PayBalance=alinV65PayBalance; window.alinV65PrintPayout=alinV65PrintPayout;
-function alinV65AdminPartyCards(){
-  const teachers=(db.accounts?.teachers||[]).map(t=>({role:'teacher',id:t.id,name:t.name,title:'أرباح المدرس'}));
-  const libraries=(db.accounts?.libraries||[]).map(l=>({role:'library',id:l.id,name:l.name,title:'ربح المكتبة من طلبات المندوب'}));
-  const delegates=(db.delegates||db.couriers||[]).map(d=>({role:'delegate',id:d.id,name:d.name,title:'أرباح المندوب'}));
-  const admin=[{role:'admin',id:'admin',name:'المدير',title:'ربح المدير'}];
-  return admin.concat(teachers,libraries,delegates).map(p=>{ const b=alinV65Balance(p.role,p.id); return `<div class="row settlement-row"><div><b>${esc(p.title)} — ${esc(p.name||'')}</b><small>إجمالي مستحق ${money(b.earned)} د.ع — المسدد/المستلم ${money(b.paid)} د.ع — الرصيد الجاري ${money(b.remaining)} د.ع</small></div><div class="row-actions"><button ${b.remaining<=0?'disabled':''} onclick="alinV65PayBalance('${p.role}','${p.id}')">${p.role==='admin'?'استلام ربح المدير':'تسديد الأرباح'}</button></div></div>`; }).join('') || emptyState('لا توجد أرصدة');
-}
-function alinV65PayoutHistory(){
-  const rows=alinV65AllPayouts().slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
-  return rows.map(p=>`<div class="row"><div><b>${esc(p.voucher_number||p.id)} — ${esc(p.party_name||alinV65PartyName(p.party_role,p.party_id))}</b><small>${money(+p.amount||0)} د.ع — ${esc(p.payment_method||'نقدي')} — ${new Date(p.created_at||Date.now()).toLocaleString('ar-IQ')}</small></div><div class="row-actions"><button class="secondary" onclick="alinV65PrintPayout('${p.id||p.voucher_number}')">طباعة سند</button></div></div>`).join('') || emptyState('لا توجد سندات أرباح');
-}
-const alinV65RenderFinanceBase = window.renderFinanceAdmin;
-window.renderFinanceAdmin = renderFinanceAdmin = function(){
-  try{ alinV65RenderFinanceBase(); }catch(e){ adminContent.innerHTML='<h2>الدفتر المالي والتسويات</h2>'; }
-  adminContent.innerHTML += `<h3>أرصدة الأرباح المستحقة</h3><p class="muted">تسديد أرباح المدرسين والمكتبات والمندوبين، واستلام ربح المدير. كل تسديد يصفر الرصيد الجاري فقط ويحفظ السجل القديم.</p>${alinV65AdminPartyCards()}<h3>سجل سندات الأرباح</h3>${alinV65PayoutHistory()}`;
-};
-
-
-
-
-
 /* ================= ALIN V66 PERSISTENT SETTLEMENT SAVE FIX ================= */
-function alinV66ReadLocal(key){ try{return JSON.parse(localStorage.getItem(key)||'[]')||[];}catch(e){return [];} }
-function alinV66WriteLocal(key, rows){ try{localStorage.setItem(key, JSON.stringify(rows||[]));}catch(e){} }
-function alinV66UpsertLocal(key,row){
-  const rows=alinV66ReadLocal(key);
-  const k=row.id||row.receipt_number||row.voucher_number;
-  const i=rows.findIndex(x=>(x.id||x.receipt_number||x.voucher_number)===k);
-  if(i>=0) rows[i]=Object.assign({},rows[i],row); else rows.unshift(row);
-  alinV66WriteLocal(key,rows);
-  return rows;
-}
-function alinV66MergeRows(a,b){
-  const all=[...(a||[]),...(b||[])], seen=new Set();
-  return all.filter(x=>{ const k=x.id||x.receipt_number||x.voucher_number; if(!k||seen.has(k)) return false; seen.add(k); return true; });
-}
-
-window.alinV64AllSettlements = alinV64AllSettlements = function(){
-  let rows=[];
-  try{ if(typeof librarySettlements!=='undefined') rows=rows.concat(librarySettlements||[]); }catch(e){}
-  rows=rows.concat(alinV66ReadLocal('alin_v64_library_settlements'));
-  rows=rows.concat(alinV66ReadLocal('alin_v63_library_settlements'));
-  return alinV66MergeRows(rows,[]).filter(x=>x.status!=='reversed' && x.status!=='cancelled');
-};
-window.alinV64LibraryDebt = alinV64LibraryDebt = function(libraryId){
-  const ledgerRows=(db.ledger||[]).filter(x=>x.library_id===libraryId && x.settlement_status!=='cancelled');
-  const owed=ledgerRows.reduce((a,x)=>a+(+x.admin||+x.alin||0)+(+x.teacher||0)+(+x.delegate||0),0);
-  const paid=alinV64AllSettlements().filter(x=>x.library_id===libraryId && (x.status==='received'||x.status==='paid')).reduce((a,x)=>a+(+x.amount||0),0);
-  return {owed,paid,remaining:Math.max(0,owed-paid)};
-};
-window.alinV64AdminSettleLibrary = alinV64AdminSettleLibrary = async function(libraryId){
-  const lib=(db.accounts?.libraries||[]).find(x=>x.id===libraryId)||{};
-  const d=alinV64LibraryDebt(libraryId);
-  if(d.remaining<=0) return toast('لا يوجد مبلغ بذمة هذه المكتبة');
-  const amount=+(prompt('تسوية مكتبة: '+(lib.name||'')+'\nالمتبقي بذمتها: '+money(d.remaining)+' د.ع\nاكتب المبلغ المستلم', d.remaining)||0);
-  if(!amount || amount<=0 || amount>d.remaining) return alert('المبلغ غير صحيح');
-  const method=prompt('طريقة الاستلام','نقدي')||'نقدي';
-  const receipt='LS-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
-  const row={id:uid('LS'),receipt_number:receipt,library_id:libraryId,amount,status:'received',payment_method:method,note:'تثبيت تسوية من لوحة المدير',created_at:new Date().toISOString()};
-  alinV66UpsertLocal('alin_v64_library_settlements',row);
-  try{
-    await insert('library_settlements',row);
-    if(typeof librarySettlements!=='undefined'){
-      librarySettlements=alinV66MergeRows([row],librarySettlements);
-    }
-  }catch(e){ console.warn('library settlement db save failed, local saved', e); }
-  await audit('finance','تثبيت تسوية مكتبة '+(lib.name||libraryId)+' سند '+receipt+' مبلغ '+amount);
-  toast('تم حفظ التسوية وتحديث المتبقي');
-  renderFinanceAdmin();
-};
-
-window.alinV65AllPayouts = alinV65AllPayouts = function(){
-  let rows=[];
-  try{ if(typeof financialPayouts!=='undefined') rows=rows.concat(financialPayouts||[]); }catch(e){}
-  rows=rows.concat(alinV66ReadLocal('alin_v65_financial_payouts'));
-  return alinV66MergeRows(rows,[]).filter(x=>x.status!=='reversed' && x.status!=='cancelled');
-};
-window.alinV65Paid = alinV65Paid = function(role,id){
-  return alinV65AllPayouts().filter(x=>x.party_role===role && (role==='admin'||x.party_id===id) && (x.status==='paid'||x.status==='received')).reduce((a,x)=>a+(+x.amount||0),0);
-};
-window.alinV65Balance = alinV65Balance = function(role,id){
-  const earned=alinV65Earned(role,id), paid=alinV65Paid(role,id);
-  return {earned,paid,remaining:Math.max(0,earned-paid)};
-};
-window.alinV65PayBalance = alinV65PayBalance = async function(role,id){
-  const b=alinV65Balance(role,id);
-  if(b.remaining<=0) return toast('لا يوجد مبلغ مستحق حالياً');
-  const name=alinV65PartyName(role,id);
-  const label=role==='admin'?'استلام ربح المدير':'تسديد أرباح '+name;
-  const amount=+(prompt(label+'\nالمبلغ المستحق: '+money(b.remaining)+' د.ع\nاكتب مبلغ التسديد', b.remaining)||0);
-  if(!amount || amount<=0 || amount>b.remaining) return alert('المبلغ غير صحيح');
-  const method=prompt('طريقة الدفع/الاستلام','نقدي')||'نقدي';
-  const voucher=(role==='admin'?'AR':'PV')+'-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
-  const row={id:uid('FP'),voucher_number:voucher,party_role:role,party_id:role==='admin'?'admin':id,party_name:name,amount,payment_method:method,status:role==='admin'?'received':'paid',note:label,created_at:new Date().toISOString()};
-  alinV66UpsertLocal('alin_v65_financial_payouts',row);
-  try{
-    await insert('financial_payouts',row);
-    if(typeof financialPayouts!=='undefined') financialPayouts=alinV66MergeRows([row],financialPayouts);
-  }catch(e){ console.warn('financial payout db save failed, local saved', e); }
-  await audit('finance',label+' سند '+voucher+' مبلغ '+amount);
-  toast('تم حفظ السند وتصفير الرصيد الجاري');
-  renderFinanceAdmin();
-};
-
-
-
-
-
-
 try{ if(typeof toast==='function') console.log('ALIN V66 settlement persistence fix loaded'); }catch(e){}
 
 /* ================= ALIN V67 CURRENT BALANCE DISPLAY FIX ================= */
@@ -2233,117 +1080,7 @@ try{ if(typeof toast==='function') console.log('ALIN V66 settlement persistence 
 
 
 
-function alinV67SumDelegateBalances(){
-  return ((db.delegates||db.couriers||[])).reduce((a,d)=>a+(+alinV65Balance('delegate',d.id).remaining||0),0);
-}
-
-
-function alinV67FinanceStatsHtml(){
-  const adminBal=alinV65Balance('admin','admin').remaining;
-  const teacherBal=alinV67SumTeacherBalances();
-  const libraryDebt=alinV67SumLibrarySettlementDebt();
-  const libraryProfit=alinV67SumLibraryProfitBalances();
-  const delegateBal=alinV67SumDelegateBalances();
-  return `<div class="stats">
-    <div><b>ربح المدير الجاري</b><span>${money(adminBal)} د.ع</span></div>
-    <div><b>أرباح المدرسين الجارية</b><span>${money(teacherBal)} د.ع</span></div>
-    <div><b>متبقي تسويات المكتبات</b><span>${money(libraryDebt)} د.ع</span></div>
-    <div><b>أرباح المكتبات عبر المندوب</b><span>${money(libraryProfit)} د.ع</span></div>
-    <div><b>أرباح المندوبين</b><span>${money(delegateBal)} د.ع</span></div>
-  </div>`;
-}
-
-
-function alinV67SettlementHistory(){
-  const libs=(db.accounts?.libraries||[]);
-  const rows=alinV64AllSettlements().slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
-  return rows.map(s=>{
-    const l=libs.find(x=>x.id===s.library_id)||{};
-    return `<div class="row"><div><b>${esc(s.receipt_number||s.id)} — ${esc(l.name||'')}</b>
-      <small>${money(+s.amount||0)} د.ع — ${esc(s.payment_method||'نقدي')} — ${new Date(s.created_at||Date.now()).toLocaleString('ar-IQ')}</small></div>
-      <div class="row-actions"><button class="secondary" onclick="alinV64PrintSettlement('${s.id||s.receipt_number}')">طباعة سند</button></div></div>`;
-  }).join('') || emptyState('لا توجد سندات تسوية');
-}
-window.renderFinanceAdmin = renderFinanceAdmin = function(){
-  adminContent.innerHTML = `<h2>الدفتر المالي والتسويات</h2>
-  ${alinV67FinanceStatsHtml()}
-  <h3>تسوية المكتبات</h3>
-  <p class="muted">هذه تخص المبالغ التي استلمتها المكتبة من الطالب وبذمتها للإدارة. عند تثبيت التسوية ينخصم المبلغ فوراً ويبقى السند محفوظ.</p>
-  ${alinV67LibrarySettlementRows()}
-  <h3>أرصدة الأرباح المستحقة</h3>
-  <p class="muted">هنا يتم تسديد أرباح المدرسين والمكتبات من طلبات المندوب والمندوبين، واستلام ربح المدير. كل تسديد يصفر الرصيد الجاري فقط ويحفظ السجل القديم.</p>
-  ${alinV65AdminPartyCards()}
-  <h3>سجل سندات تسوية المكتبات</h3>
-  ${alinV67SettlementHistory()}
-  <h3>سجل سندات الأرباح</h3>
-  ${alinV65PayoutHistory()}`;
-};
-window.adminStatsRender = adminStatsRender = function(){
-  if(!window.adminStats) return;
-  const libraryDebt=alinV67SumLibrarySettlementDebt();
-  const adminBal=alinV65Balance('admin','admin').remaining;
-  const teacherBal=alinV67SumTeacherBalances();
-  adminStats.innerHTML=`<div><b>الحسابات</b><span>${(db.accounts?.teachers||[]).length+(db.accounts?.libraries||[]).length}</span></div>
-  <div><b>الملازم</b><span>${(db.booklets||[]).length}</span></div>
-  <div><b>الطلبات</b><span>${(db.orders||[]).length}</span></div>
-  <div><b>متبقي التسويات</b><span>${money(libraryDebt)} د.ع</span></div>
-  <div><b>ربح المدير الجاري</b><span>${money(adminBal)} د.ع</span></div>
-  <div><b>أرباح المدرسين الجارية</b><span>${money(teacherBal)} د.ع</span></div>`;
-};
-const alinV67OldPayBalance = window.alinV65PayBalance;
-window.alinV65PayBalance = alinV65PayBalance = async function(role,id){
-  await alinV67OldPayBalance(role,id);
-  try{ adminStatsRender(); }catch(e){}
-};
-const alinV67OldSettleLibrary = window.alinV64AdminSettleLibrary;
-window.alinV64AdminSettleLibrary = alinV64AdminSettleLibrary = async function(libraryId){
-  await alinV67OldSettleLibrary(libraryId);
-  try{ adminStatsRender(); }catch(e){}
-};
-
-
 /* ================= ALIN V68 BALANCE SYNC ALL DASHBOARDS ================= */
-function alinV68PayoutRows(){
-  let rows=[];
-  try{ if(typeof financialPayouts!=='undefined') rows=rows.concat(financialPayouts||[]); }catch(e){}
-  try{ rows=rows.concat(JSON.parse(localStorage.getItem('alin_v65_financial_payouts')||'[]')); }catch(e){}
-  try{ rows=rows.concat(JSON.parse(localStorage.getItem('alin_v66_financial_payouts')||'[]')); }catch(e){}
-  try{ rows=rows.concat(JSON.parse(localStorage.getItem('alin_v67_financial_payouts')||'[]')); }catch(e){}
-  try{ rows=rows.concat(JSON.parse(localStorage.getItem('alin_v68_financial_payouts')||'[]')); }catch(e){}
-  const seen=new Set();
-  return rows.filter(x=>{
-    const k=x.id||x.voucher_number;
-    if(!k || seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
-}
-function alinV68LedgerRows(){
-  return (db.ledger||[]).filter(x=>x.settlement_status!=='cancelled');
-}
-function alinV68Earned(role,id){
-  const rows=alinV68LedgerRows();
-  if(role==='admin') return rows.reduce((a,x)=>a+(+x.admin||+x.alin||0),0);
-  if(role==='teacher') return rows.filter(x=>x.teacher_id===id).reduce((a,x)=>a+(+x.teacher||0),0);
-  if(role==='library'){
-    return rows.filter(x=>x.library_id===id && (x.delivery_type==='delegate'||x.delivery_type==='courier'||x.delegate_id||x.courier_id))
-      .reduce((a,x)=>a+(+x.library||0),0);
-  }
-  if(role==='delegate') return rows.filter(x=>(x.delegate_id||x.courier_id)===id).reduce((a,x)=>a+(+x.delegate||0),0);
-  return 0;
-}
-function alinV68Paid(role,id){
-  return alinV68PayoutRows()
-    .filter(x=>x.party_role===role && (role==='admin' || x.party_id===id) && (x.status==='paid'||x.status==='received'))
-    .reduce((a,x)=>a+(+x.amount||0),0);
-}
-function alinV68Balance(role,id){
-  const earned=alinV68Earned(role,id);
-  const paid=alinV68Paid(role,id);
-  return {earned,paid,remaining:Math.max(0,earned-paid)};
-}
-window.alinV68Balance=alinV68Balance;
-
 /* Update teacher dashboard "المتبقي" so it shows current balance after payouts */
 
 
@@ -2357,66 +1094,6 @@ window.alinV68Balance=alinV68Balance;
 
 
 /* Make finance admin cards depend on current balance everywhere */
-function alinV68PartyName(role,id){
-  if(role==='admin') return 'المدير';
-  if(role==='teacher') return (db.accounts?.teachers||[]).find(x=>x.id===id)?.name || 'مدرس';
-  if(role==='library') return (db.accounts?.libraries||[]).find(x=>x.id===id)?.name || 'مكتبة';
-  if(role==='delegate') return (db.delegates||db.couriers||[]).find(x=>x.id===id)?.name || 'مندوب';
-  return id||role;
-}
-async function alinV68PayBalance(role,id){
-  const b=alinV68Balance(role,id);
-  if(b.remaining<=0) return toast('لا يوجد مبلغ مستحق حالياً');
-  const name=alinV68PartyName(role,id);
-  const title=role==='admin'?'استلام ربح المدير':'تسديد أرباح '+name;
-  const amount=+(prompt(title+'\nالرصيد الجاري: '+money(b.remaining)+' د.ع\nاكتب مبلغ التسديد', b.remaining)||0);
-  if(!amount || amount<=0 || amount>b.remaining) return alert('المبلغ غير صحيح');
-  const method=prompt('طريقة الدفع/الاستلام','نقدي')||'نقدي';
-  const voucher=(role==='admin'?'AR':'PV')+'-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
-  const row={id:uid('FP'),voucher_number:voucher,party_role:role,party_id:role==='admin'?'admin':id,party_name:name,amount,payment_method:method,status:role==='admin'?'received':'paid',note:title,created_at:new Date().toISOString()};
-  let saved=false;
-  try{
-    await insert('financial_payouts',row);
-    saved=true;
-  }catch(e){}
-  try{
-    const local=JSON.parse(localStorage.getItem('alin_v68_financial_payouts')||'[]');
-    if(!local.some(x=>(x.id||x.voucher_number)===(row.id||row.voucher_number))){
-      local.unshift(row);
-      localStorage.setItem('alin_v68_financial_payouts',JSON.stringify(local));
-    }
-    saved=true;
-  }catch(e){}
-  try{ if(typeof financialPayouts!=='undefined') financialPayouts.unshift(row); }catch(e){}
-  await audit('finance',title+' سند '+voucher+' مبلغ '+amount);
-  toast(saved?'تم التسديد وتحديث كل الصفحات':'تعذر حفظ التسديد');
-  await load();
-  if(current?.role==='admin') renderFinanceAdmin();
-  if(current?.role==='teacher') window.renderTeacher?.();
-  if(current?.role==='library') window.renderLibrary?.();
-}
-window.alinV65PayBalance=alinV68PayBalance;
-window.alinV68PayBalance=alinV68PayBalance;
-
-const alinV68RenderFinanceBase = window.renderFinanceAdmin;
-window.renderFinanceAdmin = renderFinanceAdmin = function(){
-  try{ alinV68RenderFinanceBase(); }catch(e){ adminContent.innerHTML='<h2>الدفتر المالي والتسويات</h2>'; }
-  const teachers=(db.accounts?.teachers||[]).map(t=>({role:'teacher',id:t.id,name:t.name,title:'أرباح المدرس'}));
-  const libraries=(db.accounts?.libraries||[]).map(l=>({role:'library',id:l.id,name:l.name,title:'ربح المكتبة من طلبات المندوب'}));
-  const delegates=(db.delegates||db.couriers||[]).map(d=>({role:'delegate',id:d.id,name:d.name,title:'أرباح المندوب'}));
-  const parties=[{role:'admin',id:'admin',name:'المدير',title:'ربح المدير'}].concat(teachers,libraries,delegates);
-  const html=`<h3>الأرصدة الجارية بعد التسديد</h3>
-  <p class="muted">هذه الأرقام هي المتبقي الحقيقي بعد سندات التسديد، وتنعكس أيضاً بصفحة المدرس والمكتبة.</p>
-  ${parties.map(p=>{
-    const b=alinV68Balance(p.role,p.id);
-    return `<div class="row settlement-row"><div><b>${esc(p.title)} — ${esc(p.name||'')}</b>
-      <small>الإجمالي ${money(b.earned)} د.ع — المسدد ${money(b.paid)} د.ع — المتبقي ${money(b.remaining)} د.ع</small></div>
-      <div class="row-actions"><button ${b.remaining<=0?'disabled':''} onclick="alinV68PayBalance('${p.role}','${p.id}')">${p.role==='admin'?'استلام ربح المدير':'تسديد الأرباح'}</button></div></div>`;
-  }).join('')}`;
-  adminContent.innerHTML += html;
-};
-
-
 /* ================= ALIN V69 BEAUTIFUL PRINT RECEIPTS ================= */
 function alinV69PrintTemplate(title, bodyHtml, footerNote=''){
   const date=new Date().toLocaleString('ar-IQ');
@@ -2473,48 +1150,7 @@ window.printReceipt = window.printOrderReceipt = function(orderId){
     <div class="total"><b>المبلغ الكلي</b><br><span>${money(+o.total||0)} د.ع</span></div>`;
   alinV69OpenPrint('وصل طلب', html, 'هذا الوصل لا يحتوي على تفاصيل أرباح داخلية');
 };
-window.alinV64PrintSettlement = function(id){
-  const s=(typeof alinV64AllSettlements==='function'?alinV64AllSettlements():[]).find(x=>x.id===id || x.receipt_number===id);
-  if(!s) return;
-  const lib=(db.accounts?.libraries||[]).find(x=>x.id===s.library_id)||{};
-  const html=`<div class="line"><b>رقم السند</b><span>${esc(s.receipt_number||s.id)}</span></div>
-    <div class="line"><b>المكتبة</b><span>${esc(lib.name||'')}</span></div>
-    <div class="line"><b>طريقة الاستلام</b><span>${esc(s.payment_method||'نقدي')}</span></div>
-    <div class="line"><b>التاريخ</b><span>${new Date(s.created_at||Date.now()).toLocaleString('ar-IQ')}</span></div>
-    <div class="total"><b>المبلغ المستلم</b><br><span>${money(+s.amount||0)} د.ع</span></div>`;
-  alinV69OpenPrint('سند تسوية مكتبة', html, 'تم تثبيت التسوية من لوحة المدير');
-};
-window.alinV65PrintPayout = window.alinV68PrintPayout = function(id){
-  const rows=(typeof alinV68PayoutRows==='function'?alinV68PayoutRows():(typeof alinV65AllPayouts==='function'?alinV65AllPayouts():[]));
-  const p=rows.find(x=>x.id===id || x.voucher_number===id);
-  if(!p) return;
-  const title=p.party_role==='admin'?'سند استلام ربح المدير':'سند صرف أرباح';
-  const html=`<div class="line"><b>رقم السند</b><span>${esc(p.voucher_number||p.id)}</span></div>
-    <div class="line"><b>الجهة</b><span>${esc(p.party_name||'')}</span></div>
-    <div class="line"><b>نوع الحساب</b><span>${esc(p.party_role||'')}</span></div>
-    <div class="line"><b>طريقة الدفع</b><span>${esc(p.payment_method||'نقدي')}</span></div>
-    <div class="line"><b>التاريخ</b><span>${new Date(p.created_at||Date.now()).toLocaleString('ar-IQ')}</span></div>
-    <div class="total"><b>المبلغ</b><br><span>${money(+p.amount||0)} د.ع</span></div>`;
-  alinV69OpenPrint(title, html, 'تم تسجيل السند وحفظه في سجل منصة آلين');
-};
-
-
 /* ================= ALIN V70 TEACHER PROFIT TITLES FIX ================= */
-function alinV70BookletTitleFromLedger(x){
-  const direct=String(x.title||'').trim();
-  if(direct && !/^[A-Za-z0-9]{12,}$/i.test(direct) && !/^O[0-9a-f]+$/i.test(direct)) return direct;
-  const o=(db.orders||[]).find(o=>o.id===x.order_id || o.order_number===x.order_number);
-  if(o?.title) return o.title;
-  const itemId=x.item_id || o?.item_id;
-  const b=(db.booklets||[]).find(b=>b.id===itemId);
-  return b?.title || b?.name || 'ملزمة';
-}
-
-
-
-
-
-
 /* ================= ALIN V71 COMPLETE ADMIN TOOLS ================= */
 const ALIN_V71_VERSION='V71 Complete Admin Tools';
 
@@ -2585,25 +1221,6 @@ window.alinV71MarkRead=alinV71MarkRead;
 
 function alinV71Money(n){ try{return money(+n||0)}catch(e){return (+n||0).toLocaleString('ar-IQ')} }
 function alinV71DateOnly(v){ return (v||'').slice(0,10); }
-function alinV71FilterByPeriod(rows, mode, from, to){
-  const today=new Date();
-  let start='', end='';
-  if(mode==='today'){
-    start=end=today.toISOString().slice(0,10);
-  }else if(mode==='month'){
-    start=today.toISOString().slice(0,7)+'-01';
-    end=today.toISOString().slice(0,10);
-  }else{
-    start=from||'';
-    end=to||'';
-  }
-  return rows.filter(x=>{
-    const d=alinV71DateOnly(x.created_at||x.settled_at||x.settlement_at||'');
-    if(start && d<start) return false;
-    if(end && d>end) return false;
-    return true;
-  });
-}
 function alinV71CsvCell(v){
   v=String(v??'').replaceAll('"','""');
   return `"${v}"`;
@@ -2614,28 +1231,11 @@ function alinV71Download(filename, content, type='text/plain;charset=utf-8'){
   const a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click();
   setTimeout(()=>{URL.revokeObjectURL(url); a.remove();},500);
 }
-function alinV71ExportFinanceCsv(){
-  const rows=(db.ledger||[]).filter(x=>x.settlement_status!=='cancelled');
-  const header=['رقم الطلب','التاريخ','المدير','المدرس','المكتبة','المندوب','الإجمالي','الحالة'];
-  const csv='\ufeff'+[header].concat(rows.map(x=>[
-    x.order_number||x.order_id||'',
-    x.created_at||x.settled_at||'',
-    x.admin||x.alin||0,
-    x.teacher||0,
-    x.library||0,
-    x.delegate||0,
-    x.total||0,
-    x.settlement_status||''
-  ])).map(r=>r.map(alinV71CsvCell).join(',')).join('\n');
-  alinV71Download('alin-finance-'+new Date().toISOString().slice(0,10)+'.csv',csv,'text/csv;charset=utf-8');
-  alinV71Audit('export_finance','تصدير الحسابات Excel/CSV');
-}
 function alinV71Backup(){
   const data={version:ALIN_V71_VERSION,created_at:alinV71Now(),db};
   alinV71Download('alin-backup-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(data,null,2),'application/json;charset=utf-8');
   alinV71Audit('backup','تنزيل نسخة احتياطية');
 }
-window.alinV71ExportFinanceCsv=alinV71ExportFinanceCsv;
 window.alinV71Backup=alinV71Backup;
 
 
@@ -2655,61 +1255,7 @@ window.alinV71Backup=alinV71Backup;
 /* platform step 5: removed legacy alinV71StatusControls; authoritative code is modules/admin/orders.js */
 
 /* wrap settlement and payout functions with audit/notification */
-const alinV71OldPayBalance=window.alinV68PayBalance||window.alinV65PayBalance;
-if(alinV71OldPayBalance){
-  window.alinV68PayBalance=window.alinV65PayBalance=async function(role,id){
-    await alinV71OldPayBalance(role,id);
-    await alinV71Audit('payout','تسديد/استلام أرباح '+role+' '+(id||''),{role,id});
-    if(role==='teacher') await alinV71Notify('teacher',id,'تم تسديد أرباحك','تم تسجيل سند تسديد أرباح من الإدارة.');
-    if(role==='library') await alinV71Notify('library',id,'تم تسديد ربح المكتبة','تم تسجيل سند تسديد ربح المكتبة من الإدارة.');
-  };
-}
-const alinV71OldAdminSettle=window.alinV64AdminSettleLibrary;
-if(alinV71OldAdminSettle){
-  window.alinV64AdminSettleLibrary=async function(libraryId){
-    await alinV71OldAdminSettle(libraryId);
-    await alinV71Audit('library_settlement','تثبيت تسوية مكتبة '+libraryId,{library_id:libraryId});
-    await alinV71Notify('library',libraryId,'تم تثبيت تسوية المكتبة','تم تحديث حساب التسوية من لوحة المدير.');
-  };
-}
-const alinV71OldSaveRatios=window.saveFinanceRatiosV57;
-if(alinV71OldSaveRatios){
-  window.saveFinanceRatiosV57=async function(){
-    await alinV71OldSaveRatios();
-    await alinV71Audit('profit_ratio','تعديل نسب الأرباح من الإعدادات');
-    await alinV71Notify('admin','','تعديل نسب الأرباح','تم تعديل نسب أرباح المنصة.');
-  };
-}
-
 /* Admin finance enhancement: filters, export, audit, notifications */
-const alinV71RenderFinanceBase=window.renderFinanceAdmin;
-window.renderFinanceAdmin=renderFinanceAdmin=function(){
-  try{ alinV71RenderFinanceBase(); }catch(e){ adminContent.innerHTML='<h2>الدفتر المالي والتسويات</h2>'; }
-  const mode=document.getElementById('alinV71FinanceMode')?.value||'all';
-  const from=document.getElementById('alinV71FinanceFrom')?.value||'';
-  const to=document.getElementById('alinV71FinanceTo')?.value||'';
-  const rows=alinV71FilterByPeriod((db.ledger||[]).filter(x=>x.settlement_status!=='cancelled'),mode,from,to);
-  const total=rows.reduce((a,x)=>a+(+x.total||0),0);
-  const admin=rows.reduce((a,x)=>a+(+x.admin||+x.alin||0),0);
-  const teacher=rows.reduce((a,x)=>a+(+x.teacher||0),0);
-  const library=rows.reduce((a,x)=>a+(+x.library||0),0);
-  const extra=`<h3>فلتر الحسابات والتصدير</h3>
-    <div class="toolbar">
-      <select id="alinV71FinanceMode" onchange="renderFinanceAdmin()">
-        <option value="all" ${mode==='all'?'selected':''}>كل الفترات</option>
-        <option value="today" ${mode==='today'?'selected':''}>اليوم</option>
-        <option value="month" ${mode==='month'?'selected':''}>هذا الشهر</option>
-        <option value="custom" ${mode==='custom'?'selected':''}>تاريخ محدد</option>
-      </select>
-      <input type="date" id="alinV71FinanceFrom" value="${esc(from)}" onchange="renderFinanceAdmin()">
-      <input type="date" id="alinV71FinanceTo" value="${esc(to)}" onchange="renderFinanceAdmin()">
-      <button onclick="alinV71ExportFinanceCsv()">تصدير Excel</button>
-      <button class="secondary" onclick="alinV71Backup()">نسخ احتياطي</button>
-    </div>
-    <div class="stats"><div><b>إجمالي الفترة</b><span>${alinV71Money(total)} د.ع</span></div><div><b>ربح المدير</b><span>${alinV71Money(admin)} د.ع</span></div><div><b>المدرسين</b><span>${alinV71Money(teacher)} د.ع</span></div><div><b>المكتبات/المندوب</b><span>${alinV71Money(library)} د.ع</span></div></div>`;
-  adminContent.innerHTML += extra;
-};
-
 /* Admin settings: fixed version */
 const alinV71RenderSettingsBase=window.renderSettingsAdmin;
 window.renderSettingsAdmin=renderSettingsAdmin=function(){
@@ -2718,36 +1264,7 @@ window.renderSettingsAdmin=renderSettingsAdmin=function(){
   <div class="notice"><b>الإصدار المرفوع حالياً</b><div>${ALIN_V71_VERSION}</div><small>تم إصلاح كاش الملفات وربط أدوات الإدارة بهذا الإصدار.</small></div>`;
 };
 
-/* Admin audit and notifications sections injected into dashboard/accounts if available */
-function alinV71RenderAdminTools(){
-  if(current?.role!=='admin' || !window.adminContent) return;
-  const logs=alinV71AuditRows().slice(0,25);
-  const notes=alinV71NotificationRows().slice(0,20);
-  adminContent.innerHTML += `<h3>سجل التدقيق</h3>
-    ${logs.map(x=>`<div class="row"><div><b>${esc(x.action||'')}</b><small>${esc(x.details||'')} — ${esc(x.user_name||'')} — ${new Date(x.created_at||Date.now()).toLocaleString('ar-IQ')}</small></div></div>`).join('')||emptyState('لا يوجد سجل تدقيق')}
-    <h3>الإشعارات الداخلية</h3>
-    <div class="form-grid"><input id="alinNotifyTitle" placeholder="عنوان الإشعار"><input id="alinNotifyMsg" placeholder="نص الإشعار">
-    <select id="alinNotifyRole"><option value="all">الكل</option><option value="admin">المدير</option><option value="teacher">المدرسين</option><option value="library">المكتبات</option></select>
-    <button onclick="alinV71SendManualNotification()">إرسال إشعار</button></div>
-    ${notes.map(n=>`<div class="row"><div><b>${esc(n.title||'')}</b><small>${esc(n.message||'')} — إلى: ${esc(n.target_role||'all')} — ${new Date(n.created_at||Date.now()).toLocaleString('ar-IQ')}</small></div></div>`).join('')||emptyState('لا توجد إشعارات')}`;
-}
-async function alinV71SendManualNotification(){
-  const title=document.getElementById('alinNotifyTitle')?.value||'إشعار';
-  const msg=document.getElementById('alinNotifyMsg')?.value||'';
-  const role=document.getElementById('alinNotifyRole')?.value||'all';
-  await alinV71Notify(role,'',title,msg);
-  await alinV71Audit('notification','إرسال إشعار داخلي إلى '+role);
-  renderAll();
-}
-window.alinV71SendManualNotification=alinV71SendManualNotification;
-
-const alinV71RenderAdminBase=window.renderAdmin;
-if(alinV71RenderAdminBase){
-  window.renderAdmin=renderAdmin=function(){
-    try{ alinV71RenderAdminBase(); }catch(e){}
-    setTimeout(()=>{try{alinV71RenderAdminTools()}catch(e){}},50);
-  };
-}
+/* PLATFORM STEP 9: legacy dashboard injection removed; dashboard and notifications have dedicated modules. */
 
 /* Render visible notifications for teacher/library/admin pages */
 function alinV71InjectNotifications(target){
@@ -2792,562 +1309,7 @@ load=window.load=async function(){
 };
 
 
-/* ================= ALIN V72 MODERN STUDENT STOREFRONT ================= */
-const ALIN_V72_VERSION='V72 Modern Student Store';
-let alinV72StoreCategory='all';
-let alinV72StoreSearch='';
-
-function alinV72ProductImage(item){
-  const raw=item?.image_path||item?.image||item?.cover_path||item?.teacher_image||'';
-  if(!raw) return '';
-  try{return mediaUrl(raw)}catch(e){return raw}
-}
-function alinV72StoreItems(){
-  const books=(db.booklets||[]).filter(x=>x.status!=='hidden' && x.is_hidden!==true).map(x=>({...x,_type:'booklet',_category:'booklets'}));
-  const products=(db.products||[]).filter(x=>x.status!=='hidden' && x.is_hidden!==true).map(x=>({...x,_type:'product',_category:x.category_id||x.category||'products'}));
-  return books.concat(products);
-}
-function alinV72Matches(item){
-  const q=(alinV72StoreSearch||'').trim().toLowerCase();
-  const cat=alinV72StoreCategory;
-  const categoryOk=cat==='all' || item._category===cat || item.category_id===cat || item.category===cat;
-  if(!categoryOk) return false;
-  if(!q) return true;
-  const teacher=(db.accounts?.teachers||[]).find(t=>t.id===item.teacher_id)?.name||'';
-  return [item.title,item.name,item.subject,item.grade,teacher].some(v=>String(v||'').toLowerCase().includes(q));
-}
-function alinV72OrderCount(item){
-  return (db.orders||[]).filter(o=>o.item_id===item.id && o.status!=='cancelled').reduce((a,o)=>a+(+o.qty||1),0);
-}
-
-
-function alinV72Card(item){
-  const img=alinV72ProductImage(item);
-  const title=item.title||item.name||'منتج';
-  const teacher=alinV72TeacherName(item);
-  const price=+item.price||0;
-  const orderFn=item._type==='booklet'
-    ? `openBooklet('${item.id}')`
-    : `addToCart('${item.id}','product')`;
-  return `<article class="alin-v72-card">
-    <div class="alin-v72-cover">${img?`<img src="${esc(img)}" alt="${esc(title)}">`:`<div class="alin-v72-placeholder">آلين</div>`}
-      ${alinV72OrderCount(item)>0?`<span class="alin-v72-hot">الأكثر طلباً</span>`:''}
-    </div>
-    <div class="alin-v72-card-body">
-      <h3>${esc(title)}</h3>
-      ${teacher?`<p class="alin-v72-teacher">${esc(teacher)}</p>`:''}
-      ${item.subject||item.grade?`<small>${esc([item.subject,item.grade].filter(Boolean).join(' • '))}</small>`:''}
-      <div class="alin-v72-buy"><strong>${money(price)} د.ع</strong><button onclick="${orderFn}">اطلب الآن</button></div>
-    </div>
-  </article>`;
-}
-function alinV72SetCategory(cat){
-  alinV72StoreCategory=cat;
-  alinV72RenderStore();
-}
-function alinV72Search(value){
-  alinV72StoreSearch=value||'';
-  alinV72RenderStore();
-}
-window.alinV72SetCategory=alinV72SetCategory;
-window.alinV72Search=alinV72Search;
-
-function alinV72RenderStore(){
-  if(current?.role && current.role!=='student' && current.role!=='customer') return;
-  const root=document.getElementById('storeView')||document.getElementById('storeContent')||document.querySelector('.store-page')||document.getElementById('shop');
-  if(!root) return;
-  const items=alinV72StoreItems();
-  const visible=items.filter(alinV72Matches);
-  const popular=items.slice().sort((a,b)=>alinV72OrderCount(b)-alinV72OrderCount(a)).filter(x=>alinV72OrderCount(x)>0).slice(0,6);
-  const latest=items.slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')).slice(0,8);
-  const cats=(db.categories||[]).slice(0,8);
-  const libs=(db.accounts?.libraries||[]).slice(0,6);
-  root.innerHTML=`<div class="alin-v72-store">
-    <header class="alin-v72-top">
-      <div class="alin-v72-brand"><div class="alin-v72-logo">آ</div><div><b>منصة آلين</b><small>الملازم والقرطاسية والهدايا</small></div></div>
-      <div class="alin-v72-search"><span>⌕</span><input value="${esc(alinV72StoreSearch)}" oninput="alinV72Search(this.value)" placeholder="ابحث عن ملزمة، مدرس أو مادة"></div>
-      <button class="alin-v72-cart" onclick="openCart()">السلة <span>${(db.cart||[]).length||0}</span></button>
-    </header>
-
-    <section class="alin-v72-hero">
-      <div><span class="alin-v72-kicker">منصة الطالب</span><h1>كل ما تحتاجه للدراسة<br>بمكان واحد</h1>
-      <p>اختر ملزمتك أو قرطاسيتك واطلبها بسهولة من منصة آلين.</p>
-      <button onclick="document.getElementById('alinV72Products').scrollIntoView({behavior:'smooth'})">تصفح المنتجات</button></div>
-      <div class="alin-v72-hero-mark">ALIN<small>منصة آلين</small></div>
-    </section>
-
-    <nav class="alin-v72-cats">
-      <button class="${alinV72StoreCategory==='all'?'active':''}" onclick="alinV72SetCategory('all')"><span>⌂</span>الكل</button>
-      <button class="${alinV72StoreCategory==='booklets'?'active':''}" onclick="alinV72SetCategory('booklets')"><span>▤</span>الملازم</button>
-      ${cats.map(c=>`<button class="${alinV72StoreCategory===c.id?'active':''}" onclick="alinV72SetCategory('${c.id}')"><span>◇</span>${esc(c.name||c.title||'قسم')}</button>`).join('')}
-    </nav>
-
-    ${popular.length?`<section class="alin-v72-section"><div class="alin-v72-section-head"><div><small>اختيارات الطلاب</small><h2>الأكثر طلباً</h2></div></div><div class="alin-v72-grid">${popular.map(alinV72Card).join('')}</div></section>`:''}
-
-    <section class="alin-v72-section" id="alinV72Products"><div class="alin-v72-section-head"><div><small>${alinV72StoreSearch?'نتائج البحث':'المتجر'}</small><h2>${alinV72StoreSearch?'النتائج':'وصل حديثاً'}</h2></div><span>${visible.length} منتج</span></div>
-      <div class="alin-v72-grid">${(alinV72StoreSearch||alinV72StoreCategory!=='all'?visible:latest).map(alinV72Card).join('') || `<div class="alin-v72-empty">لا توجد نتائج مطابقة</div>`}</div>
-    </section>
-
-    ${libs.length?`<section class="alin-v72-section"><div class="alin-v72-section-head"><div><small>نقاط الاستلام</small><h2>مكتبات منصة آلين</h2></div></div><div class="alin-v72-libs">${libs.map(l=>`<div><span class="alin-v72-lib-icon">م</span><b>${esc(l.name||'مكتبة')}</b><small>${esc([l.area,l.landmark].filter(Boolean).join(' • '))}</small><em>${typeof libIsOpen==='function'&&libIsOpen(l)?'مفتوحة الآن':'متاحة للاستلام'}</em></div>`).join('')}</div></section>`:''}
-
-    <footer class="alin-v72-footer"><b>منصة آلين</b><span>طلب أسهل • طباعة منظمة • استلام سريع</span></footer>
-    <nav class="alin-v72-mobile-nav"><button onclick="alinV72SetCategory('all')">⌂<small>الرئيسية</small></button><button onclick="alinV72SetCategory('booklets')">▤<small>الملازم</small></button><button onclick="document.getElementById('alinV72Products').scrollIntoView()">◇<small>الأقسام</small></button><button onclick="openCart()">▣<small>السلة</small></button></nav>
-  </div>`;
-}
-window.alinV72RenderStore=alinV72RenderStore;
-
-/* Attach after existing store renderers without touching finance/admin */
-const alinV72StoreCandidates=['renderStore','renderShop','renderHome','renderStorefront'];
-alinV72StoreCandidates.forEach(name=>{
-  if(typeof window[name]==='function'){
-    const old=window[name];
-    window[name]=function(...args){
-      const result=old.apply(this,args);
-      setTimeout(()=>{try{alinV72RenderStore()}catch(e){console.warn('V72 store',e)}},20);
-      return result;
-    };
-  }
-});
-document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{alinV72RenderStore()}catch(e){}},700));
-
-/* version display */
-const alinV72SettingsBase=window.renderSettingsAdmin;
-if(alinV72SettingsBase){
-  window.renderSettingsAdmin=renderSettingsAdmin=function(){
-    alinV72SettingsBase();
-    if(window.adminContent) adminContent.innerHTML += `<div class="notice"><b>واجهة المتجر</b><div>${ALIN_V72_VERSION}</div><small>واجهة الطالب الحديثة مفعلة بدون تغيير النظام المالي.</small></div>`;
-  };
-}
-
-/* Store CSS */
-const alinV72Style=document.createElement('style');
-alinV72Style.textContent=`
-.alin-v72-store{--ink:#0b1830;--gold:#c99021;--soft:#f4f7fb;max-width:1450px;margin:auto;color:var(--ink);padding-bottom:85px}
-.alin-v72-top{display:grid;grid-template-columns:auto minmax(280px,620px) auto;gap:24px;align-items:center;padding:18px 4px}
-.alin-v72-brand{display:flex;align-items:center;gap:11px}.alin-v72-brand b{display:block;font-size:21px}.alin-v72-brand small{display:block;color:#758196}
-.alin-v72-logo{width:48px;height:48px;border-radius:16px;background:var(--ink);color:#f4c96d;display:grid;place-items:center;font-size:28px;font-weight:900}
-.alin-v72-search{height:52px;background:#fff;border:1px solid #dfe6ef;border-radius:16px;display:flex;align-items:center;padding:0 16px;box-shadow:0 8px 25px rgba(20,38,70,.05)}
-.alin-v72-search span{font-size:27px}.alin-v72-search input{border:0!important;outline:0;width:100%;box-shadow:none!important;background:transparent!important;font-size:15px}
-.alin-v72-cart{border:0;border-radius:14px;background:var(--ink);color:#fff;padding:14px 18px;font-weight:800}.alin-v72-cart span{background:#d49a2b;border-radius:99px;padding:2px 7px;margin-right:6px}
-.alin-v72-hero{min-height:360px;border-radius:32px;padding:54px 60px;display:flex;align-items:center;justify-content:space-between;overflow:hidden;background:radial-gradient(circle at 15% 20%,#28466f 0,transparent 35%),linear-gradient(125deg,#071225,#10284b);color:#fff;position:relative}
-.alin-v72-hero h1{font-size:clamp(36px,5vw,68px);line-height:1.12;margin:12px 0}.alin-v72-hero p{color:#cbd5e4;font-size:18px;max-width:580px}.alin-v72-hero button{border:0;background:#d19a31;color:#071225;padding:15px 24px;border-radius:14px;font-weight:900}
-.alin-v72-kicker{background:rgba(255,255,255,.09);padding:7px 12px;border-radius:99px;color:#f0c875}.alin-v72-hero-mark{font-size:90px;font-weight:900;color:rgba(255,255,255,.07);transform:rotate(-8deg);text-align:center}.alin-v72-hero-mark small{display:block;font-size:24px;color:#d4a341}
-.alin-v72-cats{display:flex;gap:12px;overflow:auto;padding:22px 2px}.alin-v72-cats button{min-width:120px;border:1px solid #e0e6ee;background:#fff;border-radius:18px;padding:14px;font-weight:800;color:#34445e}.alin-v72-cats button span{display:block;font-size:24px;margin-bottom:5px}.alin-v72-cats button.active{background:var(--ink);color:#fff;border-color:var(--ink)}
-.alin-v72-section{padding:26px 2px}.alin-v72-section-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:18px}.alin-v72-section-head small{color:#b27b15;font-weight:800}.alin-v72-section-head h2{font-size:30px;margin:4px 0}.alin-v72-section-head>span{color:#718096}
-.alin-v72-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}.alin-v72-card{background:#fff;border:1px solid #e5eaf1;border-radius:22px;overflow:hidden;box-shadow:0 10px 30px rgba(20,38,70,.05);transition:.2s}.alin-v72-card:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(20,38,70,.10)}
-.alin-v72-cover{aspect-ratio:4/3;background:#eef2f7;position:relative;overflow:hidden}.alin-v72-cover img{width:100%;height:100%;object-fit:cover}.alin-v72-placeholder{width:100%;height:100%;display:grid;place-items:center;background:linear-gradient(145deg,#10294d,#071225);color:#d5a23c;font-size:45px;font-weight:900}.alin-v72-hot{position:absolute;top:12px;right:12px;background:#fff5d9;color:#8d5a00;border-radius:99px;padding:6px 10px;font-size:11px;font-weight:900}
-.alin-v72-card-body{padding:16px}.alin-v72-card h3{margin:0 0 7px;font-size:18px}.alin-v72-teacher{margin:0 0 5px;color:#52627a}.alin-v72-card small{color:#8490a2}.alin-v72-buy{display:flex;justify-content:space-between;align-items:center;margin-top:16px}.alin-v72-buy strong{font-size:18px}.alin-v72-buy button{border:0;border-radius:12px;background:var(--ink);color:#fff;padding:10px 14px;font-weight:800}
-.alin-v72-libs{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.alin-v72-libs>div{background:#fff;border:1px solid #e4eaf2;border-radius:18px;padding:17px;display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:center}.alin-v72-lib-icon{grid-row:1/4;width:44px;height:44px;border-radius:14px;background:#edf2f8;display:grid;place-items:center;font-weight:900}.alin-v72-libs small{color:#7a8799}.alin-v72-libs em{grid-column:3;grid-row:1/3;color:#16834a;font-style:normal;font-size:12px;font-weight:800}
-.alin-v72-empty{grid-column:1/-1;padding:45px;text-align:center;background:#f7f9fc;border-radius:20px;color:#758196}.alin-v72-footer{margin-top:30px;border-radius:24px;background:#0b1830;color:#fff;padding:28px;display:flex;justify-content:space-between}.alin-v72-footer span{color:#bfc9d8}
-.alin-v72-mobile-nav{display:none}
-@media(max-width:900px){.alin-v72-store{padding:0 10px 90px}.alin-v72-top{grid-template-columns:1fr auto}.alin-v72-search{grid-column:1/-1;grid-row:2}.alin-v72-hero{padding:36px 25px;min-height:320px}.alin-v72-hero-mark{display:none}.alin-v72-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.alin-v72-libs{grid-template-columns:1fr}.alin-v72-mobile-nav{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;bottom:0;left:0;right:0;z-index:999;background:#fff;border-top:1px solid #e1e7ef;padding:8px 6px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -10px 30px rgba(20,38,70,.08)}.alin-v72-mobile-nav button{border:0;background:transparent;color:#182943;font-size:20px}.alin-v72-mobile-nav small{display:block;font-size:10px;margin-top:3px}}
-@media(max-width:560px){.alin-v72-brand small{display:none}.alin-v72-cart{padding:12px}.alin-v72-hero h1{font-size:38px}.alin-v72-hero p{font-size:15px}.alin-v72-grid{gap:10px}.alin-v72-card{border-radius:16px}.alin-v72-card-body{padding:12px}.alin-v72-card h3{font-size:15px}.alin-v72-buy{display:block}.alin-v72-buy button{width:100%;margin-top:10px}.alin-v72-section-head h2{font-size:25px}.alin-v72-footer{display:block;text-align:center}.alin-v72-footer span{display:block;margin-top:6px}}
-`;
-document.head.appendChild(alinV72Style);
-
-
-/* ================= ALIN V73 PRODUCTS FORM + STOREFRONT FIX ================= */
-const ALIN_V73_PRODUCTS_VERSION='V73 Products & Store Fix';
-
-function alinV73ProductDetails(p){
-  return p.details || p.description || p.note || p.notes || '';
-}
-function alinV73ProductImage(p){
-  const raw=p.image_path||p.image||p.file_path||p.cover_path||'';
-  if(!raw) return '';
-  try{return mediaUrl(raw)}catch(e){return raw}
-}
-function alinV73ClearProductForm(){
-  ['alinV73ProductName','alinV73ProductDetails','alinV73ProductPrice','alinV73ProductStock','alinV73ProductFile'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(!el)return;
-    if(el.type==='file') el.value='';
-    else el.value='';
-  });
-}
-window.alinV73AddProduct=alinV73AddProduct;
-window.alinV73EditProduct=alinV73EditProduct;
-window.alinV73DeleteProduct=alinV73DeleteProduct;
-
-
-/* Ensure modern store uses the actual product list and refreshes immediately */
-if(typeof alinV72StoreItems==='function'){
-  const alinV73OldStoreItems=alinV72StoreItems;
-  alinV72StoreItems=function(){
-    const items=alinV73OldStoreItems();
-    return items.map(x=>{
-      if(x._type==='product'){
-        return {...x,title:x.name||x.title,details:alinV73ProductDetails(x),_category:x.category_id||x.category||'products'};
-      }
-      return x;
-    });
-  };
-}
-if(typeof alinV72Card==='function'){
-  const alinV73OldCard=alinV72Card;
-  alinV72Card=function(item){
-    if(item._type!=='product') return alinV73OldCard(item);
-    const img=alinV73ProductImage(item);
-    const title=item.name||item.title||'منتج';
-    const details=alinV73ProductDetails(item);
-    return `<article class="alin-v72-card">
-      <div class="alin-v72-cover">${img?`<img src="${esc(img)}" alt="${esc(title)}">`:`<div class="alin-v72-placeholder">آلين</div>`}</div>
-      <div class="alin-v72-card-body">
-        <h3>${esc(title)}</h3>
-        ${details?`<p class="alin-v73-store-details">${esc(details)}</p>`:''}
-        <small>المخزون: ${+item.stock||0}</small>
-        <div class="alin-v72-buy"><strong>${money(+item.price||0)} د.ع</strong><button onclick="addToCart('${item.id}','product')">أضف للسلة</button></div>
-      </div>
-    </article>`;
-  };
-}
-
-/* CSS */
-const alinV73Style=document.createElement('style');
-alinV73Style.textContent=`
-.alin-v73-product-form{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:12px;align-items:stretch;margin:15px 0 24px}
-.alin-v73-product-form textarea{min-height:90px;resize:vertical}
-.alin-v73-product-form input,.alin-v73-product-form select,.alin-v73-product-form textarea{border:1px solid #dbe3ef;border-radius:14px;padding:14px;background:#fff}
-.alin-v73-product-form button{border:0;border-radius:14px;background:#0b1830;color:#fff;font-weight:800}
-.alin-v73-file-label{border:1px dashed #b9c6d8;border-radius:14px;padding:12px;background:#f8fafc;display:flex;flex-direction:column;gap:8px}
-.alin-v73-product-list{display:grid;gap:12px}
-.alin-v73-product-row{display:grid;grid-template-columns:78px 1fr auto;gap:14px;align-items:center;background:#fff;border:1px solid #e1e7ef;border-radius:18px;padding:14px}
-.alin-v73-product-thumb{width:78px;height:78px;border-radius:14px;background:#eef2f7;display:grid;place-items:center;overflow:hidden;font-weight:900}
-.alin-v73-product-thumb img{width:100%;height:100%;object-fit:cover}
-.alin-v73-product-info p{margin:5px 0;color:#617089}
-.alin-v73-store-details{color:#66758a;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:38px}
-@media(max-width:800px){.alin-v73-product-form{grid-template-columns:1fr}.alin-v73-product-row{grid-template-columns:62px 1fr}.alin-v73-product-row .row-actions{grid-column:1/-1}.alin-v73-product-thumb{width:62px;height:62px}}
-`;
-document.head.appendChild(alinV73Style);
-
-
-/* ================= ALIN V74 SMART PRODUCT CARDS ================= */
-function alinV74StockState(item){
-  const n=Number(item.stock||0);
-  if(n<=0)return {text:'نفد المخزون',cls:'out'};
-  if(n<=5)return {text:'كمية محدودة',cls:'low'};
-  return {text:'متوفر',cls:'available'};
-}
-function alinV74IsNew(item){
-  const d=new Date(item.created_at||0);
-  return d && !isNaN(d) && (Date.now()-d.getTime()) <= 14*24*60*60*1000;
-}
-function alinV74OrderCount(item){
-  const id=String(item.id||'');
-  let count=0;
-  for(const o of (db.orders||[])){
-    const rows=o.items||o.cart||o.order_items||[];
-    if(Array.isArray(rows)) for(const r of rows){
-      if(String(r.product_id||r.id||r.item_id||'')===id) count+=Number(r.qty||r.quantity||1);
-    }
-  }
-  return count;
-}
-function alinV74Qty(id,delta){
-  const el=document.getElementById('alinV74Qty_'+id);
-  const item=(db.products||[]).find(x=>String(x.id)===String(id));
-  if(!el||!item)return;
-  const max=Math.max(1,Number(item.stock||0));
-  el.value=Math.max(1,Math.min(max,Number(el.value||1)+delta));
-}
-function alinV74Add(id){
-  const item=(db.products||[]).find(x=>String(x.id)===String(id));
-  if(!item||Number(item.stock||0)<=0)return alert('المنتج غير متوفر حالياً');
-  const qty=Math.max(1,Number(document.getElementById('alinV74Qty_'+id)?.value||1));
-  for(let i=0;i<qty;i++) addToCart(id,'product');
-  toast('تمت إضافة '+qty+' إلى السلة');
-}
-function alinV74OpenProduct(id){
-  const p=(db.products||[]).find(x=>String(x.id)===String(id)); if(!p)return;
-  const stock=alinV74StockState(p), img=alinV73ProductImage(p), details=alinV73ProductDetails(p);
-  const modal=document.createElement('div');
-  modal.className='alin-v74-modal';
-  modal.innerHTML=`<div class="alin-v74-modal-card" onclick="event.stopPropagation()">
-    <button class="alin-v74-close" onclick="this.closest('.alin-v74-modal').remove()">×</button>
-    <div class="alin-v74-modal-img">${img?`<img src="${esc(img)}" alt="${esc(p.name||p.title||'منتج')}">`:'<div class="alin-v74-noimg">منصة آلين</div>'}</div>
-    <div class="alin-v74-modal-info">
-      <span class="alin-v74-stock ${stock.cls}">${stock.text}</span>
-      <h2>${esc(p.name||p.title||'منتج')}</h2>
-      <p>${esc(details||'لا توجد تفاصيل إضافية لهذا المنتج.')}</p>
-      <strong class="alin-v74-price">${money(+p.price||0)} د.ع</strong>
-      ${Number(p.stock||0)>0?`<div class="alin-v74-modal-actions">
-        <div class="alin-v74-qty"><button onclick="alinV74Qty('${p.id}',-1)">−</button><input id="alinV74Qty_${p.id}" value="1" readonly><button onclick="alinV74Qty('${p.id}',1)">+</button></div>
-        <button class="alin-v74-cart" onclick="alinV74Add('${p.id}')">أضف للسلة</button>
-      </div>`:'<button class="alin-v74-cart disabled" disabled>غير متوفر حالياً</button>'}
-    </div>
-  </div>`;
-  modal.onclick=()=>modal.remove();
-  document.body.appendChild(modal);
-}
-window.alinV74Qty=alinV74Qty;
-window.alinV74Add=alinV74Add;
-window.alinV74OpenProduct=alinV74OpenProduct;
-
-if(typeof alinV72Card==='function'){
-  const alinV74PreviousCard=alinV72Card;
-  alinV72Card=function(item){
-    if(item._type!=='product') return alinV74PreviousCard(item);
-    const img=alinV73ProductImage(item);
-    const title=item.name||item.title||'منتج';
-    const details=alinV73ProductDetails(item);
-    const stock=alinV74StockState(item);
-    const popular=alinV74OrderCount(item)>=5;
-    return `<article class="alin-v74-product-card">
-      <div class="alin-v74-image" onclick="alinV74OpenProduct('${item.id}')">
-        ${img?`<img src="${esc(img)}" alt="${esc(title)}">`:`<div class="alin-v74-noimg">منصة آلين</div>`}
-        <div class="alin-v74-badges">
-          ${alinV74IsNew(item)?'<span class="alin-v74-badge new">جديد</span>':''}
-          ${popular?'<span class="alin-v74-badge popular">الأكثر طلباً</span>':''}
-        </div>
-      </div>
-      <div class="alin-v74-body">
-        <span class="alin-v74-stock ${stock.cls}">${stock.text}</span>
-        <h3 onclick="alinV74OpenProduct('${item.id}')">${esc(title)}</h3>
-        <p>${esc(details||'')}</p>
-        <strong class="alin-v74-price">${money(+item.price||0)} د.ع</strong>
-        ${Number(item.stock||0)>0?`<div class="alin-v74-actions">
-          <div class="alin-v74-qty"><button onclick="alinV74Qty('${item.id}',-1)">−</button><input id="alinV74Qty_${item.id}" value="1" readonly><button onclick="alinV74Qty('${item.id}',1)">+</button></div>
-          <button class="alin-v74-cart" onclick="alinV74Add('${item.id}')">أضف للسلة</button>
-        </div>`:`<button class="alin-v74-cart disabled" disabled>نفد المخزون</button>`}
-      </div>
-    </article>`;
-  };
-}
-
-const alinV74Style=document.createElement('style');
-alinV74Style.textContent=`
-.alin-v74-product-card{background:#fff;border:1px solid #e4eaf2;border-radius:22px;overflow:hidden;box-shadow:0 10px 30px rgba(13,31,58,.07);transition:.22s;direction:rtl}
-.alin-v74-product-card:hover{transform:translateY(-4px);box-shadow:0 16px 38px rgba(13,31,58,.12)}
-.alin-v74-image{height:220px;background:#f3f6fa;position:relative;cursor:pointer;overflow:hidden}
-.alin-v74-image img{width:100%;height:100%;object-fit:cover;transition:.3s}.alin-v74-product-card:hover .alin-v74-image img{transform:scale(1.035)}
-.alin-v74-noimg{width:100%;height:100%;display:grid;place-items:center;font-weight:900;font-size:24px;color:#0b1830;background:linear-gradient(145deg,#f7f9fc,#e9eef6)}
-.alin-v74-badges{position:absolute;top:12px;right:12px;display:flex;gap:7px;flex-wrap:wrap}
-.alin-v74-badge{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:900;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.1)}
-.alin-v74-badge.new{color:#0a7047}.alin-v74-badge.popular{color:#9a6500}
-.alin-v74-body{padding:16px}.alin-v74-body h3{margin:8px 0 6px;font-size:18px;cursor:pointer;color:#0b1830}
-.alin-v74-body p{margin:0 0 12px;color:#68768a;line-height:1.65;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:52px}
-.alin-v74-stock{display:inline-block;font-size:12px;font-weight:900;padding:5px 9px;border-radius:999px}.alin-v74-stock.available{background:#e9f8f0;color:#087344}.alin-v74-stock.low{background:#fff4d8;color:#986600}.alin-v74-stock.out{background:#fdeaea;color:#b42318}
-.alin-v74-price{display:block;font-size:21px;color:#a87500;margin:8px 0 14px}
-.alin-v74-actions,.alin-v74-modal-actions{display:flex;gap:10px;align-items:center}.alin-v74-qty{display:grid;grid-template-columns:34px 38px 34px;border:1px solid #dce4ee;border-radius:12px;overflow:hidden;background:#fff}
-.alin-v74-qty button,.alin-v74-qty input{height:38px;border:0;background:#fff;text-align:center;font-weight:900}.alin-v74-qty button{cursor:pointer;font-size:18px}.alin-v74-qty input{width:38px}
-.alin-v74-cart{flex:1;min-height:40px;border:0;border-radius:12px;background:#0b1830;color:#fff;font-weight:900;cursor:pointer;padding:0 14px}.alin-v74-cart.disabled{background:#c8d0db;cursor:not-allowed}
-.alin-v74-modal{position:fixed;inset:0;background:rgba(6,15,30,.62);z-index:99999;display:grid;place-items:center;padding:18px;backdrop-filter:blur(5px)}
-.alin-v74-modal-card{width:min(850px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:26px;display:grid;grid-template-columns:1fr 1fr;position:relative;direction:rtl}
-.alin-v74-modal-img{min-height:420px;background:#f2f5f9}.alin-v74-modal-img img{width:100%;height:100%;object-fit:contain}
-.alin-v74-modal-info{padding:38px}.alin-v74-modal-info h2{font-size:28px;color:#0b1830}.alin-v74-modal-info p{line-height:1.9;color:#5f6e82;white-space:pre-wrap}
-.alin-v74-close{position:absolute;top:12px;left:12px;width:38px;height:38px;border:0;border-radius:50%;background:#fff;box-shadow:0 5px 18px rgba(0,0,0,.15);font-size:25px;cursor:pointer;z-index:2}
-@media(max-width:650px){.alin-v74-image{height:185px}.alin-v74-modal-card{grid-template-columns:1fr}.alin-v74-modal-img{min-height:280px;height:280px}.alin-v74-modal-info{padding:24px}.alin-v74-actions{flex-direction:column}.alin-v74-qty,.alin-v74-cart{width:100%}.alin-v74-qty{grid-template-columns:1fr 48px 1fr}}
-`;
-document.head.appendChild(alinV74Style);
-
-
-/* ================= ALIN V75 PRODUCT SAVE HOTFIX ================= */
-
-window.alinV73AddProduct=alinV73AddProduct;
-
-
-/* ================= ALIN V76 REAL STORE CARD FIX ================= */
-function alinV76StockState(x){
-  if(x.kind==='booklet') return {text:'متوفر',cls:'available'};
-  const n=Number(x.stock||0);
-  if(n<=0) return {text:'نفد المخزون',cls:'out'};
-  if(n<=5) return {text:'كمية محدودة',cls:'low'};
-  return {text:'متوفر',cls:'available'};
-}
-function alinV76BookletDetails(id){
-  const b=(db.booklets||[]).find(x=>x.id===id)||{};
-  return b.description||b.details||[b.subject,b.grade].filter(Boolean).join(' • ');
-}
-function alinV76ProductDetailsById(id){
-  const p=(db.products||[]).find(x=>x.id===id)||{};
-  return p.details||p.description||p.category||'';
-}
-function alinV76IsNew(id,kind){
-  const x=kind==='booklet'?(db.booklets||[]).find(v=>v.id===id):(db.products||[]).find(v=>v.id===id);
-  const d=new Date(x?.created_at||0);
-  return d && !isNaN(d) && (Date.now()-d.getTime())<=14*86400000;
-}
-function alinV76Card(x){
-  const stock=alinV76StockState(x);
-  const details=x.kind==='booklet'?alinV76BookletDetails(x.id):alinV76ProductDetailsById(x.id);
-  const canBuy=x.kind==='booklet'||Number(x.stock||0)>0;
-  return `<article class="alin-v76-card">
-    <div class="alin-v76-cover" onclick="openCheckout('${x.kind}','${x.id}')">
-      ${x.cover?`<img src="${mediaUrl(x.cover)}" alt="${esc(x.title)}">`:`<div class="alin-v76-noimg">${esc(x.subject||x.grade||'منصة آلين')}</div>`}
-      <div class="alin-v76-badges">${alinV76IsNew(x.id,x.kind)?'<span class="alin-v76-badge new">جديد</span>':''}</div>
-    </div>
-    <div class="alin-v76-body">
-      <span class="alin-v76-stock ${stock.cls}">${stock.text}</span>
-      <h3>${esc(x.title)}</h3>
-      ${x.teacher?`<p class="alin-v76-teacher">${esc(x.teacher)}</p>`:''}
-      <p class="alin-v76-details">${esc(details||'')}</p>
-      <div class="alin-v76-price">${money(x.price)} د.ع</div>
-      <button class="alin-v76-buy ${canBuy?'':'disabled'}" ${canBuy?'':'disabled'} onclick="openCheckout('${x.kind}','${x.id}')">${canBuy?'اطلب الآن':'غير متوفر'}</button>
-    </div>
-  </article>`;
-}
-window.renderStore=renderStore=function(){
-  if(!window.storeGrid || !db.booklets)return;
-  try{
-    bannerBox.innerHTML=(db.banners||[]).filter(x=>x.active).map(x=>`<div class="banner-card"><div><h2>${esc(x.title||'')}</h2><p>${esc(x.text||'')}</p></div><b>آ</b></div>`).join('');
-  }catch(e){}
-  const items=storeItems(), q=(searchInput?.value||'').toLowerCase();
-  const cats=[...new Set(items.map(x=>x.grade||x.subject).filter(Boolean))], teachers=[...new Set(items.map(x=>x.teacher).filter(Boolean))];
-  const oldCat=filterCategory?.value||'', oldTeacher=filterTeacher?.value||'';
-  if(filterCategory) filterCategory.innerHTML='<option value="">كل الأقسام</option>'+cats.map(x=>`<option ${x===oldCat?'selected':''}>${esc(x)}</option>`).join('');
-  if(filterTeacher){
-    filterTeacher.style.display=db.settings.storeType==='booklet'?'':'none';
-    filterTeacher.innerHTML='<option value="">كل المدرسين</option>'+teachers.map(x=>`<option ${x===oldTeacher?'selected':''}>${esc(x)}</option>`).join('');
-  }
-  const list=items.filter(x=>(!filterCategory?.value||x.grade===filterCategory.value||x.subject===filterCategory.value)&&(!filterTeacher?.value||x.teacher===filterTeacher.value)&&(`${x.title} ${x.teacher} ${x.subject} ${x.grade}`).toLowerCase().includes(q));
-  storeGrid.classList.add('alin-v76-grid');
-  storeGrid.innerHTML=list.map(alinV76Card).join('')||'<div class="alin-v76-empty">لا توجد مواد في هذا القسم</div>';
-};
-const alinV76Style=document.createElement('style');
-alinV76Style.textContent=`
-.alin-v76-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px!important}
-.alin-v76-card{background:#fff;border:1px solid #e4eaf2;border-radius:22px;overflow:hidden;box-shadow:0 10px 30px rgba(12,30,56,.07);transition:.22s;direction:rtl}
-.alin-v76-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(12,30,56,.12)}
-.alin-v76-cover{height:230px;background:#f2f5f9;position:relative;overflow:hidden;cursor:pointer}
-.alin-v76-cover img{width:100%;height:100%;object-fit:cover;transition:.3s}
-.alin-v76-card:hover .alin-v76-cover img{transform:scale(1.035)}
-.alin-v76-noimg{height:100%;display:grid;place-items:center;background:linear-gradient(145deg,#eef3f8,#dde6f0);color:#0b1830;font-weight:900;font-size:24px;text-align:center;padding:20px}
-.alin-v76-badges{position:absolute;top:12px;right:12px}.alin-v76-badge{background:#fff;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:900;box-shadow:0 4px 14px rgba(0,0,0,.1)}.alin-v76-badge.new{color:#087344}
-.alin-v76-body{padding:16px}.alin-v76-body h3{margin:8px 0 6px;color:#0b1830;font-size:18px}.alin-v76-teacher{margin:0 0 5px;color:#52627a;font-weight:700}
-.alin-v76-details{color:#6a778a;line-height:1.65;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:48px;margin:4px 0 12px}
-.alin-v76-stock{display:inline-block;font-size:12px;font-weight:900;padding:5px 9px;border-radius:999px}.alin-v76-stock.available{background:#e9f8f0;color:#087344}.alin-v76-stock.low{background:#fff4d8;color:#986600}.alin-v76-stock.out{background:#fdeaea;color:#b42318}
-.alin-v76-price{font-size:21px;font-weight:900;color:#a87500;margin:10px 0 14px}.alin-v76-buy{width:100%;border:0;border-radius:12px;background:#0b1830;color:#fff;padding:12px;font-weight:900;cursor:pointer}.alin-v76-buy.disabled{background:#c6ced9;cursor:not-allowed}
-.alin-v76-empty{grid-column:1/-1;text-align:center;background:#fff;border-radius:18px;padding:40px;color:#6c7888}
-@media(max-width:1000px){.alin-v76-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:760px){.alin-v76-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.alin-v76-cover{height:190px}}
-@media(max-width:480px){.alin-v76-grid{gap:10px!important}.alin-v76-card{border-radius:16px}.alin-v76-cover{height:165px}.alin-v76-body{padding:12px}.alin-v76-body h3{font-size:15px}.alin-v76-price{font-size:18px}}
-`;
-document.head.appendChild(alinV76Style);
-document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{try{renderStore()}catch(e){}},900));
-
-
-/* ================= ALIN V77 CART-FIRST STORE FLOW ================= */
-function alinV77Item(kind,id){
-  return kind==='booklet'
-    ? (db.booklets||[]).find(x=>String(x.id)===String(id))
-    : (db.products||[]).find(x=>String(x.id)===String(id));
-}
-function alinV77Details(kind,item){
-  if(!item)return '';
-  return kind==='booklet'
-    ? (item.description||item.details||[item.subject,item.grade].filter(Boolean).join(' • '))
-    : (item.details||item.description||item.category||'');
-}
-function alinV77Stock(kind,item){
-  if(kind==='booklet') return {text:'متوفر',cls:'available',ok:true};
-  const n=Number(item?.stock||0);
-  if(n<=0)return {text:'نفد المخزون',cls:'out',ok:false};
-  if(n<=5)return {text:'كمية محدودة',cls:'low',ok:true};
-  return {text:'متوفر',cls:'available',ok:true};
-}
-function alinV77AddToCart(kind,id,qty=1){
-  const item=alinV77Item(kind,id);
-  if(!item)return alert('تعذر العثور على المادة');
-  if(kind!=='booklet' && Number(item.stock||0)<=0)return alert('المنتج نافد');
-  const count=Math.max(1,Number(qty||1));
-  for(let i=0;i<count;i++) addToCart(kind,id);
-  const modal=document.querySelector('.alin-v77-modal');
-  if(modal) modal.remove();
-}
-function alinV77OpenDetails(kind,id){
-  const item=alinV77Item(kind,id); if(!item)return;
-  const title=item.title||item.name||'مادة';
-  const details=alinV77Details(kind,item);
-  const stock=alinV77Stock(kind,item);
-  const cover=item.cover_path||item.image_path||item.cover||item.image||'';
-  const teacher=kind==='booklet'?(typeof teacherName==='function'?teacherName(item.teacher_id):''):'';
-  const modal=document.createElement('div');
-  modal.className='alin-v77-modal';
-  modal.innerHTML=`<div class="alin-v77-modal-card" onclick="event.stopPropagation()">
-    <button class="alin-v77-close" onclick="this.closest('.alin-v77-modal').remove()">×</button>
-    <div class="alin-v77-modal-image">${cover?`<img src="${mediaUrl(cover)}" alt="${esc(title)}">`:`<div class="alin-v77-noimg">منصة آلين</div>`}</div>
-    <div class="alin-v77-modal-content">
-      <span class="alin-v76-stock ${stock.cls}">${stock.text}</span>
-      <h2>${esc(title)}</h2>
-      ${teacher?`<p class="alin-v77-teacher">المدرس: ${esc(teacher)}</p>`:''}
-      <p class="alin-v77-full-details">${esc(details||'لا توجد تفاصيل إضافية.')}</p>
-      <div class="alin-v77-price">${money(+item.price||0)} د.ع</div>
-      ${stock.ok?`<div class="alin-v77-modal-actions">
-        <div class="alin-v77-qty-wrap"><span>عدد النسخ</span><div class="alin-v77-qty"><button type="button" class="qty-minus" aria-label="تقليل عدد النسخ" onclick="alinV77ChangeQty('${kind}','${id}',-1)">−</button><input id="alinV77Qty_${kind}_${id}" type="number" min="1" value="1" readonly aria-label="عدد النسخ"><button type="button" class="qty-plus" aria-label="زيادة عدد النسخ" onclick="alinV77ChangeQty('${kind}','${id}',1)">+</button></div></div>
-        <button class="alin-v77-add" onclick="alinV77AddToCart('${kind}','${id}',document.getElementById('alinV77Qty_${kind}_${id}').value)">أضف للسلة</button>
-      </div>`:`<button class="alin-v77-add disabled" disabled>غير متوفر حالياً</button>`}
-    </div>
-  </div>`;
-  modal.onclick=()=>modal.remove();
-  document.body.appendChild(modal);
-}
-function alinV77ChangeQty(kind,id,delta){
-  const el=document.getElementById(`alinV77Qty_${kind}_${id}`); if(!el)return;
-  const item=alinV77Item(kind,id);
-  const max=kind==='booklet'?99:Math.max(1,Number(item?.stock||1));
-  el.value=Math.max(1,Math.min(max,Number(el.value||1)+delta));
-}
-window.alinV77OpenDetails=alinV77OpenDetails;
-window.alinV77AddToCart=alinV77AddToCart;
-window.alinV77ChangeQty=alinV77ChangeQty;
-
-window.renderStore=renderStore=function(){
-  if(!window.storeGrid || !db.booklets)return;
-  try{
-    bannerBox.innerHTML=(db.banners||[]).filter(x=>x.active).map(x=>`<div class="banner-card"><div><h2>${esc(x.title||'')}</h2><p>${esc(x.text||'')}</p></div><b>آ</b></div>`).join('');
-  }catch(e){}
-  const items=storeItems(), q=(searchInput?.value||'').toLowerCase();
-  const cats=[...new Set(items.map(x=>x.grade||x.subject).filter(Boolean))], teachers=[...new Set(items.map(x=>x.teacher).filter(Boolean))];
-  const oldCat=filterCategory?.value||'', oldTeacher=filterTeacher?.value||'';
-  if(filterCategory) filterCategory.innerHTML='<option value="">كل الأقسام</option>'+cats.map(x=>`<option ${x===oldCat?'selected':''}>${esc(x)}</option>`).join('');
-  if(filterTeacher){
-    filterTeacher.style.display=db.settings.storeType==='booklet'?'':'none';
-    filterTeacher.innerHTML='<option value="">كل المدرسين</option>'+teachers.map(x=>`<option ${x===oldTeacher?'selected':''}>${esc(x)}</option>`).join('');
-  }
-  const list=items.filter(x=>(!filterCategory?.value||x.grade===filterCategory.value||x.subject===filterCategory.value)&&(!filterTeacher?.value||x.teacher===filterTeacher.value)&&(`${x.title} ${x.teacher} ${x.subject} ${x.grade}`).toLowerCase().includes(q));
-  storeGrid.classList.add('alin-v76-grid');
-  storeGrid.innerHTML=list.map(x=>{
-    const item=alinV77Item(x.kind,x.id)||{};
-    const details=alinV77Details(x.kind,item);
-    const stock=alinV77Stock(x.kind,item);
-    return `<article class="alin-v76-card">
-      <div class="alin-v76-cover" onclick="alinV77OpenDetails('${x.kind}','${x.id}')">
-        ${x.cover?`<img src="${mediaUrl(x.cover)}" alt="${esc(x.title)}">`:`<div class="alin-v76-noimg">${esc(x.subject||x.grade||'منصة آلين')}</div>`}
-      </div>
-      <div class="alin-v76-body">
-        <span class="alin-v76-stock ${stock.cls}">${stock.text}</span>
-        <h3 onclick="alinV77OpenDetails('${x.kind}','${x.id}')">${esc(x.title)}</h3>
-        ${x.teacher?`<p class="alin-v76-teacher">${esc(x.teacher)}</p>`:''}
-        <p class="alin-v76-details">${esc(details||'')}</p>
-        <div class="alin-v76-price">${money(x.price)} د.ع</div>
-        <div class="alin-v77-card-actions">
-          <button class="alin-v77-details-btn" onclick="alinV77OpenDetails('${x.kind}','${x.id}')">عرض التفاصيل</button>
-          <button class="alin-v77-cart-btn ${stock.ok?'':'disabled'}" ${stock.ok?'':'disabled'} onclick="alinV77AddToCart('${x.kind}','${x.id}',1)">أضف للسلة</button>
-        </div>
-      </div>
-    </article>`;
-  }).join('')||'<div class="alin-v76-empty">لا توجد مواد في هذا القسم</div>';
-};
-
-const alinV77Style=document.createElement('style');
-alinV77Style.textContent=`
-.alin-v77-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.alin-v77-details-btn,.alin-v77-cart-btn{border:0;border-radius:12px;padding:11px;font-weight:900;cursor:pointer}
-.alin-v77-details-btn{background:#eef2f7;color:#0b1830}.alin-v77-cart-btn{background:#0b1830;color:#fff}.alin-v77-cart-btn.disabled{background:#c8d0db;cursor:not-allowed}
-.alin-v77-modal{position:fixed;inset:0;background:rgba(6,15,30,.65);z-index:99999;display:grid;place-items:center;padding:18px;backdrop-filter:blur(5px)}
-.alin-v77-modal-card{width:min(860px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:26px;display:grid;grid-template-columns:1fr 1fr;position:relative;direction:rtl}
-.alin-v77-modal-image{min-height:420px;background:#f2f5f9}.alin-v77-modal-image img{width:100%;height:100%;object-fit:contain}
-.alin-v77-modal-content{padding:36px}.alin-v77-modal-content h2{font-size:28px;color:#0b1830;margin:14px 0 8px}
-.alin-v77-teacher{font-weight:800;color:#52627a}.alin-v77-full-details{line-height:1.9;color:#5f6e82;white-space:pre-wrap}
-.alin-v77-price{font-size:25px;font-weight:900;color:#a87500;margin:18px 0}
-.alin-v77-modal-actions{display:flex;gap:12px;align-items:center}.alin-v77-qty{display:grid;grid-template-columns:38px 42px 38px;border:1px solid #dce4ee;border-radius:12px;overflow:hidden}
-.alin-v77-qty button,.alin-v77-qty input{height:42px;border:0;background:#fff;text-align:center;font-weight:900}.alin-v77-add{flex:1;border:0;border-radius:12px;background:#0b1830;color:#fff;padding:13px;font-weight:900}.alin-v77-add.disabled{background:#c8d0db}
-.alin-v77-close{position:absolute;top:12px;left:12px;width:38px;height:38px;border:0;border-radius:50%;background:#fff;box-shadow:0 5px 18px rgba(0,0,0,.15);font-size:25px;cursor:pointer;z-index:2}
-@media(max-width:650px){.alin-v77-modal-card{grid-template-columns:1fr}.alin-v77-modal-image{min-height:260px;height:260px}.alin-v77-modal-content{padding:22px}.alin-v77-card-actions{grid-template-columns:1fr}.alin-v77-modal-actions{flex-direction:column}.alin-v77-qty,.alin-v77-add{width:100%}}
-`;
-document.head.appendChild(alinV77Style);
-
-
+/* PLATFORM STEP 10: V72-V77 legacy storefront removed; modules/store/discovery.js is authoritative. */
 /* ================= ALIN V78 NOTIFICATION CENTER UI ================= */
 function alinV78NotificationRows(){
   let rows=[];
@@ -3442,19 +1404,8 @@ window.alinV78Read=alinV78Read;
 window.alinV78ReadAll=alinV78ReadAll;
 
 /* Store notification button */
-const alinV78StoreBase=window.renderStore;
-window.renderStore=renderStore=function(){
-  try{ alinV78StoreBase(); }catch(e){}
-  const host=document.querySelector('.alin-v72-top')||document.getElementById('storePage')||document.querySelector('.store-toolbar')||document.body;
-  if(host && !host.querySelector('.alin-v78-store-notify')){
-    const wrap=document.createElement('div');
-    wrap.className='alin-v78-store-notify';
-    wrap.innerHTML=alinV78ButtonHtml();
-    if(host.classList.contains('alin-v72-top')) host.appendChild(wrap);
-    else host.prepend(wrap);
-  }
-  alinV78RenderBadge();
-};
+/* PLATFORM STEP 10: legacy storefront override removed. */
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
 /* Teacher notification button */
 
@@ -3525,70 +1476,7 @@ alinV78Style.textContent=`
 document.head.appendChild(alinV78Style);
 
 
-/* ================= ALIN V79 SUPABASE PRODUCTS FIX ================= */
-function alinV79ProductCategoryValue(p){
-  return p.category_id || p.category || p.type || 'stationery';
-}
-function alinV79PublishedProduct(p){
-  const st=String(p.status||'published').toLowerCase();
-  return !p.deleted_at && !['hidden','archived','deleted','inactive'].includes(st);
-}
-function alinV79StoreTypeMatch(p){
-  const selected=String(db.settings?.storeType||'stationery');
-  const cat=String(alinV79ProductCategoryValue(p));
-  if(selected==='product'||selected==='products') return true;
-  if(selected==='stationery') return ['stationery','قرطاسية','products'].includes(cat);
-  if(selected==='gift'||selected==='gifts') return ['gift','gifts','هدايا'].includes(cat) || ['gift','gifts','هدايا'].includes(String(p.type||''));
-  return cat===selected || String(p.type||'')===selected;
-}
-
-/* Override store source so products saved in Supabase always appear */
-window.storeItems = storeItems = function(){
-  if(db.settings.storeType==='booklet'){
-    return (db.booklets||[]).filter(x=>x.status==='published').map(x=>({
-      kind:'booklet',id:x.id,title:x.title,subject:x.subject,grade:x.grade,
-      teacher:teacherName(x.teacher_id),price:x.price,cover:x.cover_path,stock:null
-    }));
-  }
-  return (db.products||[]).filter(p=>alinV79PublishedProduct(p)&&alinV79StoreTypeMatch(p)).map(p=>({
-    kind:'product',
-    id:p.id,
-    title:p.name||p.title||'منتج',
-    subject:p.category_name||p.category||'قرطاسية',
-    grade:p.category_name||p.category||'قرطاسية',
-    teacher:'',
-    price:+p.price||0,
-    cover:p.image_path||p.image_url||p.file_path||'',
-    stock:+p.stock||0
-  }));
-};
-
-/* Reliable product save/edit/delete against one Supabase schema */
-async function alinV79UploadProductImage(file){
-  if(!file)return '';
-  try{
-    if(typeof uploadFile==='function'){
-      const result=await uploadFile('products',file,{type:'image'});
-      return result?.path||result?.url||result||'';
-    }
-  }catch(e){console.warn('upload products bucket',e);}
-  return '';
-}
-
-/* Force fresh products load from Supabase */
-const alinV79LoadBase=window.load||load;
-window.load=load=async function(){
-  await alinV79LoadBase();
-  try{
-    db.products=await query('products');
-  }catch(e){
-    console.warn('تعذر تحميل المنتجات',e);
-    db.products=db.products||[];
-  }
-  try{renderStore();}catch(e){}
-};
-
-
+/* PLATFORM STEP 10: V79 legacy product-source override removed. */
 /* ================= ALIN V79 COMPREHENSIVE STABILITY FIX ================= */
 function alinV79NormalizeProduct(p={}){
   const category=String(p.category_id||p.category||p.type||'stationery').trim()||'stationery';
@@ -3604,8 +1492,8 @@ function alinV79NormalizeProduct(p={}){
   });
 }
 function alinV79RefreshProducts(){ db.products=(db.products||[]).map(alinV79NormalizeProduct); }
-const alinV79RenderStoreBase=window.renderStore;
-window.renderStore=renderStore=function(){ alinV79RefreshProducts(); return alinV79RenderStoreBase(); };
+/* PLATFORM STEP 10: legacy storefront override removed. */
+/* PLATFORM STEP 10: legacy storefront override removed. */
 window.addEventListener('unhandledrejection',e=>{ console.error('ALIN unhandled promise',e.reason); });
 window.addEventListener('error',e=>{ console.error('ALIN runtime error',e.error||e.message); });
 
@@ -3649,246 +1537,11 @@ window.addEventListener('error',e=>{ console.error('ALIN runtime error',e.error|
 
 
 /* ================= ALIN V84 SMART COMMERCE FEATURES ================= */
-(function(){
-const LS='alin_v84_favorites';
-window.alinV84Favs=()=>{try{return JSON.parse(localStorage.getItem(LS)||'[]')}catch(e){return[]}};
-window.alinV84IsFav=id=>alinV84Favs().map(String).includes(String(id));
-window.alinV84ToggleFav=function(id){
- let a=alinV84Favs(),s=String(id); a=a.map(String).includes(s)?a.filter(x=>String(x)!==s):[...a,id];
- localStorage.setItem(LS,JSON.stringify(a)); try{renderStore()}catch(e){}; toast(a.map(String).includes(s)?'تمت الإضافة للمفضلة':'تمت الإزالة من المفضلة');
-};
-window.alinV84ShowFavs=function(){
- const ids=alinV84Favs().map(String), all=[...(db.booklets||[]).map(x=>({...x,kind:'booklet',title:x.title})),...(db.products||[]).map(x=>({...x,kind:'product',title:x.name||x.title}))];
- const rows=all.filter(x=>ids.includes(String(x.id)));
- const m=document.createElement('div');m.className='alin-v84-overlay';m.innerHTML=`<div class="alin-v84-sheet"><button class="alin-v84-x" onclick="this.closest('.alin-v84-overlay').remove()">×</button><h2>❤️ المفضلة</h2><div class="alin-v84-fav-grid">${rows.map(x=>`<div class="alin-v84-mini"><b>${esc(x.title||'')}</b><small>${money(+x.price||0)} د.ع</small><button onclick="${x.kind==='product'?`alinV74OpenProduct('${x.id}')`:`openCheckout('booklet','${x.id}')`}">عرض</button></div>`).join('')||'<p>لا توجد عناصر محفوظة.</p>'}</div></div>`;document.body.appendChild(m);
-};
-
-function relatedProducts(p){
- const cat=String(p.category||p.category_id||p.type||'').toLowerCase();
- return (db.products||[]).filter(x=>String(x.id)!==String(p.id) && (String(x.category||x.category_id||x.type||'').toLowerCase()===cat || String(x.name||'').toLowerCase().includes(String(p.name||'').split(' ')[0].toLowerCase()))).slice(0,4);
-}
-const oldOpen=window.alinV74OpenProduct;
-window.alinV74OpenProduct=function(id){
- oldOpen(id);
- const p=(db.products||[]).find(x=>String(x.id)===String(id)), card=document.querySelector('.alin-v74-modal-card'); if(!p||!card)return;
- const imgs=[p.image_path,p.image_url,...(Array.isArray(p.images)?p.images:[])].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i);
- const imageBox=card.querySelector('.alin-v74-modal-img');
- if(imageBox&&imgs.length){imageBox.innerHTML=`<img id="alinV84MainImg" src="${esc(mediaUrl(imgs[0]))}" alt=""><div class="alin-v84-thumbs">${imgs.map((u,i)=>`<button onclick="document.getElementById('alinV84MainImg').src='${esc(mediaUrl(u))}'"><img src="${esc(mediaUrl(u))}"></button>`).join('')}</div>`;imageBox.querySelector('#alinV84MainImg').onclick=e=>e.currentTarget.classList.toggle('zoomed');}
- const info=card.querySelector('.alin-v74-modal-info'); if(info){
-   const fav=document.createElement('button');fav.className='alin-v84-fav';fav.innerHTML=(alinV84IsFav(id)?'♥':'♡')+' المفضلة';fav.onclick=()=>alinV84ToggleFav(id);info.prepend(fav);
-   const rel=relatedProducts(p); if(rel.length) info.insertAdjacentHTML('beforeend',`<div class="alin-v84-related"><h3>منتجات مشابهة</h3><div>${rel.map(x=>`<button onclick="this.closest('.alin-v74-modal').remove();alinV74OpenProduct('${x.id}')">${esc(x.name||x.title||'منتج')}<small>${money(+x.price||0)} د.ع</small></button>`).join('')}</div></div>`);
- }
-};
-
-function unreadCount(role){
- const seen=JSON.parse(localStorage.getItem('alin_v84_seen_notifications')||'[]').map(String);
- return (db.notifications||[]).filter(n=>['all',role].includes(n.target_role||n.audience||'all')&&!seen.includes(String(n.id))).length;
-}
-window.alinV84MarkAllRead=function(){localStorage.setItem('alin_v84_seen_notifications',JSON.stringify((db.notifications||[]).map(n=>n.id)));alinV84RefreshBadges();toast('تم تحديد الكل كمقروء')};
-window.alinV84DeleteAllNotifications=async function(){
- if(!confirm('حذف جميع الإشعارات؟'))return;
- for(const n of [...(db.notifications||[])]) try{await removeRow('notifications',{id:n.id})}catch(e){}
- db.notifications=[];v19Notifications=[];renderNotificationsAdmin();alinV84RefreshBadges();toast('تم حذف جميع الإشعارات');
-};
-window.alinV84RefreshBadges=function(){
- const role=current?.role||'student', n=unreadCount(role);
- document.querySelectorAll('[data-view="notifications"],[onclick*="Notifications"],[onclick*="notifications"]').forEach(el=>{let b=el.querySelector('.alin-v84-badge');if(!b){b=document.createElement('span');b.className='alin-v84-badge';el.appendChild(b)}b.textContent=n;b.style.display=n?'grid':'none'});
- const newOrders=(db.orders||[]).filter(o=>['new','pending','payment_pending'].includes(String(o.status||o.payment_status||'new'))).length;
- document.querySelectorAll('[data-view="orders"],[onclick*="Orders"],[onclick*="orders"]').forEach(el=>{let b=el.querySelector('.alin-v84-order-badge');if(!b){b=document.createElement('span');b.className='alin-v84-badge alin-v84-order-badge';el.appendChild(b)}b.textContent=newOrders;b.style.display=newOrders?'grid':'none'});
-};
-
-const oldNotif=window.renderNotificationsAdmin;
-window.renderNotificationsAdmin=renderNotificationsAdmin=function(){oldNotif(); const h=adminContent.querySelector('h2'); if(h)h.insertAdjacentHTML('afterend','<div class="alin-v84-notif-tools"><button onclick="alinV84MarkAllRead()">✓ تحديد الكل كمقروء</button><button class="danger" onclick="alinV84DeleteAllNotifications()">حذف الكل</button></div>');};
-
-window.alinV84Reports=function(){
- const orders=db.orders||[], today=new Date().toISOString().slice(0,10), month=today.slice(0,7);
- const paid=orders.filter(o=>['paid','delivered','completed','settled'].includes(String(o.payment_status||o.status||'')));
- const sum=a=>a.reduce((s,o)=>s+(+o.total||(+o.price||0)*(+o.qty||1)),0);
- const rank=(kind)=>{const m={};paid.filter(o=>!kind||o.kind===kind||o.item_type===kind).forEach(o=>m[o.title||o.product_name||'غير محدد']=(m[o.title||o.product_name||'غير محدد']||0)+(+o.qty||1));return Object.entries(m).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—'};
- const libs={};paid.forEach(o=>{let k=o.library_name||o.library_id||'غير محدد';libs[k]=(libs[k]||0)+1});
- const bestLib=Object.entries(libs).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—';
- const m=document.createElement('div');m.className='alin-v84-overlay';m.innerHTML=`<div class="alin-v84-sheet wide"><button class="alin-v84-x" onclick="this.closest('.alin-v84-overlay').remove()">×</button><h2>تقارير المدير</h2><div class="alin-v84-report-grid"><div><small>مبيعات اليوم</small><b>${money(sum(paid.filter(o=>(o.created_at||'').slice(0,10)===today)))} د.ع</b></div><div><small>مبيعات الشهر</small><b>${money(sum(paid.filter(o=>(o.created_at||'').slice(0,7)===month)))} د.ع</b></div><div><small>أكثر ملزمة مبيعاً</small><b>${esc(rank('booklet'))}</b></div><div><small>أكثر منتج مبيعاً</small><b>${esc(rank('product'))}</b></div><div><small>أفضل مكتبة</small><b>${esc(bestLib)}</b></div><div><small>إجمالي المبيعات</small><b>${money(sum(paid))} د.ع</b></div></div></div>`;document.body.appendChild(m);
-};
-window.alinV84ControlCenter=function(){
- const s=db.settings||{}, banners=db.banners||[];
- adminContent.innerHTML=`<h2>مركز تشغيل المتجر</h2><div class="alin-v84-control">
- <section><h3>إيقاف الطلب مؤقتاً</h3><select id="v84StopScope"><option value="">الطلبات مفتوحة</option><option value="all" ${s.order_pause_scope==='all'?'selected':''}>إيقاف الكل</option><option value="booklet" ${s.order_pause_scope==='booklet'?'selected':''}>الملازم</option><option value="stationery" ${s.order_pause_scope==='stationery'?'selected':''}>القرطاسية</option><option value="gift" ${s.order_pause_scope==='gift'?'selected':''}>الهدايا</option></select><input id="v84StopReason" value="${esc(s.order_pause_reason||'')}" placeholder="سبب الإيقاف"><button onclick="alinV84SavePause()">حفظ الحالة</button></section>
- <section><h3>إعلان جديد</h3><input id="v84BannerTitle" placeholder="عنوان الإعلان"><input id="v84BannerText" placeholder="نص الإعلان"><input id="v84BannerStart" type="date"><input id="v84BannerEnd" type="date"><button onclick="alinV84AddBanner()">إضافة الإعلان</button></section>
- <section><h3>أدوات الإدارة</h3><button onclick="alinV84Reports()">فتح تقارير المدير</button><button onclick="renderCouponsAdmin()">إدارة الكوبونات</button></section></div>
- <h3>الإعلانات</h3>${banners.map(b=>`<div class="row"><div><b>${esc(b.title||'')}</b><small>${esc(b.text||'')} — ${b.start_date||''} / ${b.end_date||''}</small></div><button class="danger" onclick="alinV84DeleteBanner('${b.id}')">حذف</button></div>`).join('')||emptyState('لا توجد إعلانات')}`;
-};
-window.alinV84SavePause=async function(){const payload={order_pause_scope:v84StopScope.value,order_pause_reason:v84StopReason.value};try{await update('settings',payload,{id:'main'});Object.assign(db.settings,payload);toast('تم حفظ حالة الطلبات')}catch(e){alert(e.message)}};
-window.alinV84AddBanner=async function(){const row={id:uid('BN'),title:v84BannerTitle.value.trim(),text:v84BannerText.value.trim(),start_date:v84BannerStart.value||null,end_date:v84BannerEnd.value||null,active:true,created_at:new Date().toISOString()};if(!row.title)return alert('اكتب عنوان الإعلان');await insert('banners',row);db.banners.unshift(row);alinV84ControlCenter();renderStore();};
-window.alinV84DeleteBanner=async id=>{await removeRow('banners',{id});db.banners=db.banners.filter(x=>String(x.id)!==String(id));alinV84ControlCenter();renderStore()};
-
-const oldStore=window.renderStore;
-window.renderStore=renderStore=function(){const r=oldStore();setTimeout(()=>{const top=document.querySelector('.alin-v72-top');if(top&&!top.querySelector('.alin-v84-favs-btn'))top.insertAdjacentHTML('beforeend',`<button class="alin-v84-favs-btn" onclick="alinV84ShowFavs()">❤️ <span>${alinV84Favs().length}</span></button>`);const now=new Date().toISOString().slice(0,10);document.querySelectorAll('.banner-card').forEach(()=>{});alinV84RefreshBadges()},0);return r};
-
-window.alinV84WhatsAppOrder=function(orderId){
- const o=(db.orders||[]).find(x=>String(x.id)===String(orderId));if(!o)return;
- const phone=String(o.library_phone||db.settings?.whatsapp||'').replace(/\D/g,'');if(!phone)return alert('رقم واتساب غير محدد');
- const msg=encodeURIComponent(`السلام عليكم، بخصوص طلبي في منصة آلين\nرقم الطلب: ${o.id}\nالطلب: ${o.title||''}`);
- window.open(`https://wa.me/${phone}?text=${msg}`,'_blank');
-};
-setTimeout(alinV84RefreshBadges,1200);
-})();
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
 
 /* ================= ALIN V85 FULL FEATURES INTEGRATION ================= */
-(function(){
-  const favKey='alin_v85_favorites';
-  const seenKey=()=>`alin_v85_seen_${current?.role||'student'}_${current?.id||'guest'}`;
-  const favs=()=>{try{return JSON.parse(localStorage.getItem(favKey)||'[]').map(String)}catch(_){return[]}};
-  const isFav=id=>favs().includes(String(id));
-  const saveFav=a=>localStorage.setItem(favKey,JSON.stringify(a));
-  const visibleBanners=()=>{
-    const today=new Date().toISOString().slice(0,10);
-    return (db.banners||[]).filter(b=>{
-      const active=!(b.active===false||String(b.active)==='false'||b.status==='hidden');
-      return active&&(!b.start_date||b.start_date<=today)&&(!b.end_date||b.end_date>=today);
-    });
-  };
-  const itemBy=(kind,id)=>kind==='booklet'?(db.booklets||[]).find(x=>String(x.id)===String(id)):(db.products||[]).find(x=>String(x.id)===String(id));
-  const titleOf=x=>x?.title||x?.name||'';
-  const imageOf=x=>x?.cover_path||x?.image_path||x?.image_url||'';
-  const detailsOf=x=>x?.description||x?.details||[x?.subject,x?.grade,x?.category].filter(Boolean).join(' • ');
-  const categoryOf=x=>String(x?.subject||x?.grade||x?.category||x?.category_id||x?.type||'').toLowerCase();
-  const storeItemsAll=()=>[
-    ...(db.booklets||[]).filter(x=>x.status==='published').map(x=>({kind:'booklet',id:x.id,title:x.title,price:+x.price||0,cover:x.cover_path,subject:x.subject,grade:x.grade,teacher:typeof teacherName==='function'?teacherName(x.teacher_id):'',stock:null,raw:x})),
-    ...(db.products||[]).filter(x=>!['hidden','archived','deleted','inactive'].includes(String(x.status||'published'))).map(x=>({kind:'product',id:x.id,title:x.name||x.title,price:+x.price||0,cover:imageOf(x),subject:x.category||x.type,grade:x.category||x.type,teacher:'',stock:+x.stock||0,raw:x}))
-  ];
-  window.alinV85ToggleFavorite=function(kind,id){
-    let a=favs(), key=`${kind}:${id}`;
-    a=a.includes(key)?a.filter(x=>x!==key):[...a,key];
-    saveFav(a); try{renderStore()}catch(_){}
-    toast(a.includes(key)?'تمت الإضافة إلى المفضلة':'تمت الإزالة من المفضلة');
-  };
-  window.alinV85Favorites=function(){
-    const rows=favs().map(k=>{const [kind,...rest]=k.split(':');const id=rest.join(':');const x=itemBy(kind,id);return x?{kind,id,x}:null}).filter(Boolean);
-    const m=document.createElement('div');m.className='alin-v85-overlay';
-    m.innerHTML=`<div class="alin-v85-sheet"><button class="alin-v85-close" onclick="this.closest('.alin-v85-overlay').remove()">×</button><h2>❤️ المفضلة</h2><div class="alin-v85-favgrid">${rows.map(r=>`<article><div>${imageOf(r.x)?`<img src="${mediaUrl(imageOf(r.x))}">`:'<span>آ</span>'}</div><b>${esc(titleOf(r.x))}</b><small>${money(+r.x.price||0)} د.ع</small><button onclick="this.closest('.alin-v85-overlay').remove();openCheckout('${r.kind}','${r.id}')">عرض</button></article>`).join('')||'<p>لا توجد مواد محفوظة في المفضلة.</p>'}</div></div>`;
-    document.body.appendChild(m);
-  };
-  function related(kind,id){
-    const src=itemBy(kind,id), cat=categoryOf(src);
-    return storeItemsAll().filter(x=>!(x.kind===kind&&String(x.id)===String(id))&&(categoryOf(x.raw)===cat||String(x.title||'').toLowerCase().split(' ').some(w=>w.length>3&&String(titleOf(src)).toLowerCase().includes(w)))).slice(0,4);
-  }
-  function relatedHtml(kind,id){
-    const rows=related(kind,id);
-    return rows.length?`<section class="alin-v85-related"><h3>مواد ذات صلة</h3><div>${rows.map(x=>`<article onclick="openCheckout('${x.kind}','${x.id}')">${x.cover?`<img src="${mediaUrl(x.cover)}">`:'<span>آ</span>'}<b>${esc(x.title)}</b><small>${money(x.price)} د.ع</small></article>`).join('')}</div></section>`:'';
-  }
-  function paused(kind){
-    const scope=String(db.settings?.order_pause_scope||'');
-    if(!scope)return false;
-    if(scope==='all')return true;
-    const x=itemBy(kind,checkoutItem?.itemId||'');
-    return scope===kind||scope===String(x?.type||x?.category||'');
-  }
-  document.addEventListener('alin:cart-rendered',event=>{
-    const kind=event.detail?.kind,itemId=event.detail?.id;
-    if(!kind||!itemId)return;
-    const box=document.getElementById('checkoutBox');if(!box)return;
-    const key=`${kind}:${itemId}`;
-    if(!box.querySelector('.alin-v85-fav-action'))box.insertAdjacentHTML('afterbegin',`<button class="alin-v85-fav-action" onclick="alinV85ToggleFavorite('${kind}','${itemId}')">${favs().includes(key)?'♥ محفوظ بالمفضلة':'♡ أضف للمفضلة'}</button>`);
-    if(!box.querySelector('.alin-v85-related'))box.insertAdjacentHTML('beforeend',relatedHtml(kind,itemId));
-  });
-  function whatsappPhoneForOrder(o){
-    const lib=(db.accounts?.libraries||[]).find(x=>String(x.id)===String(o?.library_id));
-    return String(lib?.whatsapp||lib?.phone||lib?.mobile||db.settings?.whatsapp||'').replace(/\D/g,'');
-  }
-  window.alinV85WhatsApp=function(orderId){
-    const o=(db.orders||[]).find(x=>String(x.id)===String(orderId)); if(!o)return alert('الطلب غير موجود');
-    const phone=whatsappPhoneForOrder(o); if(!phone)return alert('أضف رقم واتساب للمكتبة أو الدعم من الإعدادات');
-    const msg=encodeURIComponent(`السلام عليكم، لدي طلب في منصة آلين\nرقم الطلب: ${o.order_number||o.id}\nالطلب: ${o.title||''}\nالاسم: ${o.student_name||''}`);
-    window.open(`https://wa.me/${phone}?text=${msg}`,'_blank');
-  };
-  document.addEventListener('alin:order-created',event=>{
-    const numbers=Array.isArray(event.detail?.numbers)?event.detail.numbers:[];
-    const created=(db.orders||[]).filter(o=>numbers.includes(String(o.order_number||o.id)));
-    const box=document.getElementById('checkoutBox');
-    if(created.length&&box&&!box.querySelector('.alin-v85-wa'))box.insertAdjacentHTML('beforeend',`<button class="alin-v85-wa" onclick="alinV85WhatsApp('${created[0].id}')">واتساب بخصوص الطلب</button>`);
-  });
-  const baseRenderStore=window.renderStore||renderStore;
-  window.renderStore=renderStore=function(){
-    const r=baseRenderStore();
-    setTimeout(()=>{
-      const b=document.getElementById('bannerBox');
-      if(b){
-        b.innerHTML=visibleBanners().map(x=>`<div class="alin-v85-banner">${x.image_path?`<img src="${mediaUrl(x.image_path)}">`:''}<div><small>إعلان منصة آلين</small><h2>${esc(x.title||'')}</h2><p>${esc(x.text||'')}</p></div></div>`).join('');
-        b.style.display=visibleBanners().length?'grid':'none';
-      }
-      const store=document.getElementById('storePage');
-      if(store&&!store.querySelector('.alin-v85-favorites-top')){
-        const anchor=document.getElementById('searchInput')?.parentElement||store.firstElementChild;
-        anchor?.insertAdjacentHTML('afterend',`<button class="alin-v85-favorites-top" onclick="alinV85Favorites()">❤️ المفضلة <span>${favs().length}</span></button>`);
-      } else {
-        const n=store?.querySelector('.alin-v85-favorites-top span');if(n)n.textContent=favs().length;
-      }
-      const cards=document.querySelectorAll('#storeGrid article');
-      const items=storeItemsAll();
-      cards.forEach((card,i)=>{
-        const x=items[i];if(!x||card.querySelector('.alin-v85-heart'))return;
-        const key=`${x.kind}:${x.id}`;
-        card.style.position='relative';
-        card.insertAdjacentHTML('afterbegin',`<button class="alin-v85-heart" onclick="event.stopPropagation();alinV85ToggleFavorite('${x.kind}','${x.id}')">${favs().includes(key)?'♥':'♡'}</button>`);
-      });
-      alinV85Badges();
-    },0);
-    return r;
-  };
-  window.alinV85MarkAllRead=function(){localStorage.setItem(seenKey(),JSON.stringify((db.notifications||[]).map(n=>String(n.id))));alinV85Badges();toast('تم تحديد الكل كمقروء')};
-  window.alinV85DeleteAllNotifications=async function(){
-    if(current?.role!=='admin')return;
-    if(!confirm('حذف جميع الإشعارات؟'))return;
-    for(const n of [...(db.notifications||[])]){try{await removeRow('notifications',{id:n.id})}catch(_){}}
-    db.notifications=[];try{v19Notifications=[]}catch(_){};renderNotificationsAdmin();alinV85Badges();
-  };
-  window.alinV85Badges=function(){
-    const seen=(()=>{try{return JSON.parse(localStorage.getItem(seenKey())||'[]').map(String)}catch(_){return[]}})();
-    const role=current?.role||'student';
-    const unread=(db.notifications||[]).filter(n=>['all',role].includes(n.target_role||n.audience||'all')&&!seen.includes(String(n.id))).length;
-    const pending=(db.orders||[]).filter(o=>['new','pending','payment_pending'].includes(String(o.status||o.payment_status||''))).length;
-    document.querySelectorAll('button,a').forEach(el=>{
-      const tx=el.textContent.trim();
-      if(/إشعار/.test(tx)){let s=el.querySelector('.alin-v85-badge');if(!s){s=document.createElement('span');s.className='alin-v85-badge';el.appendChild(s)}s.textContent=unread;s.hidden=!unread;el.style.position='relative'}
-      if(/طلب/.test(tx)&&!el.closest('#checkoutBox')){let s=el.querySelector('.alin-v85-orderbadge');if(!s){s=document.createElement('span');s.className='alin-v85-badge alin-v85-orderbadge';el.appendChild(s)}s.textContent=pending;s.hidden=!pending;el.style.position='relative'}
-    });
-  };
-  const baseNotif=window.renderNotificationsAdmin||renderNotificationsAdmin;
-  window.renderNotificationsAdmin=renderNotificationsAdmin=function(){
-    baseNotif();
-    if(!adminContent.querySelector('.alin-v85-notiftools'))adminContent.querySelector('h2')?.insertAdjacentHTML('afterend','<div class="alin-v85-notiftools"><button onclick="alinV85MarkAllRead()">✓ تحديد الكل كمقروء</button><button class="danger" onclick="alinV85DeleteAllNotifications()">حذف الكل</button></div>');
-  };
-  function paidOrders(){return (db.orders||[]).filter(o=>['paid','delivered','completed','settled'].includes(String(o.payment_status||o.status||'')))}
-  window.alinV85Reports=function(){
-    const rows=paidOrders(),today=new Date().toISOString().slice(0,10),month=today.slice(0,7),sum=a=>a.reduce((s,o)=>s+(+o.total||(+o.unit_price||0)*(+o.qty||1)),0);
-    const rank=(kind)=>{const m={};rows.filter(o=>!kind||o.kind===kind).forEach(o=>m[o.title||'غير محدد']=(m[o.title||'غير محدد']||0)+(+o.qty||1));return Object.entries(m).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—'};
-    const lm={};rows.forEach(o=>{const l=(db.accounts?.libraries||[]).find(x=>String(x.id)===String(o.library_id));const k=l?.name||'غير محدد';lm[k]=(lm[k]||0)+1});
-    const best=Object.entries(lm).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—';
-    const ledger=db.ledger||[], totals={admin:0,teacher:0,library:0};ledger.forEach(x=>Object.keys(totals).forEach(k=>totals[k]+=+x[k]||0));
-    const m=document.createElement('div');m.className='alin-v85-overlay';m.innerHTML=`<div class="alin-v85-sheet wide"><button class="alin-v85-close" onclick="this.closest('.alin-v85-overlay').remove()">×</button><h2>تقارير المدير</h2><div class="alin-v85-reports"><div><small>مبيعات اليوم</small><b>${money(sum(rows.filter(o=>(o.created_at||'').slice(0,10)===today)))} د.ع</b></div><div><small>مبيعات الشهر</small><b>${money(sum(rows.filter(o=>(o.created_at||'').slice(0,7)===month)))} د.ع</b></div><div><small>أكثر ملزمة مبيعاً</small><b>${esc(rank('booklet'))}</b></div><div><small>أكثر منتج مبيعاً</small><b>${esc(rank('product'))}</b></div><div><small>أفضل مكتبة</small><b>${esc(best)}</b></div><div><small>ربح المنصة</small><b>${money(totals.admin)} د.ع</b></div><div><small>أرباح المدرسين</small><b>${money(totals.teacher)} د.ع</b></div><div><small>أرباح المكتبات</small><b>${money(totals.library)} د.ع</b></div></div></div>`;document.body.appendChild(m);
-  };
-  window.alinV85SavePause=async function(){
-    await alinV57SaveSetting('order_pause_scope',document.getElementById('v85PauseScope').value);
-    await alinV57SaveSetting('order_pause_reason',document.getElementById('v85PauseReason').value);
-    toast('تم حفظ حالة الطلبات');
-  };
-  window.alinV85AddBanner=async function(){
-    const row={id:uid('BN'),title:v85BannerTitle.value.trim(),text:v85BannerText.value.trim(),start_date:v85BannerStart.value||null,end_date:v85BannerEnd.value||null,active:true,created_at:new Date().toISOString()};
-    if(!row.title)return alert('اكتب عنوان الإعلان');await insert('banners',row);db.banners.unshift(row);alinV85Control();renderStore();
-  };
-  window.alinV85DeleteBanner=async function(id){await removeRow('banners',{id});db.banners=db.banners.filter(x=>String(x.id)!==String(id));alinV85Control();renderStore()};
-  window.alinV85Control=function(){
-    const low=(db.products||[]).filter(p=>+p.stock<=+(p.low_stock_limit||db.settings?.low_stock_default||5));
-    adminContent.innerHTML=`<h2>مركز ميزات المتجر</h2>${low.length?`<div class="alin-v85-low">⚠ مخزون منخفض: ${low.map(x=>esc(x.name||x.title)).join('، ')}</div>`:''}<div class="alin-v85-controls"><section><h3>إيقاف الطلبات</h3><select id="v85PauseScope"><option value="">الطلبات مفتوحة</option><option value="all" ${db.settings?.order_pause_scope==='all'?'selected':''}>إيقاف الكل</option><option value="booklet" ${db.settings?.order_pause_scope==='booklet'?'selected':''}>الملازم</option><option value="stationery" ${db.settings?.order_pause_scope==='stationery'?'selected':''}>القرطاسية</option><option value="gift" ${db.settings?.order_pause_scope==='gift'?'selected':''}>الهدايا</option></select><input id="v85PauseReason" value="${esc(db.settings?.order_pause_reason||'')}" placeholder="سبب الإيقاف"><button onclick="alinV85SavePause()">حفظ</button></section><section><h3>إعلان جديد</h3><input id="v85BannerTitle" placeholder="عنوان الإعلان"><input id="v85BannerText" placeholder="نص الإعلان"><input id="v85BannerStart" type="date"><input id="v85BannerEnd" type="date"><button onclick="alinV85AddBanner()">إضافة البنر</button></section><section><h3>أدوات</h3></section></div><h3>البنرات الحالية</h3>${(db.banners||[]).map(x=>`<div class="row"><div><b>${esc(x.title||'')}</b><small>${esc(x.text||'')}</small></div><button class="danger" onclick="alinV85DeleteBanner('${x.id}')">حذف</button></div>`).join('')||emptyState('لا توجد بنرات')}`;
-  };
-  function injectAdminFeatures(){
-    /* V124: removed the old duplicated admin shortcut strip. */
-    document.querySelectorAll('.alin-v85-adminfeatures').forEach(el=>el.remove());
-  }
-    setTimeout(()=>{alinV85Badges()},1500);
-  window.addEventListener('load',()=>setTimeout(()=>{try{renderStore()}catch(_){}injectAdminFeatures();alinV85Badges()},1000));
-})();
+/* PLATFORM STEP 10: legacy storefront override removed. */
 
 
 /* ================= ALIN V86 LIBRARY PROFESSIONAL DASHBOARD ================= */
@@ -3896,256 +1549,8 @@ setTimeout(alinV84RefreshBadges,1200);
 
 
 
-/* ================= ALIN V88 REAL BOOKLET MODAL FIX ================= */
-(function(){
-  const FAVORITES_KEY='alin_v88_favorites';
-
-  function readFavorites(){
-    try{
-      const rows=JSON.parse(localStorage.getItem(FAVORITES_KEY)||'[]');
-      return Array.isArray(rows)?rows.map(String):[];
-    }catch(_){ return []; }
-  }
-
-  function favoriteKey(kind,id){ return `${kind}:${id}`; }
-
-  function isFavorite(kind,id){
-    return readFavorites().includes(favoriteKey(kind,id));
-  }
-
-  window.alinV88ToggleFavorite=function(kind,id,button){
-    const key=favoriteKey(kind,id);
-    let rows=readFavorites();
-    if(rows.includes(key)) rows=rows.filter(x=>x!==key);
-    else rows.push(key);
-    localStorage.setItem(FAVORITES_KEY,JSON.stringify(rows));
-
-    const active=rows.includes(key);
-    if(button){
-      button.classList.toggle('active',active);
-      button.innerHTML=active?'♥ محفوظ في المفضلة':'♡ أضف إلى المفضلة';
-    }
-    document.querySelectorAll(`[data-v88-favorite="${CSS.escape(key)}"]`).forEach(el=>{
-      el.classList.toggle('active',active);
-      el.textContent=active?'♥':'♡';
-    });
-    try{toast(active?'تمت الإضافة إلى المفضلة':'تمت الإزالة من المفضلة')}catch(_){}
-  };
-
-  function rawItem(kind,id){
-    return kind==='booklet'
-      ? (db.booklets||[]).find(x=>String(x.id)===String(id))
-      : (db.products||[]).find(x=>String(x.id)===String(id));
-  }
-
-  function itemTitle(x){ return x?.title||x?.name||'مادة'; }
-  function itemCover(x){ return x?.cover_path||x?.image_path||x?.cover||x?.image||''; }
-  function itemCategory(x){
-    return String(x?.subject||x?.grade||x?.category||x?.category_id||x?.type||'').trim().toLowerCase();
-  }
-
-  function relatedItems(kind,id){
-    const source=rawItem(kind,id);
-    if(!source)return [];
-    const sourceCategory=itemCategory(source);
-    const sourceWords=itemTitle(source).toLowerCase().split(/\s+/).filter(w=>w.length>=4);
-
-    const all=[
-      ...(db.booklets||[]).filter(x=>x.status==='published').map(x=>({kind:'booklet',raw:x})),
-      ...(db.products||[]).filter(x=>!['hidden','archived','deleted','inactive'].includes(String(x.status||'published').toLowerCase())).map(x=>({kind:'product',raw:x}))
-    ];
-
-    return all
-      .filter(x=>!(x.kind===kind&&String(x.raw.id)===String(id)))
-      .map(x=>{
-        const category=itemCategory(x.raw);
-        const title=itemTitle(x.raw).toLowerCase();
-        let score=0;
-        if(sourceCategory&&category===sourceCategory)score+=5;
-        sourceWords.forEach(w=>{if(title.includes(w))score+=2});
-        if(kind===x.kind)score+=1;
-        return {...x,score};
-      })
-      .filter(x=>x.score>0)
-      .sort((a,b)=>b.score-a.score)
-      .slice(0,4);
-  }
-
-  function relatedMarkup(kind,id){
-    const rows=relatedItems(kind,id);
-    if(!rows.length){
-      return `<section class="alin-v88-related"><div class="alin-v88-related-head"><h3>مواد ذات صلة</h3></div><p class="alin-v88-related-empty">لا توجد مواد مشابهة حالياً.</p></section>`;
-    }
-    return `<section class="alin-v88-related">
-      <div class="alin-v88-related-head"><h3>مواد ذات صلة</h3><small>قد تناسبك أيضاً</small></div>
-      <div class="alin-v88-related-grid">
-        ${rows.map(x=>{
-          const cover=itemCover(x.raw);
-          return `<article onclick="this.closest('.alin-v77-modal').remove();alinV77OpenDetails('${x.kind}','${x.raw.id}')">
-            <div class="alin-v88-related-image">${cover?`<img src="${mediaUrl(cover)}" alt="${esc(itemTitle(x.raw))}">`:'<span>آ</span>'}</div>
-            <b>${esc(itemTitle(x.raw))}</b>
-            <small>${money(+x.raw.price||0)} د.ع</small>
-          </article>`;
-        }).join('')}
-      </div>
-    </section>`;
-  }
-
-  window.alinV77OpenDetails=function(kind,id){
-    const item=rawItem(kind,id);
-    if(!item)return;
-
-    const title=itemTitle(item);
-    const details=typeof alinV77Details==='function'?alinV77Details(kind,item):(item.details||item.description||'');
-    const stock=typeof alinV77Stock==='function'?alinV77Stock(kind,item):{ok:kind==='booklet'||Number(item.stock||0)>0,cls:'available',text:'متوفر'};
-    const cover=itemCover(item);
-    const teacher=kind==='booklet'&&typeof teacherName==='function'?teacherName(item.teacher_id):'';
-    const active=isFavorite(kind,id);
-
-    const modal=document.createElement('div');
-    modal.className='alin-v77-modal';
-    modal.innerHTML=`<div class="alin-v77-modal-card alin-v88-modal-card" onclick="event.stopPropagation()">
-      <button class="alin-v77-close" onclick="this.closest('.alin-v77-modal').remove()">×</button>
-
-      <div class="alin-v77-modal-image">
-        ${cover?`<img src="${mediaUrl(cover)}" alt="${esc(title)}">`:`<div class="alin-v77-noimg">منصة آلين</div>`}
-      </div>
-
-      <div class="alin-v77-modal-content alin-v88-modal-content">
-        <button class="alin-v88-favorite ${active?'active':''}" onclick="alinV88ToggleFavorite('${kind}','${id}',this)">
-          ${active?'♥ محفوظ في المفضلة':'♡ أضف إلى المفضلة'}
-        </button>
-
-        <span class="alin-v76-stock ${stock.cls}">${stock.text}</span>
-        <h2>${esc(title)}</h2>
-        ${teacher?`<p class="alin-v77-teacher">المدرس: ${esc(teacher)}</p>`:''}
-        <p class="alin-v77-full-details">${esc(details||'لا توجد تفاصيل إضافية.')}</p>
-        <div class="alin-v77-price">${money(+item.price||0)} د.ع</div>
-
-        ${stock.ok?`<div class="alin-v77-modal-actions">
-          <div class="alin-v77-qty-wrap">
-            <span>عدد النسخ</span>
-            <div class="alin-v77-qty">
-              <button type="button" aria-label="تقليل عدد النسخ" onclick="alinV77ChangeQty('${kind}','${id}',-1)">−</button>
-              <input id="alinV77Qty_${kind}_${id}" type="number" min="1" value="1" readonly>
-              <button type="button" aria-label="زيادة عدد النسخ" onclick="alinV77ChangeQty('${kind}','${id}',1)">+</button>
-            </div>
-          </div>
-          <button class="alin-v77-add" onclick="alinV77AddToCart('${kind}','${id}',document.getElementById('alinV77Qty_${kind}_${id}').value)">أضف للسلة</button>
-        </div>`:`<button class="alin-v77-add disabled" disabled>غير متوفر حالياً</button>`}
-
-        ${relatedMarkup(kind,id)}
-      </div>
-    </div>`;
-
-    modal.onclick=()=>modal.remove();
-    document.body.appendChild(modal);
-  };
-
-  function decorateStoreCards(){
-    const cards=[...document.querySelectorAll('#storeGrid .alin-v76-card')];
-    cards.forEach(card=>{
-      if(card.querySelector('.alin-v88-card-favorite'))return;
-      const open=card.querySelector('[onclick*="alinV77OpenDetails"]')?.getAttribute('onclick')||'';
-      const match=open.match(/alinV77OpenDetails\('([^']+)','([^']+)'\)/);
-      if(!match)return;
-      const [,kind,id]=match;
-      const key=favoriteKey(kind,id);
-      const button=document.createElement('button');
-      button.type='button';
-      button.className='alin-v88-card-favorite'+(isFavorite(kind,id)?' active':'');
-      button.dataset.v88Favorite=key;
-      button.textContent=isFavorite(kind,id)?'♥':'♡';
-      button.setAttribute('aria-label','المفضلة');
-      button.onclick=e=>{
-        e.stopPropagation();
-        alinV88ToggleFavorite(kind,id,button);
-      };
-      card.appendChild(button);
-    });
-  }
-
-  const previousRenderStore=window.renderStore;
-  if(typeof previousRenderStore==='function'){
-    window.renderStore=renderStore=function(){
-      const result=previousRenderStore.apply(this,arguments);
-      setTimeout(decorateStoreCards,0);
-      return result;
-    };
-  }
-
-  window.addEventListener('load',()=>setTimeout(decorateStoreCards,800));
-})();
-
-
-/* ================= ALIN V90 REAL STORE STATISTICS FIX ================= */
-(function(){
-  function isTruthy(v){
-    return v===true || v===1 || ['true','1','yes','active','approved','published'].includes(String(v||'').toLowerCase());
-  }
-
-  function bookletIsAvailable(b){
-    const status=String(b?.status||b?.publish_status||'').toLowerCase();
-    return ['published','active','approved'].includes(status)
-      || isTruthy(b?.published)
-      || isTruthy(b?.is_published)
-      || !!b?.published_at;
-  }
-
-  function accountIsAvailable(a){
-    const status=String(a?.status||a?.account_status||'').toLowerCase();
-    return !['deleted','blocked','rejected','inactive','archived'].includes(status);
-  }
-
-  function orderIsCompleted(o){
-    const status=String(o?.status||'').toLowerCase();
-    const payment=String(o?.payment_status||'').toLowerCase();
-    return ['completed','delivered','settled','done'].includes(status)
-      || ['paid','completed','settled'].includes(payment)
-      || !!o?.delivered_at
-      || !!o?.completed_at;
-  }
-
-  window.alinV90RefreshStoreStats=function(){
-    const booklets=(db.booklets||[]).filter(bookletIsAvailable).length;
-    const completed=(db.orders||[]).filter(orderIsCompleted).length;
-    const teachers=(db.accounts?.teachers||db.teachers||[]).filter(accountIsAvailable).length;
-    const libraries=(db.accounts?.libraries||db.libraries||[]).filter(accountIsAvailable).length;
-
-    const values={
-      alinStatBooklets:booklets,
-      alinStatOrders:completed,
-      alinStatTeachers:teachers,
-      alinStatLibraries:libraries
-    };
-
-    Object.entries(values).forEach(([id,value])=>{
-      const el=document.getElementById(id);
-      if(el)el.textContent=String(value);
-    });
-  };
-
-  const previousLoad=window.load||load;
-  window.load=load=async function(){
-    const result=await previousLoad.apply(this,arguments);
-    alinV90RefreshStoreStats();
-    return result;
-  };
-
-  const previousRenderStore=window.renderStore||renderStore;
-  window.renderStore=renderStore=function(){
-    const result=previousRenderStore.apply(this,arguments);
-    setTimeout(alinV90RefreshStoreStats,0);
-    return result;
-  };
-
-  window.addEventListener('load',()=>{
-    setTimeout(alinV90RefreshStoreStats,500);
-    setTimeout(alinV90RefreshStoreStats,1800);
-  });
-})();
-
-
+/* PLATFORM STEP 10: V88 legacy product modal removed; discovery details are authoritative. */
+/* PLATFORM STEP 10: V90 storefront statistics moved to discovery.js. */
 /* ================= ALIN V91 NOTIFICATIONS DISPLAY CLEANUP ================= */
 
 
@@ -4294,8 +1699,7 @@ setTimeout(alinV84RefreshBadges,1200);
     [
       'renderStore',
       'renderProductsAdmin',
-      'renderNotificationsAdmin',
-      'adminStatsRender'
+      'renderNotificationsAdmin'
     ].forEach(safeWrap);
 
     scheduleNormalize();
@@ -4371,151 +1775,4 @@ setTimeout(alinV84RefreshBadges,1200);
 
 /* ALIN 2.0.1: legacy V96 banner patch removed; store/banners.js is authoritative. */
 
-/* ================= ALIN V97 FAVORITE HEART SYNC FIX ================= */
-(function(){
-  const KEY='alin_v88_favorites';
-
-  function readFavs(){
-    try{
-      const rows=JSON.parse(localStorage.getItem(KEY)||'[]');
-      return Array.isArray(rows)?rows.map(String):[];
-    }catch(_){ return []; }
-  }
-
-  function favKey(kind,id){
-    return `${kind}:${id}`;
-  }
-
-  function isFav(kind,id){
-    return readFavs().includes(favKey(kind,id));
-  }
-
-  function syncHeartElement(el,active){
-    if(!el)return;
-    el.classList.toggle('active',active);
-    el.textContent=active?'♥':'♡';
-    el.setAttribute('aria-pressed',active?'true':'false');
-    el.setAttribute('title',active?'إزالة من المفضلة':'إضافة إلى المفضلة');
-  }
-
-  function syncAllHearts(){
-    document.querySelectorAll('[data-v97-kind][data-v97-id]').forEach(el=>{
-      syncHeartElement(el,isFav(el.dataset.v97Kind,el.dataset.v97Id));
-    });
-
-    document.querySelectorAll('.alin-v88-favorite').forEach(el=>{
-      const kind=el.dataset.v97Kind;
-      const id=el.dataset.v97Id;
-      if(!kind||!id)return;
-      const active=isFav(kind,id);
-      el.classList.toggle('active',active);
-      el.innerHTML=active?'♥ محفوظ في المفضلة':'♡ أضف إلى المفضلة';
-    });
-  }
-
-  window.alinV97ToggleFavorite=function(kind,id,button){
-    const key=favKey(kind,id);
-    let rows=readFavs();
-    const active=rows.includes(key);
-
-    rows=active?rows.filter(x=>x!==key):[...rows,key];
-    localStorage.setItem(KEY,JSON.stringify(rows));
-
-    syncAllHearts();
-
-    try{
-      if(typeof toast==='function'){
-        toast(!active?'تمت الإضافة إلى المفضلة':'تمت الإزالة من المفضلة');
-      }
-    }catch(_){}
-  };
-
-  function decorateCards(){
-    document.querySelectorAll('#storeGrid .alin-v76-card').forEach(card=>{
-      const open=card.querySelector('[onclick*="alinV77OpenDetails"]')?.getAttribute('onclick')||'';
-      const match=open.match(/alinV77OpenDetails\('([^']+)','([^']+)'\)/);
-      if(!match)return;
-
-      const [,kind,id]=match;
-      let button=card.querySelector('.alin-v97-card-heart');
-
-      if(!button){
-        button=document.createElement('button');
-        button.type='button';
-        button.className='alin-v97-card-heart';
-        button.dataset.v97Kind=kind;
-        button.dataset.v97Id=id;
-        button.setAttribute('aria-label','المفضلة');
-        button.onclick=e=>{
-          e.preventDefault();
-          e.stopPropagation();
-          alinV97ToggleFavorite(kind,id,button);
-        };
-        card.appendChild(button);
-      }else{
-        button.dataset.v97Kind=kind;
-        button.dataset.v97Id=id;
-      }
-
-      syncHeartElement(button,isFav(kind,id));
-
-      // Remove old decorative hearts so only the working one remains.
-      card.querySelectorAll('.alin-v88-card-favorite,.alin-v85-heart').forEach(old=>{
-        if(old!==button)old.remove();
-      });
-    });
-  }
-
-  const previousOpenDetails=window.alinV77OpenDetails;
-  if(typeof previousOpenDetails==='function'){
-    window.alinV77OpenDetails=function(kind,id){
-      const result=previousOpenDetails.apply(this,arguments);
-
-      setTimeout(()=>{
-        const modal=document.querySelector('.alin-v77-modal:last-of-type');
-        const fav=modal?.querySelector('.alin-v88-favorite');
-        if(fav){
-          fav.dataset.v97Kind=kind;
-          fav.dataset.v97Id=id;
-          fav.onclick=()=>{
-            alinV97ToggleFavorite(kind,id,fav);
-          };
-        }
-        syncAllHearts();
-      },0);
-
-      return result;
-    };
-  }
-
-  const previousRenderStore=window.renderStore;
-  if(typeof previousRenderStore==='function'){
-    window.renderStore=renderStore=function(){
-      const result=previousRenderStore.apply(this,arguments);
-      setTimeout(()=>{
-        decorateCards();
-        syncAllHearts();
-      },0);
-      return result;
-    };
-  }
-
-  const observer={observe(){},disconnect(){},takeRecords(){return[];}};
-
-  window.addEventListener('load',()=>{
-    observer.observe(document.body,{childList:true,subtree:true});
-    setTimeout(()=>{
-      decorateCards();
-      syncAllHearts();
-    },500);
-  });
-
-  window.addEventListener('storage',e=>{
-    if(e.key===KEY)syncAllHearts();
-  });
-})();
-
-
-
-
-;
+/* PLATFORM STEP 10: V97 legacy card decorator removed; discovery favorites are authoritative. */
