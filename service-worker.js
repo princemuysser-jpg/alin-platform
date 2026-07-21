@@ -1,4 +1,4 @@
-const VERSION='alin-v2.1.8-order-trigger-migration';
+const VERSION='alin-v2.1.9-catalog-extraction';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[

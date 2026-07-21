@@ -206,45 +206,10 @@ function adminTab(t){ adminStatsRender(); if(t==='accounts')return renderAccount
 function renderAccountsAdmin(){ adminContent.innerHTML=`<h2>الحسابات</h2><div class="form-grid"><select id="aRole"><option value="teacher">مدرس</option><option value="library">مكتبة</option><option value="courier">مندوب</option><option value="accountant">محاسب</option></select><input id="aName" placeholder="الاسم"><input id="aUser" placeholder="اليوزر"><input id="aPass" placeholder="الرمز"><input id="aArea" placeholder="المنطقة"><input id="aLandmark" placeholder="أقرب نقطة"><button onclick="addAccount()">إضافة</button></div><h3>المدرسين</h3>${db.accounts.teachers.map(x=>`<div class="row"><div><b>${x.name}</b><small>${x.username} — ${x.area||''}</small></div><span>${x.status}</span></div>`).join('')}<h3>المكتبات</h3>${db.accounts.libraries.map(x=>`<div class="row"><div><b>${x.name}</b><small>${x.username} — ${x.area||''} — ${x.landmark||''}</small></div><span>${x.status}</span></div>`).join('')}`; }
 async function addAccount(){ if(window.ALINAuth?.createAccountFromAdmin)return window.ALINAuth.createAccountFromAdmin(); alert('خدمة إنشاء الحساب الآمن غير جاهزة'); }
 
-function renderBookletsAdmin(){ adminContent.innerHTML=`<h2>الملازم</h2><form id="bookForm" class="form-grid"><input name="title" placeholder="اسم الملزمة"><select name="teacherId">${db.accounts.teachers.map(x=>`<option value="${x.id}">${x.name}</option>`).join('')}</select><input name="subject" placeholder="المادة"><input name="grade" placeholder="الصف"><input name="price" type="number" placeholder="السعر"><label>غلاف<input name="cover" type="file" accept="image/*"></label><label>صورة المدرس<input name="teacherImage" type="file" accept="image/*"></label><label>ملف PDF الحقيقي<input name="bookletFile" type="file" accept=".pdf" required></label><button type="button" onclick="uploadBooklet()">رفع ونشر</button></form>${db.booklets.map(x=>`<div class="row"><div><b>${esc(x.title)}</b><small>${teacherName(x.teacher_id)} — ${esc(x.file_name||'')} — ${esc(x.status||'')}</small></div><div class="row-actions"><button onclick="setBookStatus('${x.id}','${x.status==='published'?'hidden':'published'}')">${x.status==='published'?'إخفاء':'إظهار'}</button><button onclick="setBookStatus('${x.id}','archived')">أرشفة</button><button class="danger" onclick="deleteBooklet('${x.id}')">حذف</button></div></div>`).join('')||emptyState('لا توجد ملازم')}`; }
-async function uploadBooklet(){
-  try{
-    const f=new FormData(bookForm);
-    const cover=await uploadFileV52('covers',f.get('cover'),{type:'image'});
-    const ti=await uploadFileV52('teachers',f.get('teacherImage'),{type:'image'});
-    const pdfFile=f.get('bookletFile');
-    if(!pdfFile||!pdfFile.name) throw new Error('ملف PDF مطلوب');
-    const fp=await uploadFileV52('booklets',pdfFile,{required:true,type:'pdf'});
-    await insert('booklets',{
-      id:uid('B'),
-      title:f.get('title'),
-      teacher_id:f.get('teacherId'),
-      subject:f.get('subject'),
-      grade:f.get('grade'),
-      price:+f.get('price'),
-      cover_path:cover,
-      teacher_image_path:ti,
-      file_path:fp,
-      file_name:pdfFile.name,
-      status:'draft',
-      publish_status:'draft',
-      published:false,
-      is_published:false,
-      teacher_approved:false
-    });
-    await audit('booklet','رفع ملزمة للمعاينة '+f.get('title'));
-    await load();
-    renderBookletsAdmin();
-    alert('تم رفع الملزمة للمعاينة. اسم الملف العربي مقبول، ولن تظهر في المتجر قبل الموافقة والنشر.');
-  }catch(e){ alert(e.message); }
-}
+/* Product, category and booklet administration is implemented only in modules/admin/products.js and modules/admin/booklets.js. */
 
-function renderProductsAdmin(){ adminContent.innerHTML=`<h2>المنتجات</h2><form id="productForm" class="form-grid"><select name="type"><option value="stationery">قرطاسية</option><option value="gift">هدايا</option></select><input name="name" placeholder="اسم المنتج"><input name="category" placeholder="القسم"><input name="price" type="number" placeholder="السعر"><input name="stock" type="number" placeholder="المخزون"><label>صورة المنتج<input name="image" type="file" accept="image/*"></label><button type="button" onclick="addProduct()">إضافة المنتج</button></form>${db.products.map(x=>`<div class="row"><div><b>${x.name}</b><small>${x.category} — ${money(x.price)} د.ع — ${x.status}</small></div><button onclick="setProductStatus('${x.id}','${x.status==='published'?'hidden':'published'}')">${x.status==='published'?'إخفاء':'إظهار'}</button></div>`).join('')}`; }
-async function addProduct(){ try{ const f=new FormData(productForm); const img=await uploadFile('products',f.get('image'),{type:'image'}); await insert('products',{id:uid('PR'),type:f.get('type'),name:f.get('name'),category:f.get('category'),price:+f.get('price'),stock:+f.get('stock')||0,image_path:img,status:'published'}); await audit('product','إضافة منتج '+f.get('name')); await load(); renderProductsAdmin(); }catch(e){ alert(e.message); } }
-async function setProductStatus(id,status){ await update('products',{status},{id}); await audit('product','تغيير حالة منتج '+id); await load(); renderProductsAdmin(); }
 
-function renderCategoriesAdmin(){ adminContent.innerHTML=`<h2>الأقسام</h2><div class="form-grid"><select id="catType"><option value="booklet">ملازم</option><option value="stationery">قرطاسية</option><option value="gift">هدايا</option></select><input id="catName" placeholder="اسم القسم"><button onclick="addCategory()">إضافة قسم</button></div>${db.categories.map(x=>`<div class="row"><div><b>${x.name}</b><small>${x.type}</small></div><span>${x.status}</span></div>`).join('')}`; }
-async function addCategory(){ await insert('categories',{id:uid('C'),type:catType.value,name:catName.value,status:'active'}); await audit('category','إضافة قسم '+catName.value); await load(); renderCategoriesAdmin(); }
+
 
 function renderOrdersAdmin(){ adminContent.innerHTML='<h2>الطلبات</h2>'+db.orders.map(x=>`<div class="row"><div><b>${x.title} × ${x.qty}</b><small>${x.student_name} — ${x.payment_status}</small></div>${x.payment_status==='payment_pending'?`<button onclick="devPay('${x.id}')">تأكيد دفع تطويري</button>`:''}</div>`).join(''); }
 async function devPay(id){
@@ -291,21 +256,8 @@ async function editAccount(id){ const x=[...db.accounts.teachers,...db.accounts.
 async function toggleAccount(id,status){ await update('accounts',{status},{id}); await load(); renderAccountsAdmin(); toast(status==='active'?'تم تفعيل الحساب':'تم إيقاف الحساب'); }
 async function deleteAccount(id){ if(!confirm('حذف الحساب نهائياً؟'))return; try{ await removeRow('accounts',{id}); await audit('account','حذف حساب '+id); await load(); renderAccountsAdmin(); toast('تم حذف الحساب'); }catch(e){alert('تعذر الحذف: '+e.message)} }
 
-renderCategoriesAdmin = function(){ const typeName={booklet:'ملازم',stationery:'قرطاسية',gift:'هدايا'}; adminContent.innerHTML=`<h2>الأقسام</h2><div class="form-grid"><select id="catType"><option value="booklet">ملازم</option><option value="stationery">قرطاسية</option><option value="gift">هدايا</option></select><input id="catName" placeholder="اسم القسم"><button onclick="addCategory()">إضافة قسم</button></div>${db.categories.length?db.categories.map(x=>`<div class="row"><div><b>${esc(x.name)}</b><small>${typeName[x.type]||esc(x.type)}</small></div><div class="row-actions"><button class="secondary" onclick="editCategory('${x.id}')">تعديل</button><button onclick="toggleCategory('${x.id}','${x.status==='active'?'hidden':'active'}')">${x.status==='active'?'إخفاء':'إظهار'}</button><button class="danger" onclick="deleteCategory('${x.id}')">حذف</button></div></div>`).join(''):emptyState('لا توجد أقسام')}`; }
-addCategory = async function(){ try{ if(!catName.value.trim())throw new Error('اكتب اسم القسم'); await insert('categories',{id:uid('C'),type:catType.value,name:catName.value.trim(),status:'active'}); await audit('category','إضافة قسم '+catName.value); await load(); renderCategoriesAdmin(); toast('تمت إضافة القسم'); }catch(e){alert(e.message)} }
-async function editCategory(id){ const x=db.categories.find(a=>a.id===id); const name=prompt('اسم القسم',x?.name||''); if(name===null||!name.trim())return; await update('categories',{name:name.trim()},{id}); await load(); renderCategoriesAdmin(); toast('تم تعديل القسم'); }
-async function toggleCategory(id,status){ await update('categories',{status},{id}); await load(); renderCategoriesAdmin(); }
-async function deleteCategory(id){ if(!confirm('حذف القسم؟'))return; try{await removeRow('categories',{id}); await load(); renderCategoriesAdmin(); toast('تم حذف القسم')}catch(e){alert(e.message)} }
 
-renderProductsAdmin = function(){ const cats=t=>db.categories.filter(c=>c.type===t&&c.status==='active'); adminContent.innerHTML=`<h2>المنتجات</h2><form id="productForm" class="form-grid"><select name="type" id="productType" onchange="refreshProductCategories()"><option value="stationery">قرطاسية</option><option value="gift">هدايا</option></select><input name="name" placeholder="اسم المنتج"><select name="category" id="productCategory"></select><input name="price" type="number" min="0" placeholder="السعر"><input name="stock" type="number" min="0" placeholder="المخزون"><label>صورة المنتج<input name="image" type="file" accept="image/*"></label><button type="button" onclick="addProduct()">إضافة المنتج</button></form>${db.products.length?db.products.map(x=>`<div class="row"><div><b>${esc(x.name)}</b><small>${esc(x.category)} — ${money(x.price)} د.ع — المخزون ${money(x.stock)}</small></div><div class="row-actions"><button class="secondary" onclick="editProduct('${x.id}')">تعديل</button><button onclick="setProductStatus('${x.id}','${x.status==='published'?'hidden':'published'}')">${x.status==='published'?'إخفاء':'إظهار'}</button><button class="danger" onclick="deleteProduct('${x.id}')">حذف</button></div></div>`).join(''):emptyState('لا توجد منتجات')}`; refreshProductCategories(); }
-function refreshProductCategories(){ if(!window.productCategory)return; const list=db.categories.filter(c=>c.type===productType.value&&c.status==='active'); productCategory.innerHTML=list.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('')||'<option value="عام">عام</option>'; }
-addProduct = async function(){ try{ const f=new FormData(productForm); if(!String(f.get('name')||'').trim())throw new Error('اكتب اسم المنتج'); if(+f.get('price')<0||+f.get('stock')<0)throw new Error('السعر أو المخزون غير صحيح'); const img=await uploadFile('products',f.get('image'),{type:'image'}); await insert('products',{id:uid('PR'),type:f.get('type'),name:String(f.get('name')).trim(),category:f.get('category'),price:+f.get('price')||0,stock:+f.get('stock')||0,image_path:img,status:'published'}); await audit('product','إضافة منتج '+f.get('name')); await load(); renderProductsAdmin(); toast('تمت إضافة المنتج'); }catch(e){alert(e.message)} }
-async function editProduct(id){ const x=db.products.find(a=>a.id===id); if(!x)return; const name=prompt('اسم المنتج',x.name); if(name===null)return; const price=prompt('السعر',x.price); if(price===null)return; const stock=prompt('المخزون',x.stock); if(stock===null)return; await update('products',{name:name.trim(),price:+price||0,stock:+stock||0},{id}); await audit('product','تعديل منتج '+id); await load(); renderProductsAdmin(); toast('تم تعديل المنتج'); }
-async function deleteProduct(id){ if(!confirm('حذف المنتج؟'))return; try{await removeRow('products',{id}); await audit('product','حذف منتج '+id); await load(); renderProductsAdmin(); toast('تم حذف المنتج')}catch(e){alert(e.message)} }
 
-renderBookletsAdmin = function(){ adminContent.innerHTML=`<h2>الملازم</h2><form id="bookForm" class="form-grid"><input name="title" placeholder="اسم الملزمة"><select name="teacherId">${db.accounts.teachers.filter(x=>x.status==='active').map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select><input name="subject" placeholder="المادة"><input name="grade" placeholder="الصف"><input name="price" type="number" min="0" placeholder="السعر"><label>الغلاف<input name="cover" type="file" accept="image/*"></label><label>صورة المدرس<input name="teacherImage" type="file" accept="image/*"></label><label>ملف PDF<input name="bookletFile" type="file" accept=".pdf" required></label><button type="button" onclick="uploadBooklet()">رفع ونشر</button></form>${db.booklets.length?db.booklets.map(x=>`<div class="row"><div><b>${esc(x.title)}</b><small>${esc(teacherName(x.teacher_id))} — ${esc(x.file_name||'')} — ${money(x.price)} د.ع</small></div><div class="row-actions"><button class="secondary" onclick="editBooklet('${x.id}')">تعديل</button><button onclick="setBookStatus('${x.id}','${x.status==='published'?'hidden':'published'}')">${x.status==='published'?'إخفاء':'إظهار'}</button><button class="danger" onclick="archiveBooklet('${x.id}')">أرشفة</button></div></div>`).join(''):emptyState('لا توجد ملازم')}`; }
-async function editBooklet(id){ const x=db.booklets.find(a=>a.id===id); if(!x)return; const title=prompt('اسم الملزمة',x.title); if(title===null)return; const subject=prompt('المادة',x.subject||''); if(subject===null)return; const grade=prompt('الصف',x.grade||''); if(grade===null)return; const price=prompt('السعر',x.price); if(price===null)return; await update('booklets',{title:title.trim(),subject:subject.trim(),grade:grade.trim(),price:+price||0},{id}); await audit('booklet','تعديل ملزمة '+id); await load(); renderBookletsAdmin(); toast('تم تعديل الملزمة'); }
-async function archiveBooklet(id){ if(!confirm('أرشفة الملزمة؟ ستختفي من المتجر.'))return; await setBookStatus(id,'archived'); toast('تمت أرشفة الملزمة'); }
 
 renderAdsAdmin = function(){ adminContent.innerHTML=`<h2>اللوحة الإعلانية</h2><div class="form-grid"><input id="adTitle" placeholder="عنوان الإعلان"><input id="adText" placeholder="نص الإعلان"><button onclick="addAd()">إضافة إعلان</button></div>${db.banners.length?db.banners.map(x=>`<div class="row"><div><b>${esc(x.title)}</b><small>${esc(x.text)}</small></div><div class="row-actions"><button class="secondary" onclick="editAd('${x.id}')">تعديل</button><button onclick="toggleAd('${x.id}',${x.active})">${x.active?'إيقاف':'تشغيل'}</button><button class="danger" onclick="deleteAd('${x.id}')">حذف</button></div></div>`).join(''):emptyState('لا توجد إعلانات')}`; }
 async function editAd(id){ const x=db.banners.find(a=>a.id===id); if(!x)return; const title=prompt('عنوان الإعلان',x.title||''); if(title===null)return; const text=prompt('نص الإعلان',x.text||''); if(text===null)return; await update('banners',{title:title.trim(),text:text.trim()},{id}); await load(); renderAdsAdmin(); toast('تم تعديل الإعلان'); }
@@ -527,9 +479,6 @@ renderStore=function(){
   renderCartBadge();
 };
 
-renderBookletsAdmin=function(){
-  adminContent.innerHTML=`<h2>الملازم</h2><form id="bookForm" class="form-grid"><input name="title" placeholder="اسم الملزمة"><select name="teacherId">${db.accounts.teachers.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select><input name="subject" placeholder="المادة"><input name="grade" placeholder="الصف"><input name="teacherPhone" placeholder="رقم موبايل المدرس"><input name="price" type="number" placeholder="السعر"><label>غلاف الملزمة<input name="cover" type="file" accept="image/*"></label><label>صورة المدرس<input name="teacherImage" type="file" accept="image/*"></label><label>ملف PDF للمكتبة فقط<input name="bookletFile" type="file" accept=".pdf" required></label><button type="button" onclick="uploadBookletV23()">رفع ونشر</button></form>${db.booklets.map(x=>`<div class="row"><div><b>${esc(x.title)}</b><small>${esc(teacherName(x.teacher_id))} — ${esc(x.teacher_phone||teacherObj(x.teacher_id).phone||'')} — ${esc(x.file_name||'')} — ${esc(x.status)}</small></div><div class="row-actions"><button onclick="setBookStatus('${x.id}','${x.status==='published'?'hidden':'published'}')">${x.status==='published'?'إخفاء':'إظهار'}</button><button class="danger" onclick="setBookStatus('${x.id}','archived')">أرشفة</button></div></div>`).join('')}`;
-};
 async function uploadBookletV23(){
   try{
     const f=new FormData(bookForm);
@@ -1007,14 +956,7 @@ window.trackOrder=function(){
     if(window.alinStatLibraries)alinStatLibraries.textContent=(db.accounts?.libraries||[]).filter(x=>x.status==='active').length;
     renderCartBadge();
   };
-const oldRenderBookletsAdmin=window.renderBookletsAdmin;
-  window.renderBookletsAdmin=function(){
-    adminContent.innerHTML=`<h2>الملازم وإصداراتها</h2><form id="bookForm" class="form-grid"><input name="title" placeholder="اسم الملزمة"><select name="teacherId">${(db.accounts?.teachers||[]).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select><input name="subject" placeholder="المادة"><input name="grade" placeholder="الصف"><input name="edition" placeholder="السنة / الإصدار مثال 2027"><input name="price" type="number" placeholder="السعر"><label>غلاف<input name="cover" type="file" accept="image/*"></label><label>صورة المدرس<input name="teacherImage" type="file" accept="image/*"></label><label>ملف PDF الحقيقي<input name="bookletFile" type="file" accept=".pdf" required></label><button type="button" onclick="uploadBooklet()">رفع ونشر</button></form>${(db.booklets||[]).map(x=>`<div class="row"><div><b>${esc(x.title)}</b><small>${esc(teacherName(x.teacher_id))} — ${esc(x.subject||'')} — ${esc(x.grade||'')} — ${esc(x.edition||x.year||'بدون إصدار')} — ${money(x.price)} د.ع — ${esc(x.status||'')}</small></div><div class="row-actions"><button onclick="setBookStatus('${x.id}','${x.status==='published'?'hidden':'published'}')">${x.status==='published'?'إخفاء':'إظهار'}</button><button class="danger" onclick="setBookStatus('${x.id}','archived')">أرشفة</button></div></div>`).join('')}`;
-  };
-  window.uploadBooklet=async function(){
-    try{const f=new FormData(bookForm);const cover=await uploadFile('covers',f.get('cover'),{type:'image'});const ti=await uploadFile('teachers',f.get('teacherImage'),{type:'image'});const pdfFile=f.get('bookletFile');if(!pdfFile||!pdfFile.name)throw new Error('ملف PDF مطلوب');const fp=await uploadFile('booklets',pdfFile,{required:true,type:'pdf'});await insert('booklets',{id:uid('B'),title:f.get('title'),teacher_id:f.get('teacherId'),subject:f.get('subject'),grade:f.get('grade'),edition:f.get('edition')||'نسخة 2027',price:+f.get('price'),cover_path:cover,teacher_image_path:ti,file_path:fp,file_name:pdfFile.name,status:'published'});await audit('booklet','نشر ملزمة '+f.get('title'));await load();renderBookletsAdmin();toast('تم نشر الملزمة');}catch(e){alert(e.message);}
-  };
-
+    
   window.renderOrdersAdmin=function(){
     const orders=db.orders||[];
     adminContent.innerHTML='<h2>الطلبات وتتبعها</h2>'+(orders.length?orders.map(x=>`<div class="row"><div><b>${esc(orderNo(x))} — ${esc(x.title)} × ${x.qty}</b><small>${esc(x.student_name)} — ${esc(x.student_phone||'')} — ${money(x.total)} د.ع — ${statusLabels[x.status]||esc(x.status||'')}</small><div class="timeline">${(x.status_history||[]).map(h=>`<span class="done">${statusLabels[h.status]||esc(h.status)}</span>`).join('')}</div></div><div class="row-actions"><button onclick="orderStatus('${x.id}','processing')">تجهيز</button><button onclick="orderStatus('${x.id}','ready')">جاهز</button><button onclick="orderStatus('${x.id}','out_delivery')">خرج للتوصيل</button><button onclick="orderStatus('${x.id}','completed')">تسليم</button><button class="secondary" onclick="printReceipt('${x.id}')">وصل / QR</button><button class="danger" onclick="orderStatus('${x.id}','cancelled')">إلغاء</button></div></div>`).join(''):emptyState('لا توجد طلبات'));
@@ -1090,21 +1032,7 @@ const oldRenderBookletsAdmin=window.renderBookletsAdmin;
     adminContent.innerHTML=`<h2>إعدادات لوحة المدير</h2><div class="form-grid"><input id="platformName" value="${esc(db.settings.platform_name||'منصة آلين')}" placeholder="اسم المنصة"><input id="platformPhone" value="${esc(db.settings.platform_phone||'')}" placeholder="رقم الهاتف"><input id="heroTitle" value="${esc(db.settings.hero_title||'')}" placeholder="عنوان الواجهة"><input id="heroText" value="${esc(db.settings.hero_text||'')}" placeholder="نص الواجهة"><input id="lowStockDefault" type="number" value="${esc(db.settings.low_stock_default||'5')}" placeholder="حد المخزون المنخفض"><button onclick="savePlatformSettings()">حفظ الإعدادات العامة</button></div><div class="settings-preview"><b>معاينة</b><h3>${esc(db.settings.hero_title||'')}</h3><p>${esc(db.settings.hero_text||'')}</p></div>`+
     securitySectionHtml()+brandSectionHtml()+footerSectionHtml()+deliverySectionHtml();
   };
-  const oldRenderBookletsAdmin37=window.renderBookletsAdmin;
-  window.renderBookletsAdmin=function(){
-    oldRenderBookletsAdmin37&&oldRenderBookletsAdmin37();
-    try{
-      document.querySelectorAll('#adminContent .row').forEach(row=>{
-        const firstBtn=row.querySelector('button[onclick^="setBookStatus"]');
-        const txt=row.querySelector('small')?.textContent||'';
-        const idMatch=row.innerHTML.match(/setBookStatus\('([^']+)'/);
-        if(firstBtn && idMatch && !row.innerHTML.includes('deleteBooklet')){
-          const box=row.querySelector('.row-actions')||row;
-          box.insertAdjacentHTML('beforeend',`<button class="danger" onclick="deleteBooklet('${idMatch[1]}')">حذف</button>`);
-        }
-      });
-    }catch(e){}
-  };
+  /* booklet admin implementation moved to modules/admin/booklets.js */
 })();
 
 /* ================= ALIN V39 BOOKLET SECTIONS + CLEAN CHECKOUT ================= */
@@ -1141,30 +1069,7 @@ window.renderStore=function(){
   try{ const about=document.getElementById('aboutPlatformBox'); if(about) about.innerHTML=`<h2>${esc(db.settings.about_title||'عن المنصة')}</h2><p>${esc(db.settings.about_text||'منصة آلين تجمع الملازم والقرطاسية والهدايا في مكان واحد، مع طلب سريع وتواصل واضح بين الطالب والمكتبة والإدارة.')}</p>`; const contact=document.getElementById('contactPlatformBox'); if(contact) contact.innerHTML=`<h2>${esc(db.settings.contact_title||'تواصل معنا')}</h2><p>${esc(db.settings.contact_text||'للاستفسار أو الانضمام كمدرس أو مكتبة، تواصل مع إدارة منصة آلين.')}</p>`; }catch(e){}
 };
 
-window.renderBookletsAdmin=function(){
-  const cats=(db.categories||[]).filter(c=>c.type==='booklet'&&c.status!=='hidden'&&c.status!=='archived');
-  const opt=cats.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
-  adminContent.innerHTML=`<h2>الملازم</h2><p class="muted">اختر قسم الملزمة حتى تظهر داخل قسمها فقط في المتجر، وليس مباشرة في واجهة المتجر الرئيسية.</p><form id="bookForm" class="form-grid"><input name="title" placeholder="اسم الملزمة"><select name="teacherId">${db.accounts.teachers.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select><select name="section"><option value="">اختر القسم</option>${opt}</select><input name="newSection" placeholder="أو اكتب قسم جديد"><input name="subject" placeholder="المادة"><input name="price" type="number" placeholder="السعر"><label>غلاف<input name="cover" type="file" accept="image/*"></label><label>صورة المدرس<input name="teacherImage" type="file" accept="image/*"></label><label>ملف PDF الحقيقي<input name="bookletFile" type="file" accept=".pdf" required></label><button type="button" onclick="uploadBooklet()">رفع ونشر</button></form>${(db.booklets||[]).map(x=>`<div class="row"><div><b>${esc(x.title)}</b><small>${esc(bookletSectionName(x))} — ${teacherName(x.teacher_id)} — ${esc(x.file_name||'')} — ${esc(x.status||'')}</small></div><div class="row-actions"><button onclick="setBookStatus('${x.id}','${x.status==='published'?'hidden':'published'}')">${x.status==='published'?'إخفاء':'إظهار'}</button><button onclick="setBookStatus('${x.id}','archived')">أرشفة</button><button class="danger" onclick="deleteBooklet('${x.id}')">حذف</button></div></div>`).join('')||emptyState('لا توجد ملازم')}`;
-};
 
-window.uploadBooklet=async function(){
-  try{
-    const f=new FormData(bookForm);
-    const section=(f.get('newSection')||f.get('section')||'ملازم عامة').trim();
-    if(!f.get('title') || !section || !f.get('teacherId')) throw new Error('أكمل اسم الملزمة والقسم والمدرس');
-    if(f.get('newSection') && !(db.categories||[]).some(c=>c.type==='booklet'&&c.name===section)){
-      try{ await insert('categories',{id:uid('C'),type:'booklet',name:section,status:'active'}); }catch(e){}
-    }
-    const cover=await uploadFile('covers',f.get('cover'),{type:'image'});
-    const ti=await uploadFile('teachers',f.get('teacherImage'),{type:'image'});
-    const pdfFile=f.get('bookletFile');
-    if(!pdfFile||!pdfFile.name)throw new Error('ملف PDF مطلوب');
-    const fp=await uploadFile('booklets',pdfFile,{required:true,type:'pdf'});
-    await insert('booklets',{id:uid('B'),title:f.get('title'),teacher_id:f.get('teacherId'),subject:f.get('subject'),grade:section,price:+f.get('price'),cover_path:cover,teacher_image_path:ti,file_path:fp,file_name:pdfFile.name,status:'published'});
-    await audit('booklet','نشر ملزمة '+f.get('title')+' في قسم '+section);
-    await load(); renderBookletsAdmin(); toast('تم نشر الملزمة داخل قسمها');
-  }catch(e){ alert(e.message); }
-};
 
 function libraryOptionsClean(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['libraryOptionsClean'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] libraryOptionsClean is not loaded yet');}
 function selectedLibraryLine(){const fn=window.AlinLibraryModules&&window.AlinLibraryModules['selectedLibraryLine'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] selectedLibraryLine is not loaded yet');}
@@ -1261,26 +1166,6 @@ window.renderStore=function(){
   renderCartBadge();
   try{ const about=document.getElementById('aboutPlatformBox'); if(about) about.innerHTML=`<h2>${esc(db.settings.about_title||'عن المنصة')}</h2><p>${esc(db.settings.about_text||'منصة آلين تجمع الملازم والقرطاسية والهدايا في مكان واحد، مع طلب سريع وتواصل واضح بين الطالب والمكتبة والإدارة.')}</p>`; const contact=document.getElementById('contactPlatformBox'); if(contact) contact.innerHTML=`<h2>${esc(db.settings.contact_title||'تواصل معنا')}</h2><p>${esc(db.settings.contact_text||'للاستفسار أو الانضمام كمدرس أو مكتبة، تواصل مع إدارة منصة آلين.')}</p>`; }catch(e){}
 };
-window.renderBookletsAdmin=function(){
-  adminContent.innerHTML=`<h2>الملازم</h2><p class="muted">أضف الملزمة باسمها والمدرس والمادة. لا يوجد اختيار قسم داخل صفحة الملازم.</p><form id="bookForm" class="form-grid"><input name="title" placeholder="اسم الملزمة"><select name="teacherId">${db.accounts.teachers.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select><input name="subject" placeholder="المادة"><input name="price" type="number" placeholder="السعر"><label>غلاف<input name="cover" type="file" accept="image/*"></label><label>صورة المدرس<input name="teacherImage" type="file" accept="image/*"></label><label>ملف PDF الحقيقي<input name="bookletFile" type="file" accept=".pdf" required></label><button type="button" onclick="uploadBooklet()">رفع ونشر</button></form>${(db.booklets||[]).map(x=>`<div class="row"><div><b>${esc(x.title)}</b><small>${teacherName(x.teacher_id)} — ${esc(x.subject||'')} — ${esc(x.file_name||'')} — ${esc(x.status||'')}</small></div><div class="row-actions"><button onclick="setBookStatus('${x.id}','${x.status==='published'?'hidden':'published'}')">${x.status==='published'?'إخفاء':'إظهار'}</button><button onclick="setBookStatus('${x.id}','archived')">أرشفة</button><button class="danger" onclick="deleteBooklet('${x.id}')">حذف</button></div></div>`).join('')||emptyState('لا توجد ملازم')}`;
-};
-window.uploadBooklet=async function(){
-  try{
-    const f=new FormData(bookForm);
-    const title=String(f.get('title')||'').trim();
-    const subject=String(f.get('subject')||'').trim();
-    const teacherId=String(f.get('teacherId')||'').trim();
-    if(!title || !teacherId) throw new Error('أكمل اسم الملزمة والمدرس');
-    const cover=await uploadFile('covers',f.get('cover'),{type:'image'});
-    const ti=await uploadFile('teachers',f.get('teacherImage'),{type:'image'});
-    const pdfFile=f.get('bookletFile');
-    if(!pdfFile||!pdfFile.name)throw new Error('ملف PDF مطلوب');
-    const fp=await uploadFile('booklets',pdfFile,{required:true,type:'pdf'});
-    await insert('booklets',{id:uid('B'),title:title,teacher_id:teacherId,subject:subject,grade:'',price:+f.get('price'),cover_path:cover,teacher_image_path:ti,file_path:fp,file_name:pdfFile.name,status:'published'});
-    await audit('booklet','نشر ملزمة '+title);
-    await load(); renderBookletsAdmin(); toast('تم نشر الملزمة');
-  }catch(e){ alert(e.message); }
-};
 
 /* ================= ALIN V44 CLEAN BOOKLETS + STUDENT TRACK CODE ================= */
 window.ALIN_VERSION='Alin V44 Tracking Code Fix';
@@ -1314,22 +1199,6 @@ window.renderStore=function(){
   try{ const about=document.getElementById('aboutPlatformBox'); if(about) about.innerHTML=`<h2>${esc(db.settings.about_title||'عن المنصة')}</h2><p>${esc(db.settings.about_text||'منصة آلين تجمع الملازم والقرطاسية والهدايا في مكان واحد، مع طلب سريع وتواصل واضح بين الطالب والمكتبة والإدارة.')}</p>`; const contact=document.getElementById('contactPlatformBox'); if(contact) contact.innerHTML=`<h2>${esc(db.settings.contact_title||'تواصل معنا')}</h2><p>${esc(db.settings.contact_text||'للاستفسار أو الانضمام كمدرس أو مكتبة، تواصل مع إدارة منصة آلين.')}</p>`; }catch(e){}
 };
 
-window.renderBookletsAdmin=function(){
-  adminContent.innerHTML=`<h2>الملازم</h2><p class="muted">أضف الملزمة باسمها والمدرس والمادة فقط. لا يوجد نظام أقسام داخل الملازم.</p><form id="bookForm" class="form-grid"><input name="title" placeholder="اسم الملزمة"><select name="teacherId">${db.accounts.teachers.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select><input name="subject" placeholder="المادة"><input name="price" type="number" placeholder="السعر"><label>غلاف<input name="cover" type="file" accept="image/*"></label><label>صورة المدرس<input name="teacherImage" type="file" accept="image/*"></label><label>ملف PDF الحقيقي<input name="bookletFile" type="file" accept=".pdf" required></label><button type="button" onclick="uploadBooklet()">رفع ونشر</button></form>${(db.booklets||[]).map(x=>`<div class="row"><div><b>${esc(x.title)}</b><small>${teacherName(x.teacher_id)} — ${esc(x.subject||'')} — ${esc(x.file_name||'')} — ${esc(x.status||'')}</small></div><div class="row-actions"><button onclick="setBookStatus('${x.id}','${x.status==='published'?'hidden':'published'}')">${x.status==='published'?'إخفاء':'إظهار'}</button><button onclick="setBookStatus('${x.id}','archived')">أرشفة</button><button class="danger" onclick="deleteBooklet('${x.id}')">حذف</button></div></div>`).join('')||emptyState('لا توجد ملازم')}`;
-};
-window.uploadBooklet=async function(){
-  try{
-    const f=new FormData(bookForm);
-    const title=String(f.get('title')||'').trim(), subject=String(f.get('subject')||'').trim(), teacherId=String(f.get('teacherId')||'').trim();
-    if(!title||!teacherId) throw new Error('أكمل اسم الملزمة والمدرس');
-    const cover=await uploadFile('covers',f.get('cover'),{type:'image'});
-    const ti=await uploadFile('teachers',f.get('teacherImage'),{type:'image'});
-    const pdfFile=f.get('bookletFile'); if(!pdfFile||!pdfFile.name) throw new Error('ملف PDF مطلوب');
-    const fp=await uploadFile('booklets',pdfFile,{required:true,type:'pdf'});
-    await insert('booklets',{id:uid('B'),title,teacher_id:teacherId,subject,grade:'',price:+f.get('price'),cover_path:cover,teacher_image_path:ti,file_path:fp,file_name:pdfFile.name,status:'published'});
-    await audit('booklet','نشر ملزمة '+title); await load(); renderBookletsAdmin(); toast('تم نشر الملزمة');
-  }catch(e){ alert(e.message); }
-};
 
 // كل طلب من السلة يظهر للطالب كود تتبع واضح بعد تأكيد الشراء
 
@@ -1476,25 +1345,7 @@ window.renderStore=function(){
   try{ renderCartBadge(); }catch(e){}
 };
 
-window.renderBookletsAdmin=function(){
-  if(!window.adminContent)return;
-  adminContent.innerHTML=`<h2>الملازم</h2><p class="muted">إضافة الملزمة بدون أقسام: اسم الملزمة، المدرس، المادة، السعر، الغلاف، وصورة المدرس وملف PDF.</p><form id="bookForm" class="form-grid"><input name="title" placeholder="اسم الملزمة"><select name="teacherId">${(db.accounts?.teachers||[]).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select><input name="subject" placeholder="المادة"><input name="price" type="number" placeholder="السعر"><label>غلاف الملزمة<input name="cover" type="file" accept="image/*"></label><label>صورة المدرس<input name="teacherImage" type="file" accept="image/*"></label><label>ملف PDF<input name="bookletFile" type="file" accept=".pdf,application/pdf" required></label><button type="button" onclick="uploadBooklet()">رفع ونشر</button></form>${(db.booklets||[]).map(x=>`<div class="row"><div><b>${esc(x.title)}</b><small>${esc(teacherName(x.teacher_id))} — ${esc(x.subject||'')} — ${esc(x.file_name||'')} — ${esc(x.status||'')}</small></div><div class="row-actions"><button onclick="setBookStatus('${x.id}','${x.status==='published'?'hidden':'published'}')">${x.status==='published'?'إخفاء':'إظهار'}</button><button onclick="setBookStatus('${x.id}','archived')">أرشفة</button><button class="danger" onclick="deleteBooklet('${x.id}')">حذف</button></div></div>`).join('')||emptyState('لا توجد ملازم')}`;
-};
 
-window.uploadBooklet=async function(){
-  try{
-    const f=new FormData(bookForm);
-    const title=String(f.get('title')||'').trim(), teacherId=String(f.get('teacherId')||'').trim(), subject=String(f.get('subject')||'').trim();
-    if(!title||!teacherId) throw new Error('أكمل اسم الملزمة والمدرس');
-    const pdfFile=f.get('bookletFile');
-    if(!pdfFile||!pdfFile.name) throw new Error('ملف PDF مطلوب');
-    const cover=await uploadFile('covers', f.get('cover'), {type:'image'});
-    const teacherImage=await uploadFile('teachers', f.get('teacherImage'), {type:'image'});
-    const filePath=await uploadFile('booklets', pdfFile, {required:true,type:'pdf'});
-    await insert('booklets',{id:uid('B'),title,teacher_id:teacherId,subject,grade:'',price:+f.get('price')||0,cover_path:cover,teacher_image_path:teacherImage,file_path:filePath,file_name:pdfFile.name,status:'published'});
-    await audit('booklet','نشر ملزمة '+title); await load(); renderBookletsAdmin(); toast('تم نشر الملزمة');
-  }catch(e){ alert(e.message||'تعذر رفع الملزمة'); }
-};
 
 function alinCouriersOptions(){const fn=window.AlinCourierModules&&window.AlinCourierModules['alinCouriersOptions'];if(typeof fn==='function')return fn.apply(this,arguments);console.warn('[Alin modular] alinCouriersOptions is not loaded yet');}
 
@@ -1923,45 +1774,7 @@ window.renderFinanceAdmin = renderFinanceAdmin = function(){
   <h3>طلبات السحب</h3>${(db.withdrawals||[]).map(x=>`<div class="row"><div><b>${esc(x.role)} — ${money(x.amount)} د.ع</b><small>${esc(x.status)}</small></div><div class="row-actions"><button onclick="withdrawStatus('${x.id}','approved')">موافقة</button><button onclick="withdrawStatus('${x.id}','paid')">تم الدفع</button><button class="danger" onclick="withdrawStatus('${x.id}','rejected')">رفض</button></div></div>`).join('')}`;
 };
 
-window.renderBookletsAdmin = renderBookletsAdmin = function(){
-  if(!window.adminContent)return;
-  adminContent.innerHTML=`<h2>الملازم</h2>
-  <p class="muted">الملزمة ترفع كمسودة للمعاينة أولاً. المدرس يضغط ✅ موافق للنشر، ثم المدير ينشرها لتظهر في المتجر.</p>
-  <form id="bookForm" class="form-grid">
-    <input name="title" placeholder="اسم الملزمة">
-    <select name="teacherId">${(db.accounts?.teachers||[]).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select>
-    <input name="subject" placeholder="المادة">
-    <input name="price" type="number" placeholder="السعر">
-    <label>غلاف الملزمة<input name="cover" type="file" accept="image/*"></label>
-    <label>صورة المدرس<input name="teacherImage" type="file" accept="image/*"></label>
-    <label>ملف PDF<input name="bookletFile" type="file" accept=".pdf,application/pdf" required></label>
-    <button type="button" onclick="uploadBooklet()">رفع للمعاينة</button>
-  </form>
-  ${(db.booklets||[]).map(x=>{
-    const st = alinV57BookletVisible(x)?'منشورة':(alinV57BookletApproved(x)?'موافق عليها - جاهزة للنشر':'مسودة بانتظار موافقة المدرس');
-    return `<div class="row" data-booklet-id="${x.id}"><div><b>${esc(x.title)}</b><small>${esc(teacherName(x.teacher_id))} — ${esc(x.subject||'')} — ${esc(x.file_name||'')} — ${st}</small></div><div class="row-actions">
-      ${x.file_path?`<button class="secondary" onclick="openTeacherPdf('${x.id}')">معاينة</button>`:''}
-      ${alinV57BookletVisible(x)?`<button onclick="alinUnpublishBookletV56('${x.id}')">إيقاف النشر</button>`:`<button onclick="alinAdminPublishBookletV56('${x.id}')">نشر</button>`}
-      <button class="danger" onclick="deleteBooklet('${x.id}')">حذف</button>
-    </div></div>`;
-  }).join('')||emptyState('لا توجد ملازم')}`;
-};
 
-window.uploadBooklet = async function(){
-  try{
-    const f=new FormData(bookForm);
-    const title=String(f.get('title')||'').trim(), teacherId=String(f.get('teacherId')||'').trim(), subject=String(f.get('subject')||'').trim();
-    if(!title||!teacherId) throw new Error('أكمل اسم الملزمة والمدرس');
-    const pdfFile=f.get('bookletFile');
-    if(!pdfFile||!pdfFile.name) throw new Error('ملف PDF مطلوب');
-    const cover=await uploadFileV52('covers', f.get('cover'), {type:'image'});
-    const teacherImage=await uploadFileV52('teachers', f.get('teacherImage'), {type:'image'});
-    const filePath=await uploadFileV52('booklets', pdfFile, {required:true,type:'pdf'});
-    await insert('booklets',{id:uid('B'),title,teacher_id:teacherId,subject,grade:'',price:+f.get('price')||0,cover_path:cover,teacher_image_path:teacherImage,file_path:filePath,file_name:pdfFile.name,status:'draft',publish_status:'draft',published:false,is_published:false,teacher_approved:false});
-    await audit('booklet','رفع ملزمة للمعاينة '+title);
-    await load(); renderBookletsAdmin(); toast('تم رفع الملزمة للمعاينة فقط');
-  }catch(e){ alert(e.message||'تعذر رفع الملزمة'); }
-};
 
 const alinV57OldRenderTeacher = window.renderTeacher || renderTeacher;
 window.renderTeacher = renderTeacher = function(){
@@ -3361,66 +3174,6 @@ function alinV73ProductImage(p){
   if(!raw) return '';
   try{return mediaUrl(raw)}catch(e){return raw}
 }
-async function alinV73UploadProductFile(file){
-  if(!file) return '';
-  try{
-    if(typeof uploadFile==='function') return await uploadFile(file,'products');
-    if(typeof uploadToStorage==='function') return await uploadToStorage(file,'products');
-  }catch(e){ console.warn('product upload',e); }
-  return '';
-}
-async function alinV73AddProduct(){
-  const category=(document.getElementById('alinV73ProductCategory')?.value||'').trim();
-  const name=(document.getElementById('alinV73ProductName')?.value||'').trim();
-  const details=(document.getElementById('alinV73ProductDetails')?.value||'').trim();
-  const price=+(document.getElementById('alinV73ProductPrice')?.value||0);
-  const stock=+(document.getElementById('alinV73ProductStock')?.value||0);
-  const file=document.getElementById('alinV73ProductFile')?.files?.[0];
-  if(!category) return alert('اختار قسم المنتج');
-  if(!name) return alert('اكتب اسم المنتج');
-  if(price<0 || stock<0) return alert('السعر أو المخزون غير صحيح');
-  let image_path='';
-  if(file){
-    image_path=await alinV73UploadProductFile(file);
-    if(!image_path){
-      try{
-        image_path=await new Promise((resolve,reject)=>{
-          const r=new FileReader();
-          r.onload=()=>resolve(r.result);
-          r.onerror=reject;
-          r.readAsDataURL(file);
-        });
-      }catch(e){}
-    }
-  }
-  const row={
-    id:uid('PR'),
-    name,
-    title:name,
-    details,
-    description:details,
-    price,
-    stock,
-    category,
-    category_id:category,
-    image_path,
-    status:'active',
-    created_at:new Date().toISOString()
-  };
-  try{
-    await insert('products',row);
-    db.products=db.products||[];
-    db.products.unshift(row);
-  }catch(e){
-    console.error(e);
-    return alert('تعذر حفظ المنتج');
-  }
-  try{ await audit('product','إضافة المنتج '+name); }catch(e){}
-  toast('تمت إضافة المنتج وظهر في المتجر');
-  alinV73ClearProductForm();
-  if(typeof renderProductsAdmin==='function') renderProductsAdmin();
-  if(typeof alinV72RenderStore==='function') alinV72RenderStore();
-}
 function alinV73ClearProductForm(){
   ['alinV73ProductName','alinV73ProductDetails','alinV73ProductPrice','alinV73ProductStock','alinV73ProductFile'].forEach(id=>{
     const el=document.getElementById(id);
@@ -3429,64 +3182,10 @@ function alinV73ClearProductForm(){
     else el.value='';
   });
 }
-async function alinV73EditProduct(id){
-  const p=(db.products||[]).find(x=>x.id===id); if(!p)return;
-  const name=prompt('اسم المنتج',p.name||p.title||''); if(name===null)return;
-  const details=prompt('تفاصيل المنتج',alinV73ProductDetails(p)); if(details===null)return;
-  const price=+(prompt('السعر',p.price||0)||0);
-  const stock=+(prompt('المخزون',p.stock||0)||0);
-  const payload={name,title:name,details,description:details,price,stock};
-  try{await update('products',payload,{id}); Object.assign(p,payload);}catch(e){return alert('تعذر تعديل المنتج');}
-  toast('تم تعديل المنتج');
-  renderProductsAdmin();
-  if(typeof alinV72RenderStore==='function') alinV72RenderStore();
-}
-async function alinV73DeleteProduct(id){
-  const p=(db.products||[]).find(x=>x.id===id); if(!p)return;
-  if(!confirm('حذف المنتج '+(p.name||p.title||'')+'؟'))return;
-  try{await removeRow('products',{id}); db.products=db.products.filter(x=>x.id!==id);}catch(e){return alert('تعذر حذف المنتج');}
-  toast('تم حذف المنتج');
-  renderProductsAdmin();
-  if(typeof alinV72RenderStore==='function') alinV72RenderStore();
-}
 window.alinV73AddProduct=alinV73AddProduct;
 window.alinV73EditProduct=alinV73EditProduct;
 window.alinV73DeleteProduct=alinV73DeleteProduct;
 
-window.renderProductsAdmin = renderProductsAdmin = function(){
-  if(!window.adminContent)return;
-  const cats=(db.categories||[]);
-  const products=(db.products||[]);
-  adminContent.innerHTML=`<h2>المنتجات</h2>
-  <div class="alin-v73-product-form">
-    <select id="alinV73ProductCategory">
-      <option value="">اختار القسم</option>
-      ${cats.map(c=>`<option value="${esc(c.id||c.name)}">${esc(c.name||c.title||'قسم')}</option>`).join('')}
-      <option value="stationery">قرطاسية</option>
-      <option value="gifts">هدايا</option>
-    </select>
-    <input id="alinV73ProductName" placeholder="اسم المنتج">
-    <textarea id="alinV73ProductDetails" placeholder="تفاصيل المنتج"></textarea>
-    <input id="alinV73ProductPrice" type="number" min="0" placeholder="السعر">
-    <input id="alinV73ProductStock" type="number" min="0" placeholder="المخزون">
-    <label class="alin-v73-file-label">صورة/ملف المنتج<input id="alinV73ProductFile" type="file" accept="image/*"></label>
-    <button onclick="alinV73AddProduct()">إضافة المنتج</button>
-  </div>
-  <div class="alin-v73-product-list">
-    ${products.map(p=>`<div class="alin-v73-product-row">
-      <div class="alin-v73-product-thumb">${alinV73ProductImage(p)?`<img src="${esc(alinV73ProductImage(p))}">`:'<span>آلين</span>'}</div>
-      <div class="alin-v73-product-info">
-        <b>${esc(p.name||p.title||'منتج')}</b>
-        <p>${esc(alinV73ProductDetails(p)||'بدون تفاصيل')}</p>
-        <small>السعر: ${money(+p.price||0)} د.ع — المخزون: ${+p.stock||0}</small>
-      </div>
-      <div class="row-actions">
-        <button class="secondary" onclick="alinV73EditProduct('${p.id}')">تعديل</button>
-        <button class="danger" onclick="alinV73DeleteProduct('${p.id}')">حذف</button>
-      </div>
-    </div>`).join('')||emptyState('لا توجد منتجات')}
-  </div>`;
-};
 
 /* Ensure modern store uses the actual product list and refreshes immediately */
 if(typeof alinV72StoreItems==='function'){
@@ -3660,46 +3359,7 @@ document.head.appendChild(alinV74Style);
 
 
 /* ================= ALIN V75 PRODUCT SAVE HOTFIX ================= */
-alinV73UploadProductFile = async function(file){
-  if(!file || !file.name) return '';
-  return await uploadFile('products', file, {type:'image'});
-};
 
-alinV73AddProduct = async function(){
-  const category=(document.getElementById('alinV73ProductCategory')?.value||'عام').trim();
-  const name=(document.getElementById('alinV73ProductName')?.value||'').trim();
-  const details=(document.getElementById('alinV73ProductDetails')?.value||'').trim();
-  const price=Number(document.getElementById('alinV73ProductPrice')?.value||0);
-  const stock=Number(document.getElementById('alinV73ProductStock')?.value||0);
-  const file=document.getElementById('alinV73ProductFile')?.files?.[0];
-  try{
-    if(!name) throw new Error('اكتب اسم المنتج');
-    if(price<0 || stock<0) throw new Error('السعر أو المخزون غير صحيح');
-    const image_path=file ? await uploadFile('products',file,{type:'image'}) : '';
-    const row={
-      id:uid('PR'),
-      type:'stationery',
-      name,
-      category,
-      price,
-      stock,
-      image_path,
-      status:'published',
-      details,
-      description:details
-    };
-    await insert('products',row);
-    await audit('product','إضافة منتج '+name);
-    await load();
-    alinV73ClearProductForm();
-    renderProductsAdmin();
-    if(typeof alinV72RenderStore==='function') alinV72RenderStore();
-    toast('تمت إضافة المنتج وظهر في المتجر');
-  }catch(e){
-    console.error('ALIN V75 PRODUCT SAVE',e);
-    alert(e?.message || 'تعذر حفظ المنتج');
-  }
-};
 window.alinV73AddProduct=alinV73AddProduct;
 
 
@@ -4149,71 +3809,6 @@ async function alinV79UploadProductImage(file){
   }catch(e){console.warn('upload products bucket',e);}
   return '';
 }
-window.alinV73AddProduct = async function(){
-  const category=(document.getElementById('alinV73ProductCategory')?.value||'stationery').trim();
-  const name=(document.getElementById('alinV73ProductName')?.value||'').trim();
-  const details=(document.getElementById('alinV73ProductDetails')?.value||'').trim();
-  const price=Number(document.getElementById('alinV73ProductPrice')?.value||0);
-  const stock=Number(document.getElementById('alinV73ProductStock')?.value||0);
-  const file=document.getElementById('alinV73ProductFile')?.files?.[0];
-  try{
-    if(!name) throw new Error('اكتب اسم المنتج');
-    if(price<0||stock<0) throw new Error('السعر أو المخزون غير صحيح');
-    const image_path=file?await alinV79UploadProductImage(file):'';
-    const row={
-      id:uid('PR'),
-      name,
-      details,
-      description:details,
-      price,
-      stock,
-      category,
-      category_id:category,
-      type:category,
-      image_path,
-      status:'published',
-      created_at:new Date().toISOString(),
-      updated_at:new Date().toISOString()
-    };
-    await insert('products',row);
-    db.products=db.products||[];
-    db.products.unshift(row);
-    await audit('product','إضافة المنتج '+name);
-    alinV73ClearProductForm();
-    renderProductsAdmin();
-    renderStore();
-    toast('تمت إضافة المنتج وظهر في المتجر');
-  }catch(e){
-    console.error('V79 add product',e);
-    alert(e?.message||'تعذر حفظ المنتج');
-  }
-};
-window.alinV73EditProduct = async function(id){
-  const p=(db.products||[]).find(x=>String(x.id)===String(id)); if(!p)return;
-  const name=prompt('اسم المنتج',p.name||p.title||''); if(name===null)return;
-  const details=prompt('تفاصيل المنتج',p.details||p.description||''); if(details===null)return;
-  const price=Number(prompt('السعر',p.price||0)); if(Number.isNaN(price))return alert('السعر غير صحيح');
-  const stock=Number(prompt('المخزون',p.stock||0)); if(Number.isNaN(stock))return alert('المخزون غير صحيح');
-  const payload={name,details,description:details,price,stock,updated_at:new Date().toISOString()};
-  try{
-    await update('products',payload,{id:p.id});
-    Object.assign(p,payload);
-    await audit('product','تعديل المنتج '+name);
-    renderProductsAdmin(); renderStore();
-    toast('تم تعديل المنتج');
-  }catch(e){console.error(e);alert(e?.message||'تعذر تعديل المنتج');}
-};
-window.alinV73DeleteProduct = async function(id){
-  const p=(db.products||[]).find(x=>String(x.id)===String(id)); if(!p)return;
-  if(!confirm('حذف المنتج '+(p.name||p.title||'')+'؟'))return;
-  try{
-    await removeRow('products',{id:p.id});
-    db.products=db.products.filter(x=>String(x.id)!==String(id));
-    await audit('product','حذف المنتج '+(p.name||p.title||''));
-    renderProductsAdmin(); renderStore();
-    toast('تم حذف المنتج');
-  }catch(e){console.error(e);alert(e?.message||'تعذر حذف المنتج');}
-};
 
 /* Force fresh products load from Supabase */
 const alinV79LoadBase=window.load||load;
@@ -4244,26 +3839,6 @@ function alinV79NormalizeProduct(p={}){
   });
 }
 function alinV79RefreshProducts(){ db.products=(db.products||[]).map(alinV79NormalizeProduct); }
-window.alinV79ToggleProduct=async function(id){
-  const p=(db.products||[]).find(x=>String(x.id)===String(id)); if(!p)return;
-  const status=alinV79PublishedProduct(p)?'hidden':'published';
-  try{ await update('products',{status,updated_at:new Date().toISOString()},{id:p.id}); p.status=status; renderProductsAdmin(); renderStore(); toast(status==='published'?'تم إظهار المنتج':'تم إخفاء المنتج'); }
-  catch(e){ console.error(e); alert(e?.message||'تعذر تغيير حالة المنتج'); }
-};
-const alinV79RenderProductsBase=window.renderProductsAdmin;
-window.renderProductsAdmin=renderProductsAdmin=function(){
-  alinV79RefreshProducts();
-  alinV79RenderProductsBase();
-  document.querySelectorAll('.alin-v73-product-row').forEach((row,i)=>{
-    const p=(db.products||[])[i]; if(!p)return;
-    const actions=row.querySelector('.row-actions');
-    if(actions && !actions.querySelector('.alin-v79-toggle')){
-      const b=document.createElement('button'); b.className='alin-v79-toggle';
-      b.textContent=alinV79PublishedProduct(p)?'إخفاء':'إظهار';
-      b.onclick=()=>alinV79ToggleProduct(p.id); actions.prepend(b);
-    }
-  });
-};
 const alinV79RenderStoreBase=window.renderStore;
 window.renderStore=renderStore=function(){ alinV79RefreshProducts(); return alinV79RenderStoreBase(); };
 window.addEventListener('unhandledrejection',e=>{ console.error('ALIN unhandled promise',e.reason); });
@@ -4380,9 +3955,6 @@ window.alinV84ControlCenter=function(){
 window.alinV84SavePause=async function(){const payload={order_pause_scope:v84StopScope.value,order_pause_reason:v84StopReason.value};try{await update('settings',payload,{id:'main'});Object.assign(db.settings,payload);toast('تم حفظ حالة الطلبات')}catch(e){alert(e.message)}};
 window.alinV84AddBanner=async function(){const row={id:uid('BN'),title:v84BannerTitle.value.trim(),text:v84BannerText.value.trim(),start_date:v84BannerStart.value||null,end_date:v84BannerEnd.value||null,active:true,created_at:new Date().toISOString()};if(!row.title)return alert('اكتب عنوان الإعلان');await insert('banners',row);db.banners.unshift(row);alinV84ControlCenter();renderStore();};
 window.alinV84DeleteBanner=async id=>{await removeRow('banners',{id});db.banners=db.banners.filter(x=>String(x.id)!==String(id));alinV84ControlCenter();renderStore()};
-
-const oldProducts=window.renderProductsAdmin;
-window.renderProductsAdmin=renderProductsAdmin=function(){oldProducts(); const stock=(db.products||[]).filter(p=>+p.stock<=+(p.low_stock_limit||db.settings?.low_stock_default||5));if(stock.length)adminContent.insertAdjacentHTML('afterbegin',`<div class="alin-v84-lowstock">⚠ تنبيه مخزون: ${stock.map(p=>esc(p.name||p.title)).join('، ')}</div>`)};
 
 const oldStore=window.renderStore;
 window.renderStore=renderStore=function(){const r=oldStore();setTimeout(()=>{const top=document.querySelector('.alin-v72-top');if(top&&!top.querySelector('.alin-v84-favs-btn'))top.insertAdjacentHTML('beforeend',`<button class="alin-v84-favs-btn" onclick="alinV84ShowFavs()">❤️ <span>${alinV84Favs().length}</span></button>`);const now=new Date().toISOString().slice(0,10);document.querySelectorAll('.banner-card').forEach(()=>{});alinV84RefreshBadges()},0);return r};
@@ -4549,9 +4121,7 @@ setTimeout(alinV84RefreshBadges,1200);
     /* V124: removed the old duplicated admin shortcut strip. */
     document.querySelectorAll('.alin-v85-adminfeatures').forEach(el=>el.remove());
   }
-  const baseProducts=window.renderProductsAdmin||renderProductsAdmin;
-  window.renderProductsAdmin=renderProductsAdmin=function(){baseProducts();injectAdminFeatures();const low=(db.products||[]).filter(p=>+p.stock<=+(p.low_stock_limit||db.settings?.low_stock_default||5));if(low.length&&!adminContent.querySelector('.alin-v85-low'))adminContent.insertAdjacentHTML('afterbegin',`<div class="alin-v85-low">⚠ تنبيه نفاد المخزون: ${low.map(x=>esc(x.name||x.title)).join('، ')}</div>`)};
-  setTimeout(()=>{alinV85Badges()},1500);
+    setTimeout(()=>{alinV85Badges()},1500);
   window.addEventListener('load',()=>setTimeout(()=>{try{renderStore()}catch(_){}injectAdminFeatures();alinV85Badges()},1000));
 })();
 
