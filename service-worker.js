@@ -1,4 +1,4 @@
-const VERSION='alin-v2.2.7-core-services-extraction';
+const VERSION='alin-v2.2.8-supabase-service-ownership';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[

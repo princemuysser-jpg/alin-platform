@@ -175,7 +175,7 @@
     if(arr(db().permits).some(row=>same(row.order_id,order.id)))return;
     const insert=api('insert');if(!insert)return;
     const row={id:api('uid')?window.uid('P'):`P-${Date.now()}`,order_id:order.id,booklet_id:order.item_id||order.booklet_id,library_id:order.library_id,qty:Math.max(1,num(order.qty)||1),used:0,status:'active'};
-    await insert('permits',row);db().permits=db().permits||[];db().permits.unshift(row);
+    await insert('permits',row);
   }
 
   async function persistLedger(order){
@@ -191,7 +191,7 @@
     };
     let row;
     if(existing){await update('ledger',payload,{id:existing.id});Object.assign(existing,payload);row=existing}
-    else{row={id:api('uid')?window.uid('LG'):`LG-${Date.now()}`,...payload,created_at:now()};await insert('ledger',row);db().ledger=db().ledger||[];db().ledger.unshift(row)}
+    else{row={id:api('uid')?window.uid('LG'):`LG-${Date.now()}`,...payload,created_at:now()};await insert('ledger',row)}
     db().ledger=arr(db().ledger).filter((item,index,list)=>!same(item.order_id,order.id)||item===row||list.find(candidate=>same(candidate.order_id,order.id))===item);
     await persistPermit(order);
     return {row,split};
@@ -264,7 +264,7 @@
     const method=window.prompt('طريقة الدفع','نقدي')||'نقدي';
     const row={id:api('uid')?window.uid('FP'):`FP-${Date.now()}`,voucher_number:`FP-${Date.now()}`,party_role:normalized,party_id:id||'admin',party_name:partyName(normalized,id),amount,payment_method:method,note:normalized==='admin'?'استلام ربح المنصة':'تسديد أرباح',status:'paid',created_at:now()};
     const insert=api('insert');if(!insert)throw new Error('خدمة حفظ السند غير جاهزة');
-    await insert('financial_payouts',row);db().financial_payouts=db().financial_payouts||[];db().financialPayouts=db().financialPayouts||[];db().financial_payouts.unshift(row);db().financialPayouts.unshift(row);
+    await insert('financial_payouts',row);
     if(api('audit'))await window.audit('finance',`${row.note} ${row.party_name} بمبلغ ${amount}`);
     if(api('load'))await window.load();
     if(api('renderFinanceAdmin'))window.renderFinanceAdmin();
@@ -283,7 +283,7 @@
     const method=window.prompt('طريقة الاستلام','نقدي')||'نقدي';
     const row={id:api('uid')?window.uid('LS'):`LS-${Date.now()}`,receipt_number:`LS-${Date.now()}`,library_id:libraryId,amount,payment_method:method,status:'received',note:'تسوية ذمة مكتبة من لوحة الإدارة',created_at:now()};
     const insert=api('insert');if(!insert)throw new Error('خدمة حفظ التسوية غير جاهزة');
-    await insert('library_settlements',row);db().library_settlements=db().library_settlements||[];db().librarySettlements=db().librarySettlements||[];db().library_settlements.unshift(row);db().librarySettlements.unshift(row);
+    await insert('library_settlements',row);
     if(api('audit'))await window.audit('finance',`تسوية مكتبة ${name} بمبلغ ${amount}`);
     if(api('load'))await window.load();
     if(api('renderFinanceAdmin'))window.renderFinanceAdmin();
@@ -297,7 +297,7 @@
     const amount=num(field?.value);if(amount<=0)return alert('المبلغ غير صحيح');
     const row={id:api('uid')?window.uid('W'):`W-${Date.now()}`,role,account_id:id,amount,status:'pending',created_at:now()};
     const insert=api('insert');if(!insert)throw new Error('خدمة طلبات السحب غير جاهزة');
-    await insert('withdrawals',row);db().withdrawals=db().withdrawals||[];db().withdrawals.unshift(row);
+    await insert('withdrawals',row);
     if(api('audit'))await window.audit('withdrawal',`طلب سحب ${role} بمبلغ ${amount}`);
     if(api('toast'))window.toast('تم إرسال طلب السحب');
     return row;

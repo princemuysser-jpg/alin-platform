@@ -18,7 +18,7 @@ vm.runInNewContext(config,context,{filename:'config.js'});
 vm.runInNewContext(ui,context,{filename:'ui.js'});
 vm.runInNewContext(platform,context,{filename:'platform.js'});
 const failures=[];const check=(value,label)=>{if(!value)failures.push(label)};
-check(context.ALIN_CONFIG.version==='2.2.7','config-version');
+check(context.ALIN_CONFIG.version==='2.2.8','config-version');
 check(typeof context.esc==='function'&&context.esc('<')==='&lt;','ui-escape');
 check(typeof context.init==='function'&&context.init()===true,'runtime-init');
 check(context.created?.url===context.ALIN_CONFIG.supabaseUrl,'runtime-central-url');
@@ -26,6 +26,6 @@ check(context.sb===fakeClient,'runtime-client-bridge');
 check(Array.isArray(context.db.orders)&&Array.isArray(context.db.accounts.teachers),'runtime-db-shape');
 context.current={id:'A1',role:'admin'};check(context.current.id==='A1','runtime-current-bridge');
 check(typeof context.deliveryFee==='function'&&context.deliveryFee()===0,'runtime-delivery-fee');
-check(listeners.has('DOMContentLoaded'),'runtime-boot-listener');
+check(!listeners.has('DOMContentLoaded'),'runtime-core-does-not-own-data-boot');
 if(failures.length){console.error(JSON.stringify({ok:false,failures},null,2));process.exit(1)}
 console.log(JSON.stringify({ok:true,checks:9,version:context.ALIN_VERSION},null,2));

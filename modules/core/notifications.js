@@ -143,7 +143,6 @@
     try{
       if(typeof window.insert!=='function')throw new Error('خدمة الإشعارات غير جاهزة');
       await window.insert('notifications',row);
-      if(window.db){window.db.notifications=arr(window.db.notifications);window.db.notifications.unshift(displayRow)}
       emit('send');
       return {...displayRow,remote:true};
     }catch(error){

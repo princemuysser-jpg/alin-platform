@@ -1,5 +1,5 @@
 // === core/platform.js ===
-/* ALIN v2.2.7 — small authoritative runtime core. Business features live in their own modules. */
+/* ALIN v2.2.8 — small authoritative runtime core. Business features live in their own modules. */
 (function(){
   'use strict';
 
@@ -44,29 +44,10 @@
     window.toast?.('تعذر الاتصال بخدمة المنصة');
     return false;
   }
-  async function query(table){
-    if(!requireConnection())return [];
-    const {data,error}=await stateClient.from(table).select('*');if(error)throw error;return data||[];
-  }
-  async function insert(table,row){
-    if(table==='orders'&&config.authEnabled===true)throw new Error('إنشاء الطلب المباشر متوقف؛ استخدم خدمة الطلب الآمنة');
-    if(!requireConnection())throw new Error('الاتصال بالنظام غير متاح');
-    const {data,error}=await stateClient.from(table).insert(row).select().single();if(error)throw error;return data;
-  }
-  async function update(table,values,match={}){
-    if(!requireConnection())throw new Error('الاتصال بالنظام غير متاح');
-    let request=stateClient.from(table).update(values);for(const [key,value] of Object.entries(match))request=request.eq(key,value);
-    const {data,error}=await request.select();if(error)throw error;return data||[];
-  }
-  async function removeRow(table,match={}){
-    if(!requireConnection())throw new Error('الاتصال بالنظام غير متاح');
-    let request=stateClient.from(table).delete();for(const [key,value] of Object.entries(match))request=request.eq(key,value);
-    const {error}=await request;if(error)throw error;return true;
-  }
   async function audit(kind,text,meta={}){
     try{
       const row={id:window.uid?.('A')||`A${Date.now()}`,kind,text,meta,created_at:new Date().toISOString()};
-      await window.insert('audit',row);stateDb.audit=Array.isArray(stateDb.audit)?stateDb.audit:[];stateDb.audit.unshift(row);
+      await window.insert('audit',row);
     }catch(error){console.warn('[ALIN audit]',error)}
   }
   function teacherName(id){return (stateDb.accounts?.teachers||[]).find(row=>String(row.id)===String(id))?.name||''}
@@ -91,15 +72,14 @@
     }
     window.dispatchEvent(new CustomEvent('alin:rendered'));
   }
-  async function load(){renderAll();return stateDb}
   async function seedData(){throw new Error('البيانات التجريبية معطلة في النسخة المستقرة')}
 
   Object.assign(window,{
-    ALIN_VERSION:'2.2.7',init,requireConnection,query,insert,update,removeRow,audit,load,renderAll,seedData,
+    ALIN_VERSION:'2.2.8',init,requireConnection,audit,renderAll,seedData,
     teacherName,libIsOpen,libStatusText,activeLibraries,alinOpenLibraries:activeLibraries,
     alinLibOpen:libIsOpen,deliveryFee,isMissingTableError,usePermit
   });
-  window.AlinRuntime=Object.freeze({version:'2.2.7',init,requireConnection,renderAll,getDb:()=>stateDb,getCurrent:()=>stateCurrent});
+  window.AlinRuntime=Object.freeze({version:'2.2.8',init,requireConnection,renderAll,getDb:()=>stateDb,getCurrent:()=>stateCurrent});
 
   /* PLATFORM STEP 1: coupons are owned by modules/store/coupons.js and modules/admin/coupons.js. */
   /* PLATFORM STEP 2: cart and order creation are owned by modules/store/cart.js and modules/store/order-routing.js. */
@@ -116,7 +96,6 @@
   /* PLATFORM STEP 11: favorites are owned by modules/store/discovery.js. */
   /* PLATFORM STEP 12: UI, storage, settings, branding, backup and student profile are owned by dedicated modules. */
 
-  document.addEventListener('DOMContentLoaded',()=>Promise.resolve(window.load?.()).catch(error=>console.error('[ALIN boot]',error)),{once:true});
 })();
 
 ;

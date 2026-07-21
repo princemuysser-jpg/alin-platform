@@ -15,7 +15,7 @@ let serial=0;
 const window={
   db,current:{role:'admin',id:'A1'},
   uid(prefix){serial++;return `${prefix}-${serial}`},
-  async insert(table,row){calls.push(['insert',table,structuredClone(row)]);return row},
+  async insert(table,row){calls.push(['insert',table,structuredClone(row)]);const map={permits:'permits',ledger:'ledger',financial_payouts:'financialPayouts',library_settlements:'librarySettlements',withdrawals:'withdrawals'};const key=map[table];if(key){db[key]=db[key]||[];if(!db[key].some(x=>String(x.id)===String(row.id)))db[key].unshift(row)}return row},
   async update(table,payload,where){calls.push(['update',table,structuredClone(payload),structuredClone(where)]);const list=table==='orders'?db.orders:table==='ledger'?db.ledger:[];const row=list.find(x=>String(x.id)===String(where.id));if(row)Object.assign(row,payload);return row},
   async audit(){},async load(){},renderLibrary(){},renderOrdersAdmin(){},toast(){},
   money(v){return String(v)},esc(v){return String(v)},

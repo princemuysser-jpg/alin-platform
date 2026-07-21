@@ -37,8 +37,8 @@ check(banners.includes("alin:store-rendered"), 'banner-render-event-missing');
 check(!/window\.renderStore\s*=/.test(features), 'features-render-wrapper-remains');
 
 for (const [name, html] of [['desktop', desktop], ['mobile', mobile]]) {
-  check(html.includes('./modules/store/discovery.js?v=2.2.7'), `${name}-discovery-version`);
-  check(html.indexOf('./modules/core/platform.js?v=2.2.7') < html.indexOf('./modules/store/discovery.js?v=2.2.7'), `${name}-load-order`);
+  check(html.includes('./modules/store/discovery.js?v=2.2.8'), `${name}-discovery-version`);
+  check(html.indexOf('./modules/core/platform.js?v=2.2.8') < html.indexOf('./modules/store/discovery.js?v=2.2.8'), `${name}-load-order`);
   check(html.includes('oninput="renderStore()"'), `${name}-search-hook`);
 }
 
