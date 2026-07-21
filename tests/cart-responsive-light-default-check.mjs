@@ -40,9 +40,9 @@ check(!options.includes('data-theme="system"'),'system-theme-control-removed');
 check(!options.includes("prefers-color-scheme: dark"),'system-theme-listener-removed');
 for(const [name,html] of [['mobile',mobile],['desktop',desktop]]){
   check(html.includes('data-alin-theme="light" data-alin-theme-mode="light"'),`${name}-light-html-default`);
-  check(html.includes("localStorage.getItem('alin_theme_v110')==='dark'?'dark':'light'"),`${name}-early-theme-bootstrap`);
+  check(html.includes("localStorage.getItem('alin_theme_v234')==='dark'?'dark':'light'"),`${name}-early-theme-bootstrap`);
   check(html.includes('<meta content="#f8f3e8" name="theme-color"/>'),`${name}-light-theme-color`);
-  check(html.includes('version-badge">v2.3.3'),`${name}-version-badge`);
+  check(html.includes('version-badge">v2.3.4'),`${name}-version-badge`);
 }
 
-console.log(JSON.stringify({ok:true,checks:checks.length,version:'2.3.3'},null,2));
+console.log(JSON.stringify({ok:true,checks:checks.length,version:'2.3.4'},null,2));

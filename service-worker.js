@@ -1,4 +1,4 @@
-const VERSION='alin-v2.3.3-responsive-cart-light-default';
+const VERSION='alin-v2.3.4-light-default-options-student-phone-login';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[

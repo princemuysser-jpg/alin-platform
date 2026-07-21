@@ -3,7 +3,8 @@
   'use strict';
 
   const LANG_KEY = 'alin_language_v110';
-  const THEME_KEY = 'alin_theme_v110';
+  const THEME_KEY = 'alin_theme_v234';
+  const LEGACY_THEME_KEY = 'alin_theme_v110';
   const validLanguages = ['ar', 'ku', 'en'];
   const validThemes = ['light', 'dark'];
   let lastFocus = null;
@@ -382,6 +383,7 @@
 
   document.addEventListener('keydown', trapKey);
   document.addEventListener('DOMContentLoaded', () => {
+    try { localStorage.removeItem(LEGACY_THEME_KEY); } catch (_) {}
     installUI();
     const mobileTrigger=$('[data-mobile-control="account"]');
     mobileTrigger?.addEventListener('click', () => { lastFocus=mobileTrigger; setTimeout(mobileSheetChanged,0); }, true);

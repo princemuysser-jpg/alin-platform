@@ -1,5 +1,5 @@
 // === core/i18n.js ===
-/* ALIN v2.3.3 — one language service for every role and page. */
+/* ALIN v2.3.4 — one language service for every role and page. */
 (function(){
   'use strict';
 
