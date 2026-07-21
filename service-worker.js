@@ -1,4 +1,4 @@
-const VERSION='alin-v2.1.6-courier-dashboard';
+const VERSION='alin-v2.1.8-order-trigger-migration';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[

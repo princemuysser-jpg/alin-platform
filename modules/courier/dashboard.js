@@ -1,5 +1,5 @@
 // === courier/dashboard.js ===
-/* ALIN v2.1.6 — single owner for courier administration, assignment and courier page. */
+/* ALIN v2.1.8 — direct courier workflow with database-backed assignment timestamps and valid statuses. */
 (function(){
   'use strict';
 
@@ -72,7 +72,28 @@
     const paid=settlements().filter(s=>String(s.courier_id||s.delegate_id||s.party_id||'')===String(c.id)&&String(s.status||'paid')!=='cancelled').reduce((a,s)=>a+(+s.amount||0),0);
     return{collected,earnings,paid,debt:Math.max(0,collected-earnings-paid),balance:Math.max(0,earnings-paid)};
   }
-  function orderState(st){return({pending_admin:'بانتظار التعيين',assigned:'بانتظار القبول',new:'طلب جديد',accepted:'مقبول',picked_up:'تم استلام الطلب',out_for_delivery:'في الطريق',processing:'قيد التنفيذ',completed:'تم التسليم',delivered:'تم التسليم',cancelled:'ملغي',rejected:'مرفوض'})[st]||st||'جديد'}
+  const ORDER_STATUSES=Object.freeze({pending:'pending',new:'new',pending_admin:'pending_admin',assigned:'assigned',accepted:'accepted',picked_up:'picked_up',out_for_delivery:'out_for_delivery',processing:'processing',ready:'ready',completed:'completed',delivered:'delivered',cancelled:'cancelled',rejected:'rejected'});
+  function orderState(st){return({pending:'جديد',pending_admin:'بانتظار التعيين',assigned:'بانتظار القبول',new:'طلب جديد',accepted:'مقبول',picked_up:'تم استلام الطلب',out_for_delivery:'في الطريق',out_delivery:'في الطريق',processing:'قيد التنفيذ',ready:'جاهز',completed:'تم التسليم',delivered:'تم التسليم',cancelled:'ملغي',rejected:'مرفوض'})[st]||st||'جديد'}
+  function workflowValues(status){
+    const value=String(status||'').trim();
+    if(!Object.values(ORDER_STATUSES).includes(value))throw new Error('حالة الطلب المطلوبة غير معتمدة');
+    const stamp=now(),values={status:value,updated_at:stamp};
+    if(value==='assigned'){values.assignment_status='assigned';values.assigned_at=stamp}
+    if(value==='accepted'){values.assignment_status='accepted';values.accepted_at=stamp}
+    if(value==='picked_up'){values.picked_up_at=stamp}
+    if(value==='out_for_delivery'){values.out_for_delivery_at=stamp}
+    if(value==='completed'||value==='delivered'){values.assignment_status='completed';values.completed_at=stamp;values.delivered_at=stamp}
+    if(value==='rejected'){values.assignment_status='rejected';values.rejected_at=stamp}
+    if(value==='cancelled'){values.assignment_status='cancelled';values.cancelled_at=stamp}
+    return values;
+  }
+  function friendlyOrderError(error){
+    const msg=String(error?.message||error||'');
+    if(msg.includes('orders_status_valid'))return 'تعذر تحديث الطلب لأن حالات الطلب في قاعدة البيانات تحتاج تحديث v2.1.8.';
+    if(msg.includes("assigned_at")||msg.includes("accepted_at")||msg.includes("picked_up_at")||msg.includes("rejected_at"))return 'قاعدة البيانات تحتاج تشغيل تحديث طلبات المندوب v2.1.8.';
+    if(msg.includes('schema cache'))return 'تم تحديث البرنامج لكن مخطط Supabase لم يتحدث بعد. شغّل ملف SQL v2.1.8 مرة واحدة.';
+    return 'تعذر تحديث طلب المندوب. تحقق من الاتصال ثم أعد المحاولة.';
+  }
   function mapLink(o){const lat=o.delivery_latitude||o.delivery_lat||o.latitude,lng=o.delivery_longitude||o.delivery_lng||o.longitude;return o.delivery_location_url||o.delivery_map_url||o.gps_url||(lat&&lng?`https://maps.google.com/?q=${lat},${lng}`:'')}
   function phoneLink(p){p=String(p||'').replace(/\D/g,'');return p?`tel:+${p.startsWith('964')?p:'964'+p.replace(/^0/,'')}`:'#'}
   function waLink(p){p=String(p||'').replace(/\D/g,'');return p?`https://wa.me/${p.startsWith('964')?p:'964'+p.replace(/^0/,'')}`:'#'}
@@ -147,10 +168,37 @@
   function deliveryOrders(){return allOrders().filter(o=>o.fulfillment_type==='home_delivery'||o.delivery_area)}
   function renderDeliveryOrdersAdmin(){const rows=deliveryOrders();adminContent.innerHTML=`<section class="v164-admin-couriers"><header class="v164-admin-head"><div><small>توزيع الطلبات</small><h2>طلبات التوصيل</h2><p>اختيار المندوب حسب المنطقة مع عرض الطالب ونقطة الدلالة والموقع.</p></div><button onclick="renderCouriersAdmin()">إدارة المندوبين</button></header><section class="v164-admin-metrics"><article><small>كل طلبات التوصيل</small><strong>${rows.length}</strong></article><article><small>بانتظار التعيين</small><strong>${rows.filter(o=>!o.courier_id&&!o.delegate_id).length}</strong></article><article><small>قيد التوصيل</small><strong>${rows.filter(o=>active(o)&&(o.courier_id||o.delegate_id)).length}</strong></article><article><small>مكتملة</small><strong>${rows.filter(done).length}</strong></article></section><div class="v164-delivery-admin-list">${rows.map(deliveryAdminCard).join('')||'<div class="empty">لا توجد طلبات توصيل.</div>'}</div></section>`}
   function deliveryAdminCard(o){const area=window.alinNormalizeDeliveryArea(o.delivery_area)||'غير محددة',matches=matchingCouriers(area),assigned=allCouriers().find(c=>String(c.id)===String(o.courier_id||o.delegate_id||'')),map=mapLink(o);return `<article class="v164-delivery-admin-card"><header><div><small>${escv(o.order_number||o.id)}</small><h3>${escv(o.title||'طلب توصيل')}</h3></div><span>${escv(area)}</span></header>${o.delivery_note?`<div class="v164-issue">ملاحظة المندوب: ${escv(o.delivery_note)}</div>`:''}<div class="v164-order-grid"><div><small>الطالب</small><b>${escv(o.student_name||'—')}</b></div><div><small>الهاتف</small><b>${escv(o.student_phone||'—')}</b></div><div class="wide"><small>أقرب نقطة دالة</small><b>${escv(o.delivery_landmark||'—')}</b></div><div><small>المبلغ</small><b>${moneyv(o.total)} د.ع</b></div><div><small>الحالة</small><b>${escv(orderState(o.status))}</b></div></div>${map?`<a class="v164-map-btn" href="${escv(map)}" target="_blank" rel="noopener">فتح موقع الطالب GPS</a>`:''}<div class="v164-match-list"><h4>المندوبون المطابقون للمنطقة (${matches.length})</h4>${matches.map(c=>`<label><input type="radio" name="v216assign_${escv(o.id)}" value="${escv(c.id)}" ${assigned&&String(assigned.id)===String(c.id)?'checked':''}><span><b>${escv(c.name)}</b><small>${statusLabel(statusOf(c))} • ${activeLoad(c)} طلب حالي • ${escv(c.phone||'')}</small></span></label>`).join('')||'<p class="warning-text">لا يوجد مندوب مرتبط بهذه المنطقة.</p>'}</div><footer><button ${!matches.length?'disabled':''} onclick="alinV164Assign('${escv(o.id)}')">${assigned?'إعادة تحويل':'تحويل للمندوب'}</button>${assigned?`<span>المندوب الحالي: <b>${escv(assigned.name)}</b></span>`:'<span>لم يتم تعيين مندوب</span>'}</footer></article>`}
-  window.alinV164Assign=async function(id){const selected=document.querySelector(`input[name="v216assign_${CSS.escape(String(id))}"]:checked`)?.value;if(!selected)return alert('اختر مندوباً');try{await update('orders',{courier_id:selected,delegate_id:selected,assignment_status:'assigned',status:'assigned',assigned_at:now(),delivery_note:null,updated_at:now()},{id});if(typeof audit==='function')await audit('courier',`تحويل الطلب ${id} إلى المندوب ${selected}`);if(typeof load==='function')await load();renderDeliveryOrdersAdmin();notify('تم تحويل الطلب للمندوب')}catch(error){alert(error.message||'تعذر تحويل الطلب')}};
+  window.alinV164Assign=async function(id){
+    const selected=document.querySelector(`input[name="v216assign_${CSS.escape(String(id))}"]:checked`)?.value;
+    if(!selected)return notify('اختر مندوباً أولاً');
+    try{
+      await update('orders',{courier_id:selected,delegate_id:selected,...workflowValues('assigned'),delivery_note:null},{id});
+      if(typeof audit==='function')await audit('courier',`تحويل الطلب ${id} إلى المندوب ${selected}`);
+      if(typeof load==='function')await load();
+      renderDeliveryOrdersAdmin();
+      notify('تم تحويل الطلب للمندوب');
+      return true;
+    }catch(error){console.error('[ALIN assign courier]',error);notify(friendlyOrderError(error));return false}
+  };
   window.alinV161AssignOrder=window.alinV164Assign;
-  async function assignCourier(id){const selected=$(`#assign_${CSS.escape(String(id))}`)?.value||null;try{await update('orders',{courier_id:selected,delegate_id:selected,status:selected?'assigned':'pending_admin',updated_at:now()},{id});if(typeof load==='function')await load();if(typeof renderCourierSettlementsAdmin==='function')renderCourierSettlementsAdmin()}catch(error){alert(error.message||'تعذر تعيين المندوب')}}
-  async function courierOrderStatus(id,status){try{const values={status,updated_at:now()};if(status==='out_for_delivery')values.out_for_delivery_at=now();if(['completed','delivered'].includes(status))values.delivered_at=now();await update('orders',values,{id});if(typeof load==='function')await load();if(typeof renderCourierSettlementsAdmin==='function')renderCourierSettlementsAdmin()}catch(error){alert(error.message||'تعذر تحديث الطلب')}}
+  async function assignCourier(id){
+    const selected=$(`#assign_${CSS.escape(String(id))}`)?.value||null;
+    try{
+      const values=selected?{courier_id:selected,delegate_id:selected,...workflowValues('assigned')}:{courier_id:null,delegate_id:null,assignment_status:'pending_admin',status:'pending_admin',assigned_at:null,updated_at:now()};
+      await update('orders',values,{id});
+      if(typeof load==='function')await load();
+      if(typeof renderCourierSettlementsAdmin==='function')renderCourierSettlementsAdmin();
+      return true;
+    }catch(error){console.error('[ALIN assign courier legacy screen]',error);notify(friendlyOrderError(error));return false}
+  }
+  async function courierOrderStatus(id,status){
+    try{
+      await update('orders',workflowValues(status),{id});
+      if(typeof load==='function')await load();
+      if(typeof renderCourierSettlementsAdmin==='function')renderCourierSettlementsAdmin();
+      return true;
+    }catch(error){console.error('[ALIN courier status admin]',error);notify(friendlyOrderError(error));return false}
+  }
 
   // ---------------- Courier page ----------------
   function ensureTabs(){const nav=$('.courier-v161-tabs');if(!nav)return;const wanted=[['home','الرئيسية'],['current','طلبات التوصيل'],['completed','المكتملة'],['finance','الحسابات'],['notifications','الإشعارات'],['profile','حسابي']];nav.innerHTML=wanted.map(([key,label])=>`<button type="button" data-courier-tab="${key}" onclick="renderCourierDashboard('${key}')">${label}${key==='current'?'<span id="courierCurrentBadge" hidden>0</span>':''}${key==='notifications'?'<span id="courierNotifyBadge" hidden>0</span>':''}</button>`).join('')}
@@ -165,11 +213,11 @@
   function profileHtml(c,rows){return `${summary(c,rows)}<section class="v164-profile"><div class="v164-profile-head"><div class="v161-avatar">${escv((c.name||'م').slice(0,1))}</div><div><h2>${escv(c.name||'مندوب')}</h2><p>${escv(c.phone||currentAccount()?.phone||'بدون هاتف')}</p></div><span class="v161-status ${statusOf(c)}">${statusLabel(statusOf(c))}</span></div><div class="v164-profile-fields"><label>حالة العمل<select id="v161MyAvailability"><option value="available" ${statusOf(c)==='available'?'selected':''}>متاح</option><option value="busy" ${statusOf(c)==='busy'?'selected':''}>مشغول</option><option value="offline" ${statusOf(c)==='offline'?'selected':''}>خارج الخدمة</option></select></label><div><small>مناطق العمل</small><div class="v161-area-chips">${areasOf(c).map(a=>`<span>${escv(a)}</span>`).join('')||'<span>غير محددة</span>'}</div></div></div><button onclick="alinV161SaveMyStatus()">حفظ الحالة</button></section>`}
   function unavailableHtml(){return `<section class="v174-panel"><h2>تعذر ربط صفحة المندوب بالحساب</h2><p>اضغط إعادة المحاولة. إذا استمرت الحالة افتح حساب المندوب من لوحة المدير واحفظه مرة واحدة.</p><button onclick="alinRefreshCourierPage()">إعادة تحميل بيانات المندوب</button></section>`}
   async function renderCourierDashboard(tab='home',options={}){const serial=++renderSerial,box=$('#courierV161Content');if(!box)return false;ensureTabs();let c=resolveCourier();setHeader(c,tab);if(!c){box.innerHTML=unavailableHtml();return false}let rows=myOrders(c);const paint=()=>{if(serial!==renderSerial)return;setHeader(c,tab);if(tab==='home')box.innerHTML=homeHtml(c,rows);else if(tab==='current')box.innerHTML=ordersHtml(c,rows,false);else if(tab==='completed')box.innerHTML=ordersHtml(c,rows,true);else if(tab==='finance')box.innerHTML=financeHtml(c,rows);else if(tab==='notifications')box.innerHTML=notificationsHtml(c,rows);else box.innerHTML=profileHtml(c,rows)};paint();if(options.refresh!==false){c=await refreshCourierData(Boolean(options.force));if(serial!==renderSerial)return true;if(!c){box.innerHTML=unavailableHtml();return false}rows=myOrders(c);paint()}return true}
-  async function updateOrder(id,values,message){try{await update('orders',values,{id});const row=allOrders().find(x=>String(x.id)===String(id));if(row)Object.assign(row,values);await refreshCourierData(true);await renderCourierDashboard('current',{refresh:false});notify(message);return true}catch(error){console.error('[ALIN courier order]',error);alert(error.message||'تعذر تحديث الطلب');return false}}
-  window.alinV164CourierStep=async function(id,status){const values={status,updated_at:now()};if(status==='out_for_delivery')values.out_for_delivery_at=now();return updateOrder(id,values,'تم تحديث حالة الطلب')};
-  window.alinV164CourierComplete=async function(id){if(!confirm('تأكيد تسليم الطلب واستلام المبلغ من الطالب؟'))return false;const ok=await updateOrder(id,{status:'completed',delivered_at:now(),updated_at:now()},'تم تسجيل تسليم الطلب');if(ok&&typeof maybeCreateFinancialEntry==='function'){try{await maybeCreateFinancialEntry(id)}catch(error){console.warn('[ALIN courier finance entry]',error)}}return ok};
+  async function updateOrder(id,values,message){try{await update('orders',values,{id});const row=allOrders().find(x=>String(x.id)===String(id));if(row)Object.assign(row,values);await refreshCourierData(true);await renderCourierDashboard('current',{refresh:false});notify(message);return true}catch(error){console.error('[ALIN courier order]',error);notify(friendlyOrderError(error));return false}}
+  window.alinV164CourierStep=async function(id,status){return updateOrder(id,workflowValues(status),'تم تحديث حالة الطلب')};
+  window.alinV164CourierComplete=async function(id){if(!confirm('تأكيد تسليم الطلب واستلام المبلغ من الطالب؟'))return false;const ok=await updateOrder(id,workflowValues('completed'),'تم تسجيل تسليم الطلب');if(ok&&typeof maybeCreateFinancialEntry==='function'){try{await maybeCreateFinancialEntry(id)}catch(error){console.warn('[ALIN courier finance entry]',error)}}return ok};
   window.alinV164ReportIssue=async function(id){const note=(prompt('اكتب الملاحظة أو المشكلة لإرسالها إلى الإدارة')||'').trim();if(!note)return false;return updateOrder(id,{delivery_note:note,updated_at:now()},'تم إرسال الملاحظة للإدارة')};
-  window.alinV174Reject=async function(id){const reason=(prompt('اكتب سبب رفض الطلب')||'').trim();if(!reason)return false;if(!confirm('تأكيد رفض الطلب؟'))return false;return updateOrder(id,{status:'rejected',delivery_note:reason,updated_at:now()},'تم رفض الطلب وإبلاغ الإدارة')};
+  window.alinV174Reject=async function(id){const reason=(prompt('اكتب سبب رفض الطلب')||'').trim();if(!reason)return false;if(!confirm('تأكيد رفض الطلب؟'))return false;return updateOrder(id,{...workflowValues('rejected'),delivery_note:reason},'تم رفض الطلب وإبلاغ الإدارة')};
   window.alinV174QuickStatus=async function(value){const c=resolveCourier();if(!c)return false;try{await update('couriers',{availability:value,updated_at:now()},{id:c.id});c.availability=value;await refreshCourierData(true);await renderCourierDashboard('home',{refresh:false});notify('تم تحديث حالة المندوب');return true}catch(error){alert(error.message||'تعذر تحديث الحالة');return false}};
   window.alinV161SaveMyStatus=async function(){return window.alinV174QuickStatus($('#v161MyAvailability')?.value||'available')};
   window.alinV161CourierStatus=window.alinV164CourierStep;
@@ -189,13 +237,13 @@
   window.addCourier=()=>window.alinV161CourierForm();
   window.toggleCourier=window.alinV161ToggleCourier;
   Object.assign(window.AlinCourierModules,{activeCouriers,renderCouriersAdmin,addCourier:window.addCourier,toggleCourier:window.toggleCourier,assignCourier,courierOrderStatus,alinCouriersOptions});
-  window.AlinCourierDashboard=Object.freeze({version:'2.1.6',allCouriers,resolveCourier,myOrders,refreshCourierData,render:renderCourierDashboard});
+  window.AlinCourierDashboard=Object.freeze({version:'2.1.8',allCouriers,resolveCourier,myOrders,workflowValues,refreshCourierData,render:renderCourierDashboard});
 
   // Add the two courier-specific admin routes once.
   const baseAdminTab=window.adminTab;
-  if(typeof baseAdminTab==='function'&&!baseAdminTab.__alinCourier216){
+  if(typeof baseAdminTab==='function'&&!baseAdminTab.__alinCourier217){
     const routed=function(tab){if(tab==='courierAreas')return renderCourierAreasAdmin();if(tab==='deliveryOrders')return renderDeliveryOrdersAdmin();return baseAdminTab.apply(this,arguments)};
-    routed.__alinCourier216=true;window.adminTab=routed;
+    routed.__alinCourier217=true;window.adminTab=routed;
   }
 
   window.addEventListener('alin:page-open',event=>{if(event.detail?.page==='courier')renderCourierDashboard('home',{force:true})});

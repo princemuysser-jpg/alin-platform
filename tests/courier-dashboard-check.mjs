@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const source=fs.readFileSync('modules/courier/dashboard.js','utf8');
-const marker='/* ALIN v2.1.6 — single owner for courier administration, assignment and courier page. */';
+const marker='/* ALIN v2.1.8 — direct courier workflow with database-backed assignment timestamps and valid statuses. */';
 const code=source.slice(source.indexOf(marker));
 const failures=[];
 const assert=(ok,msg)=>{if(!ok)failures.push(msg)};

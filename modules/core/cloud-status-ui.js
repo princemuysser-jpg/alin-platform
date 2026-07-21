@@ -287,7 +287,7 @@
     const {data,error}=await c.rpc('alin_repair_auth_links',{p_account_id:String(accountId)});
     if(error){
       const text=String(error.message||'');
-      if(/PGRST202|Could not find the function|schema cache/i.test(text))throw new Error('تحديث ربط الحسابات غير منفذ. شغّل ملف RUN_ON_SUPABASE_v2_1_3_COMPLETE.sql مرة واحدة');
+      if(/PGRST202|Could not find the function|schema cache/i.test(text))throw new Error('تحديث ربط الحسابات غير منفذ. شغّل ملف RUN_ON_SUPABASE_v2_1_8_COMPLETE.sql مرة واحدة');
       throw error;
     }
     return Number(data||0);

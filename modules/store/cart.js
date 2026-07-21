@@ -1,5 +1,5 @@
 // === modules/store/cart.js ===
-/* ALIN v2.1.6 — authoritative cart module. Delivery uses area + landmark + GPS only. */
+/* ALIN v2.1.8 — authoritative cart module. Delivery uses area + landmark + GPS only. */
 (function(){
   'use strict';
 

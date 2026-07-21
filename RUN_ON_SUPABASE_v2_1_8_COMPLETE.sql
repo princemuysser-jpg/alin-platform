@@ -1,4 +1,4 @@
--- منصة آلين v2.1.1 — تحديث Supabase المعتمد والقابل لإعادة التشغيل
+-- منصة آلين v2.1.8 — تحديث Supabase الكامل لمسار تحويل واستلام طلبات المندوب
 -- شغّل هذا الملف من Supabase > SQL Editor بعد التأكد أن حساب المدير مربوط في accounts.auth_user_id. الملف قابل لإعادة التشغيل بأمان.
 
 begin;
@@ -1180,6 +1180,116 @@ begin
          and jsonb_array_length(c.areas)>0
          and coalesce(a.area,'') is distinct from coalesce(c.areas->>0,'')
     $q$;
+  end if;
+end $$;
+
+
+-- v2.1.8: ترقية آمنة لجدول الطلبات.
+-- نوقف تريغر الحماية داخل معاملة الترقية فقط حتى لا يمنع تحديث البيانات القديمة.
+-- عند نجاح الترقية يُعاد إنشاء التريغر في نهاية الملف، وعند فشلها يتراجع PostgreSQL تلقائيًا.
+do $$
+begin
+  if to_regclass('public.orders') is not null then
+    drop trigger if exists alin_orders_protect_update on public.orders;
+  end if;
+end $$;
+
+-- v2.1.8: مسار طلبات المندوب الحقيقي.
+-- يضيف حقول التعيين والاستلام ويعتمد حالات التوصيل التي يستخدمها التطبيق.
+alter table public.orders add column if not exists assignment_status text not null default 'pending_admin';
+alter table public.orders add column if not exists assigned_at timestamptz;
+alter table public.orders add column if not exists accepted_at timestamptz;
+alter table public.orders add column if not exists picked_up_at timestamptz;
+alter table public.orders add column if not exists out_for_delivery_at timestamptz;
+alter table public.orders add column if not exists completed_at timestamptz;
+alter table public.orders add column if not exists delivered_at timestamptz;
+alter table public.orders add column if not exists rejected_at timestamptz;
+alter table public.orders add column if not exists cancelled_at timestamptz;
+alter table public.orders add column if not exists delivery_note text;
+
+-- إزالة القيد القديم الذي كان يرفض assigned / accepted / picked_up / out_for_delivery.
+alter table public.orders drop constraint if exists orders_status_valid;
+alter table public.orders add constraint orders_status_valid check (
+  status is null or status in (
+    'pending','new','pending_admin','assigned','accepted','picked_up',
+    'out_for_delivery','out_delivery','processing','ready',
+    'completed','delivered','cancelled','rejected',
+    'payment_pending','paid','receipt_rejected','تم التسليم'
+  )
+) not valid;
+
+alter table public.orders drop constraint if exists orders_assignment_status_valid;
+alter table public.orders add constraint orders_assignment_status_valid check (
+  assignment_status in ('pending_admin','assigned','accepted','completed','rejected','cancelled')
+) not valid;
+
+-- توحيد حالة التعيين للطلبات الموجودة بدون تغيير حالة الطلب الأصلية.
+update public.orders
+   set assignment_status = case
+     when status in ('completed','delivered','تم التسليم') then 'completed'
+     when status='rejected' then 'rejected'
+     when status='cancelled' then 'cancelled'
+     when status in ('accepted','picked_up','out_for_delivery','out_delivery','processing') then 'accepted'
+     when coalesce(courier_id::text,'')<>'' or coalesce(delegate_id::text,'')<>'' then 'assigned'
+     else 'pending_admin'
+   end
+ where assignment_status is null
+    or assignment_status not in ('pending_admin','assigned','accepted','completed','rejected','cancelled');
+
+update public.orders
+   set assigned_at=coalesce(assigned_at,updated_at,created_at,now())
+ where assigned_at is null
+   and (coalesce(courier_id::text,'')<>'' or coalesce(delegate_id::text,'')<>'');
+
+create index if not exists orders_courier_status_idx on public.orders(courier_id,status);
+create index if not exists orders_delegate_status_idx on public.orders(delegate_id,status);
+create index if not exists orders_assignment_status_idx on public.orders(assignment_status);
+
+-- المندوب يحدّث فقط حقول مسار التوصيل، والمدير يبقى كامل الصلاحية.
+create or replace function public.alin_protect_order_update()
+returns trigger
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  v_role text := public.alin_current_role();
+  v_allowed text[];
+begin
+  if public.alin_is_admin() then return new; end if;
+  if v_role='library' then
+    v_allowed:=array['status','updated_at','processing_at','ready_at','completed_at','delivered_at','cancelled_at','cancellation_reason','notes','library_note'];
+  elsif v_role='courier' then
+    v_allowed:=array[
+      'status','assignment_status','updated_at','accepted_at','picked_up_at',
+      'out_for_delivery_at','completed_at','delivered_at','rejected_at','cancelled_at',
+      'delivery_note','proof_path','handoff_token'
+    ];
+  else
+    raise exception 'غير مسموح بتعديل الطلب';
+  end if;
+  if (to_jsonb(new) - v_allowed) <> (to_jsonb(old) - v_allowed) then
+    raise exception 'تم منع تعديل بيانات حساسة في الطلب';
+  end if;
+  if v_role='courier' and old.status is distinct from new.status then
+    if not (
+      (coalesce(old.status,'new') in ('pending','new','pending_admin','assigned') and new.status in ('accepted','rejected'))
+      or (old.status='accepted' and new.status in ('picked_up','rejected'))
+      or (old.status='picked_up' and new.status in ('out_for_delivery','rejected'))
+      or (old.status in ('out_for_delivery','out_delivery','processing') and new.status in ('completed','delivered'))
+    ) then
+      raise exception 'انتقال حالة الطلب غير مسموح للمندوب: % إلى %',old.status,new.status;
+    end if;
+  end if;
+  return new;
+end
+$$;
+revoke all on function public.alin_protect_order_update() from public;
+
+do $$ begin
+  if to_regclass('public.orders') is not null then
+    drop trigger if exists alin_orders_protect_update on public.orders;
+    create trigger alin_orders_protect_update before update on public.orders
+    for each row execute function public.alin_protect_order_update();
   end if;
 end $$;
 

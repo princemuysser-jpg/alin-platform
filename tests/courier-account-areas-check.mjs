@@ -10,8 +10,8 @@ const cloud=read('modules/core/cloud-status-ui.js');
 const courierBridge=read('modules/admin/couriers.js');
 const createFn=read('supabase/functions/admin-create-account/index.ts');
 const updateFn=read('supabase/functions/admin-update-account/index.ts');
-const sql=read('RUN_ON_SUPABASE_v2_1_3_COMPLETE.sql');
-const check=read('CHECK_SUPABASE_READINESS_v2_1_3.sql');
+const sql=read('RUN_ON_SUPABASE_v2_1_8_COMPLETE.sql');
+const check=read('CHECK_SUPABASE_READINESS_v2_1_8.sql');
 const failures=[];
 const expect=(condition,name)=>{if(!condition)failures.push(name)};
 

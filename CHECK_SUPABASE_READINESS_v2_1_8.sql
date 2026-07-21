@@ -1,5 +1,5 @@
--- ALIN v2.1.3 — فحص حماية Supabase للقراءة فقط
--- شغّله بعد RUN_ON_SUPABASE_v2_1_3_COMPLETE.sql. لا يغيّر أي بيانات.
+-- ALIN v2.1.8 — فحص حماية Supabase للقراءة فقط
+-- شغّله بعد RUN_ON_SUPABASE_v2_1_8_COMPLETE.sql. لا يغيّر أي بيانات.
 do $$
 declare
   missing text[] := '{}';
@@ -38,6 +38,45 @@ begin
   if to_regprocedure('public.alin_protect_courier_self_update()') is null then
     missing:=array_append(missing,'function:public.alin_protect_courier_self_update()');
   end if;
+
+
+  foreach item in array array[
+    'assignment_status','assigned_at','accepted_at','picked_up_at','out_for_delivery_at',
+    'completed_at','delivered_at','rejected_at','cancelled_at','delivery_note'
+  ] loop
+    if not exists(
+      select 1 from information_schema.columns
+      where table_schema='public' and table_name='orders' and column_name=item
+    ) then missing:=array_append(missing,'column:public.orders.'||item); end if;
+  end loop;
+
+  if not exists(
+    select 1 from pg_constraint c
+    join pg_class t on t.oid=c.conrelid
+    join pg_namespace n on n.oid=t.relnamespace
+    where n.nspname='public' and t.relname='orders' and c.conname='orders_status_valid'
+      and pg_get_constraintdef(c.oid) like '%assigned%'
+      and pg_get_constraintdef(c.oid) like '%accepted%'
+      and pg_get_constraintdef(c.oid) like '%picked_up%'
+      and pg_get_constraintdef(c.oid) like '%out_for_delivery%'
+  ) then missing:=array_append(missing,'constraint:public.orders.orders_status_valid(v2.1.8)'); end if;
+
+
+  if not exists(
+    select 1 from pg_constraint c
+    join pg_class t on t.oid=c.conrelid
+    join pg_namespace n on n.oid=t.relnamespace
+    where n.nspname='public' and t.relname='orders' and c.conname='orders_assignment_status_valid'
+  ) then missing:=array_append(missing,'constraint:public.orders.orders_assignment_status_valid'); end if;
+
+  if not exists(
+    select 1
+    from pg_trigger tr
+    join pg_class t on t.oid=tr.tgrelid
+    join pg_namespace n on n.oid=t.relnamespace
+    where n.nspname='public' and t.relname='orders'
+      and tr.tgname='alin_orders_protect_update' and not tr.tgisinternal
+  ) then missing:=array_append(missing,'trigger:public.orders.alin_orders_protect_update'); end if;
 
   if to_regclass('public.alin_public_accounts') is null then missing:=array_append(missing,'view:alin_public_accounts'); end if;
   if to_regclass('public.alin_public_settings') is null then missing:=array_append(missing,'view:alin_public_settings'); end if;
@@ -92,9 +131,9 @@ begin
   end if;
 
   if cardinality(missing)>0 then
-    raise exception 'ALIN v2.1.3 readiness failed. Missing: %',array_to_string(missing,', ');
+    raise exception 'ALIN v2.1.8 readiness failed. Missing: %',array_to_string(missing,', ');
   end if;
-  raise notice 'ALIN v2.1.3 readiness check passed.';
+  raise notice 'ALIN v2.1.8 readiness check passed.';
 end $$;
 
-select 'ALIN v2.1.3 readiness check passed.' as result;
+select 'ALIN v2.1.8 readiness check passed.' as result;

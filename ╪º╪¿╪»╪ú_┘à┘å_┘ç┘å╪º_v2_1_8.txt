@@ -1,0 +1,4 @@
+1) شغّل RUN_ON_SUPABASE_v2_1_8_COMPLETE.sql مرة واحدة في Supabase SQL Editor.
+2) شغّل CHECK_SUPABASE_READINESS_v2_1_8.sql وتأكد من ظهور readiness check passed.
+3) ارفع محتويات النسخة إلى جذر GitHub Pages ثم نفّذ Ctrl + F5.
+ملاحظة: لا تشغّل ملف v2.1.7 القديم مرة ثانية.
