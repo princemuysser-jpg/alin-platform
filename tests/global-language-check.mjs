@@ -20,7 +20,7 @@ const context={
 };
 context.window=context;
 vm.createContext(context);
-vm.runInContext(fs.readFileSync(path.join(root,'modules/core/i18n.js'),'utf8'),context);
+for(const rel of ['modules/core/i18n-en.js','modules/core/i18n-ku.js','modules/core/i18n.js'])vm.runInContext(fs.readFileSync(path.join(root,rel),'utf8'),context);
 const i18n=context.AlinI18n;
 check(i18n&&typeof i18n.t==='function','service-export');
 check(i18n.t('الإعدادات','en')==='Settings','admin-settings-en');
@@ -40,15 +40,15 @@ check(html.lang==='ckb'&&html.dir==='rtl','document-language-ku');
 check(Object.keys(i18n.dictionaries.en).length>200,'dictionary-coverage-en');
 check(Object.keys(i18n.dictionaries.ku).length>200,'dictionary-coverage-ku');
 const order=JSON.parse(fs.readFileSync(path.join(root,'modules/module-order.json'),'utf8'));
-check(order.early.includes('modules/core/i18n.js'),'module-order');
+check(order.early.slice(1,4).join('|')==='modules/core/i18n-en.js|modules/core/i18n-ku.js|modules/core/i18n.js','module-order');
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const source=fs.readFileSync(path.join(root,htmlName),'utf8');
-  check(source.includes('./modules/core/i18n.js?v=2.3.5'),`${htmlName}-script`);
-  check(source.includes('./styles/alin-i18n.css?v=2.3.5'),`${htmlName}-style`);
-  check(source.indexOf('modules/core/i18n.js')<source.indexOf('modules/core/ui.js'),`${htmlName}-early-load`);
+  check(source.includes('./modules/core/i18n-en.js?v=2.3.8')&&source.includes('./modules/core/i18n-ku.js?v=2.3.8')&&source.includes('./modules/core/i18n.js?v=2.3.8'),`${htmlName}-scripts`);
+  check(source.includes('./styles/alin-i18n.css?v=2.3.8'),`${htmlName}-style`);
+  check(source.indexOf('modules/core/i18n-en.js')<source.indexOf('modules/core/i18n-ku.js')&&source.indexOf('modules/core/i18n-ku.js')<source.indexOf('modules/core/i18n.js')&&source.indexOf('modules/core/i18n.js')<source.indexOf('modules/core/ui.js'),`${htmlName}-early-load`);
 }
 const serviceWorker=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
-check(serviceWorker.includes("'./modules/core/i18n.js'")&&serviceWorker.includes("'./styles/alin-i18n.css'"),'pwa-cache');
-const source=fs.readFileSync(path.join(root,'modules/core/i18n.js'),'utf8');
-for(const role of ['لوحة المدير','لوحة المدرس','لوحة المكتبة','صفحة المندوب','المحاسب'])check(source.includes(`'${role}'`),`role-${role}`);
-console.log(JSON.stringify({ok:true,checks:checks.length,version:'2.3.5'},null,2));
+check(serviceWorker.includes("'./modules/core/i18n-en.js'")&&serviceWorker.includes("'./modules/core/i18n-ku.js'")&&serviceWorker.includes("'./modules/core/i18n.js'")&&serviceWorker.includes("'./styles/alin-i18n.css'"),'pwa-cache');
+const dictionarySource=fs.readFileSync(path.join(root,'modules/core/i18n-en.js'),'utf8')+fs.readFileSync(path.join(root,'modules/core/i18n-ku.js'),'utf8');
+for(const role of ['لوحة المدير','لوحة المدرس','لوحة المكتبة','صفحة المندوب','المحاسب'])check(dictionarySource.includes(`\"${role}\"`),`role-${role}`);
+console.log(JSON.stringify({ok:true,checks:checks.length,version:'2.3.8'},null,2));

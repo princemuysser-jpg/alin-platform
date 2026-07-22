@@ -1,11 +1,13 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-const source=fs.readFileSync('modules/courier/dashboard.js','utf8');
+const coreSource=fs.readFileSync('modules/courier/core.js','utf8');
+const assignmentSource=fs.readFileSync('modules/courier/assignment.js','utf8');
+const dashboardSource=fs.readFileSync('modules/courier/dashboard.js','utf8');
+const source=coreSource+'\n;\n'+assignmentSource+'\n;\n'+dashboardSource;
 const sql=fs.readFileSync('RUN_ON_SUPABASE_v2_1_8_COMPLETE.sql','utf8');
 const check=fs.readFileSync('CHECK_SUPABASE_READINESS_v2_1_8.sql','utf8');
-const marker='/* ALIN v2.1.8 — direct courier workflow with database-backed assignment timestamps and valid statuses. */';
-const code=source.slice(source.indexOf(marker));
+const code=source;
 const failures=[];
 const assert=(ok,msg)=>{if(!ok)failures.push(msg)};
 
@@ -15,7 +17,7 @@ const context={window,document,console,setTimeout,clearTimeout,setInterval,clear
 context.globalThis=context;context.db=window.db;context.current=null;
 vm.createContext(context);vm.runInContext(code,context);
 const api=context.window.AlinCourierDashboard;
-assert(api?.version==='2.1.8','api:version');
+assert(api?.version==='2.3.8','api:version');
 for(const [status,column] of [['assigned','assigned_at'],['accepted','accepted_at'],['picked_up','picked_up_at'],['out_for_delivery','out_for_delivery_at'],['completed','delivered_at'],['rejected','rejected_at']]){
   const values=api.workflowValues(status);
   assert(values.status===status,`payload:${status}:status`);

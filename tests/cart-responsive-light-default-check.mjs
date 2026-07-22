@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
 const cart=read('modules/store/cart.js');
-const discovery=read('modules/store/discovery.js');
+const discovery=read('modules/store/discovery-catalog.js');
 const options=read('options.js');
 const mobile=read('store-mobile.html');
 const desktop=read('store-desktop.html');
@@ -42,7 +42,7 @@ for(const [name,html] of [['mobile',mobile],['desktop',desktop]]){
   check(html.includes('data-alin-theme="light" data-alin-theme-mode="light"'),`${name}-light-html-default`);
   check(html.includes("localStorage.getItem('alin_theme_v234')==='dark'?'dark':'light'"),`${name}-early-theme-bootstrap`);
   check(html.includes('<meta content="#f8f3e8" name="theme-color"/>'),`${name}-light-theme-color`);
-  check(html.includes('version-badge">v2.3.5'),`${name}-version-badge`);
+  check(html.includes('version-badge">v2.3.8'),`${name}-version-badge`);
 }
 
-console.log(JSON.stringify({ok:true,checks:checks.length,version:'2.3.5'},null,2));
+console.log(JSON.stringify({ok:true,checks:checks.length,version:'2.3.8'},null,2));

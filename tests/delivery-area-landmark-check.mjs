@@ -4,7 +4,9 @@ import vm from 'node:vm';
 const cart=fs.readFileSync('modules/store/cart.js','utf8');
 const routing=fs.readFileSync('modules/store/order-routing.js','utf8');
 const delivery=fs.readFileSync('modules/store/delivery.js','utf8');
-const courier=fs.readFileSync('modules/courier/dashboard.js','utf8');
+const courierCore=fs.readFileSync('modules/courier/core.js','utf8');
+const courierDashboard=fs.readFileSync('modules/courier/dashboard.js','utf8');
+const courier=courierCore+'\n;\n'+courierDashboard;
 const adminOrders=fs.readFileSync('modules/admin/orders.js','utf8');
 
 const failures=[];

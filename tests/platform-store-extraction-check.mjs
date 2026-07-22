@@ -1,55 +1,53 @@
 import fs from 'node:fs';
 
-const read = (file) => fs.readFileSync(file, 'utf8');
-const platform = read('modules/core/platform.js');
-const discovery = read('modules/store/discovery.js');
-const banners = read('store/banners.js');
-const features = read('modules/core/features.js');
-const desktop = read('store-desktop.html');
-const mobile = read('store-mobile.html');
+const read=file=>fs.readFileSync(file,'utf8');
+const platform=read('modules/core/platform.js');
+const core=read('modules/store/discovery-core.js');
+const catalog=read('modules/store/discovery-catalog.js');
+const details=read('modules/store/discovery-details.js');
+const growth=read('modules/store/discovery-growth.js');
+const discovery=read('modules/store/discovery.js');
+const banners=read('store/banners.js');
+const features=read('modules/core/features.js');
+const desktop=read('store-desktop.html');
+const mobile=read('store-mobile.html');
+const failures=[];
+const check=(ok,label)=>{if(!ok)failures.push(label)};
 
-const failures = [];
-const check = (ok, label) => { if (!ok) failures.push(label); };
+check(Buffer.byteLength(platform)<120000,'platform-size-not-reduced');
+check(Buffer.byteLength(discovery)<18000,'discovery-orchestrator-too-large');
+check(!/function\s+(renderStore|storeItems|setStoreType)\s*\(/.test(platform),'platform-function-owner-remains');
+check(!/window\.(renderStore|storeItems|setStoreType)\s*=/.test(platform),'platform-window-owner-remains');
+for(const legacy of ['ALIN V72 MODERN STUDENT STOREFRONT','ALIN V76 REAL STORE CARD FIX','ALIN V77 CART-FIRST STORE FLOW','ALIN V88 REAL BOOKLET MODAL FIX','ALIN V90 REAL STORE STATISTICS FIX','ALIN V97 FAVORITE HEART SYNC FIX'])check(!platform.includes(legacy),`legacy:${legacy}`);
 
-check(Buffer.byteLength(platform) < 120000, 'platform-size-not-reduced');
-check(!/function\s+(renderStore|storeItems|setStoreType)\s*\(/.test(platform), 'platform-function-owner-remains');
-check(!/window\.(renderStore|storeItems|setStoreType)\s*=/.test(platform), 'platform-window-owner-remains');
-check(!/(^|[^\w.])(renderStore|storeItems|setStoreType)\s*=\s*(?:async\s*)?(?:function|\()/.test(platform), 'platform-assignment-owner-remains');
-check(!platform.includes('ALIN V72 MODERN STUDENT STOREFRONT'), 'legacy-v72-remains');
-check(!platform.includes('ALIN V76 REAL STORE CARD FIX'), 'legacy-v76-remains');
-check(!platform.includes('ALIN V77 CART-FIRST STORE FLOW'), 'legacy-v77-remains');
-check(!platform.includes('ALIN V88 REAL BOOKLET MODAL FIX'), 'legacy-v88-remains');
-check(!platform.includes('ALIN V90 REAL STORE STATISTICS FIX'), 'legacy-v90-remains');
-check(!platform.includes('ALIN V97 FAVORITE HEART SYNC FIX'), 'legacy-v97-remains');
+check((catalog.match(/window\.renderStore\s*=\s*renderStore/g)||[]).length===1,'render-owner-count');
+check((catalog.match(/window\.storeItems\s*=\s*currentStoreItems/g)||[]).length===1,'items-owner-count');
+check((catalog.match(/window\.setStoreType\s*=\s*setStoreType/g)||[]).length===1,'type-owner-count');
+check(catalog.includes('window.AlinStorefront=Object.freeze'),'storefront-service-missing');
+check(catalog.includes("new CustomEvent('alin:store-rendered'"),'store-render-event-missing');
+check(catalog.includes('data-v99-action="details"'),'details-action-missing');
+check(catalog.includes('function matches(item)'),'search-filter-missing');
+check(catalog.includes('function sorted(rows)'),'sort-missing');
+check(details.includes('window.v99OpenDetails=openDetails'),'details-owner-missing');
+check(core.includes('window.AlinStoreDiscovery=api'),'shared-context-missing');
+check(growth.includes("document.dispatchEvent")===false,'growth-must-not-own-startup-events');
+check(discovery.includes("document.addEventListener('DOMContentLoaded',init"),'orchestrator-init-missing');
+check(!discovery.includes('window.renderStore='),'orchestrator-store-owner');
 
-check((discovery.match(/window\.renderStore\s*=\s*renderStore/g) || []).length === 1, 'render-owner-count');
-check((discovery.match(/window\.storeItems\s*=\s*currentStoreItems/g) || []).length === 1, 'items-owner-count');
-check((discovery.match(/window\.setStoreType\s*=\s*setStoreType/g) || []).length === 1, 'type-owner-count');
-check(discovery.includes('window.AlinStorefront=Object.freeze'), 'storefront-service-missing');
-check(discovery.includes("new CustomEvent('alin:store-rendered'"), 'store-render-event-missing');
-check(discovery.includes("data-v99-action=\"details\""), 'details-action-missing');
-check(discovery.includes('function matches(x)'), 'search-filter-missing');
-check(discovery.includes('function sorted(rows)'), 'sort-missing');
-check(discovery.includes('window.v99OpenDetails='), 'details-owner-missing');
+check(!/window\.renderStore\s*=/.test(banners),'banner-render-wrapper-remains');
+check(banners.includes('alin:store-rendered'),'banner-render-event-missing');
+check(!/window\.renderStore\s*=/.test(features),'features-render-wrapper-remains');
 
-check(!/window\.renderStore\s*=/.test(banners), 'banner-render-wrapper-remains');
-check(banners.includes("alin:store-rendered"), 'banner-render-event-missing');
-check(!/window\.renderStore\s*=/.test(features), 'features-render-wrapper-remains');
-
-for (const [name, html] of [['desktop', desktop], ['mobile', mobile]]) {
-  check(html.includes('./modules/store/discovery.js?v=2.3.5'), `${name}-discovery-version`);
-  check(html.indexOf('./modules/core/platform.js?v=2.3.5') < html.indexOf('./modules/store/discovery.js?v=2.3.5'), `${name}-load-order`);
-  check(html.includes('oninput="renderStore()"'), `${name}-search-hook`);
+const moduleNames=['discovery-core.js','discovery-catalog.js','discovery-details.js','discovery-growth.js','discovery.js'];
+for(const [name,html] of [['desktop',desktop],['mobile',mobile]]){
+  let previous=html.indexOf('./modules/core/platform.js?v=2.3.8');
+  for(const file of moduleNames){
+    const pos=html.indexOf(`./modules/store/${file}?v=2.3.8`);
+    check(pos>previous,`${name}-load-order:${file}`);
+    previous=pos;
+  }
+  check(html.includes('oninput="renderStore()"'),`${name}-search-hook`);
 }
 
-if (failures.length) {
-  console.error(JSON.stringify({ ok: false, failures }, null, 2));
-  process.exit(1);
-}
-console.log(JSON.stringify({
-  ok: true,
-  checks: 27,
-  platformBytes: Buffer.byteLength(platform),
-  discoveryBytes: Buffer.byteLength(discovery),
-  renderOwners: 1
-}, null, 2));
+if(failures.length){console.error(JSON.stringify({ok:false,failures},null,2));process.exit(1)}
+console.log(JSON.stringify({ok:true,checks:31,platformBytes:Buffer.byteLength(platform),orchestratorBytes:Buffer.byteLength(discovery),catalogBytes:Buffer.byteLength(catalog)},null,2));

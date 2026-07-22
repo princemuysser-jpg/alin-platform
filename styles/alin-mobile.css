@@ -100,7 +100,7 @@ body.store-mobile .store-real-stats>div:last-child{border-left:0!important}
   body.store-mobile .store-real-stats small{font-size:10px!important}
 }
 
-/* ALIN v2.3.5 — compact mobile checkout with always-visible confirmation. */
+/* ALIN v2.3.8 — compact mobile checkout with always-visible confirmation. */
 body.store-mobile.alin-cart-open{overflow:hidden!important}
 body.store-mobile.alin-cart-open .alin-mobile-bottom-v103{display:none!important}
 body.store-mobile.alin-cart-open #checkoutModal{
@@ -167,7 +167,7 @@ body.store-mobile.alin-cart-open #checkoutBox .alin-delivery-options label{min-h
 body.store-mobile.alin-cart-open #checkoutBox .v162-gps-box{margin-top:8px!important;padding:10px!important;border-radius:13px!important}
 
 
-/* ALIN v2.3.5 — clear mobile options icon. */
+/* ALIN v2.3.8 — clear mobile options icon. */
 body.store-mobile .alin-mobile-bottom-v103 [data-mobile-control="account"] .mobile-account-icon{display:none!important}
 body.store-mobile .alin-mobile-bottom-v103 [data-mobile-control="account"] .mobile-options-icon{
   width:29px;height:29px;display:grid;place-items:center;color:currentColor

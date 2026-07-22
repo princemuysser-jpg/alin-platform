@@ -1,4 +1,4 @@
-const VERSION='alin-v2.3.5-brand-identity-calm-templates';
+const VERSION='alin-v2.3.8-courier-modularized';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[
@@ -8,6 +8,8 @@ const CORE=[
   './styles/alin-tokens.css','./styles/alin-shared.css','./styles/alin-i18n.css','./styles/alin-desktop.css','./styles/alin-mobile.css','./styles/alin-branding.css',
   './dist/js/landing.bundle.js',
   './modules/core/config.js',
+  './modules/core/i18n-en.js',
+  './modules/core/i18n-ku.js',
   './modules/core/i18n.js',
   './modules/core/ui.js',
   './modules/core/platform.js',
@@ -19,6 +21,10 @@ const CORE=[
   './modules/admin/shell.js',
   './modules/admin/accounts.js',
   './modules/core/features.js',
+  './modules/store/discovery-core.js',
+  './modules/store/discovery-catalog.js',
+  './modules/store/discovery-details.js',
+  './modules/store/discovery-growth.js',
   './modules/store/discovery.js',
   './modules/store/cart.js',
   './modules/store/student-auth.js',
@@ -46,6 +52,10 @@ const CORE=[
   './modules/admin/settings.js',
   './modules/admin/notifications.js',
   './modules/admin/couriers.js',
+  './modules/courier/core.js',
+  './modules/courier/admin.js',
+  './modules/courier/areas.js',
+  './modules/courier/assignment.js',
   './modules/courier/dashboard.js',
   './modules/courier/finance.js',
   './modules/core/security.js',

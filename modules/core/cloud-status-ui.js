@@ -385,6 +385,7 @@
       const normalized=status==='delivered'?'completed':status;
       const reached=steps.indexOf(normalized);
       box.innerHTML=`<b>${clean(data.order_number)} — ${clean(data.title||'طلب منصة آلين')}</b>${data.ready_eta?`<br><small>الجاهزية المتوقعة: ${clean(data.ready_eta)}</small>`:''}<div class="timeline v31">${steps.map((step,index)=>`<span class="${index<=Math.max(0,reached)?'done':''}">${labels[step]}</span>`).join('')}</div>`;
+      document.dispatchEvent(new CustomEvent('alin:tracking-rendered',{detail:{code,data,status:normalized}}));
     }catch(error){
       console.error('[ALIN tracking]',error);
       box.textContent='تعذر التحقق الآن. أعد المحاولة بعد قليل.';

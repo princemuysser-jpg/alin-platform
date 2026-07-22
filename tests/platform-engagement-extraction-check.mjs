@@ -11,7 +11,7 @@ const adminNotifications=read('modules/admin/notifications.js');
 const storeNotifications=read('store/notifications.js');
 const banners=read('store/banners.js');
 const features=read('modules/core/features.js');
-const discovery=read('modules/store/discovery.js');
+const discovery=read('modules/store/discovery-core.js');
 const teacher=read('modules/teacher/notifications.js');
 const library=read('modules/library/dashboard.js');
 const courier=read('modules/courier/dashboard.js');
@@ -66,8 +66,8 @@ check(!all.includes('modules/admin/marketing.js'),'retired marketing not loaded'
 check(all.indexOf('modules/core/notifications.js')<all.indexOf('modules/admin/notifications.js'),'service before admin notifications');
 check(all.indexOf('modules/core/notifications.js')<all.indexOf('modules/teacher/notifications.js'),'service before teacher notifications');
 for(const [name,html] of [['desktop',desktop],['mobile',mobile]]){
-  check((html.match(/\.\/store\/banners\.js\?v=2\.3\.5/g)||[]).length===1,`${name} banner loaded once`);
-  check((html.match(/\.\/modules\/core\/notifications\.js\?v=2\.3\.5/g)||[]).length===1,`${name} service loaded once`);
+  check((html.match(/\.\/store\/banners\.js\?v=2\.3\.8/g)||[]).length===1,`${name} banner loaded once`);
+  check((html.match(/\.\/modules\/core\/notifications\.js\?v=2\.3\.8/g)||[]).length===1,`${name} service loaded once`);
   check(!html.includes('modules/admin/marketing.js'),`${name} retired marketing absent`);
   check(html.includes('AlinStoreNotifications?.open?.()'),`${name} notification control direct`);
 }

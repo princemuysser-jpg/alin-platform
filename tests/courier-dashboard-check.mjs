@@ -1,9 +1,10 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-const source=fs.readFileSync('modules/courier/dashboard.js','utf8');
-const marker='/* ALIN v2.1.8 — direct courier workflow with database-backed assignment timestamps and valid statuses. */';
-const code=source.slice(source.indexOf(marker));
+const coreSource=fs.readFileSync('modules/courier/core.js','utf8');
+const dashboardSource=fs.readFileSync('modules/courier/dashboard.js','utf8');
+const source=coreSource+'\n;\n'+dashboardSource;
+const code=source;
 const failures=[];
 const assert=(ok,msg)=>{if(!ok)failures.push(msg)};
 
