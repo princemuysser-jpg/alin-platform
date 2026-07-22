@@ -330,7 +330,8 @@ commit;
 -- v2.1.0: إنشاء الطلبات من الخادم بدلاً من الكتابة المباشرة
 -- ============================================================
 begin;
-create extension if not exists pgcrypto;
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
 create or replace function public.alin_create_store_orders(
   p_items jsonb,
@@ -1535,7 +1536,8 @@ order by created_at desc;
 
 begin;
 
-create extension if not exists pgcrypto;
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
 -- ------------------------------------------------------------
 -- 1) أعمدة حالة المكتبة
@@ -2303,7 +2305,8 @@ select
 -- آمن للتنفيذ أكثر من مرة، ولا يحذف الطلبات أو المنتجات أو الملازم.
 
 begin;
-create extension if not exists pgcrypto;
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
 -- أعمدة الطلب التي تحتاجها النسخة الحالية. الإضافة فقط عند غياب العمود.
 alter table public.orders add column if not exists payment_method text;
@@ -2813,7 +2816,8 @@ select
 -- آمن للتنفيذ أكثر من مرة. لا يحذف الطلبات أو المنتجات الحالية.
 
 begin;
-create extension if not exists pgcrypto;
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
 -- معلومات الربط بين الطلب ومحاولة الدفع/الشراء.
 alter table public.orders add column if not exists checkout_request_key text;
@@ -2932,7 +2936,7 @@ create or replace function public.alin_create_store_orders_guarded(
 returns table(order_number text,order_id text)
 language plpgsql
 security definer
-set search_path=public,pg_temp
+set search_path=public,extensions,pg_temp
 as $$
 declare
   v_request_key text:=lower(btrim(coalesce(p_request_key,'')));

@@ -3,7 +3,8 @@
 -- آمن للتنفيذ أكثر من مرة. لا يحذف الطلبات أو المنتجات الحالية.
 
 begin;
-create extension if not exists pgcrypto;
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
 -- معلومات الربط بين الطلب ومحاولة الدفع/الشراء.
 alter table public.orders add column if not exists checkout_request_key text;
@@ -122,7 +123,7 @@ create or replace function public.alin_create_store_orders_guarded(
 returns table(order_number text,order_id text)
 language plpgsql
 security definer
-set search_path=public,pg_temp
+set search_path=public,extensions,pg_temp
 as $$
 declare
   v_request_key text:=lower(btrim(coalesce(p_request_key,'')));
