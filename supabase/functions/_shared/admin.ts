@@ -1,15 +1,26 @@
-import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.110.7';
 
 export type AdminContext = {
   admin: SupabaseClient;
-  caller: { id: string; accountId: string };
+  caller: { id: string; accountId: string; adminLevel: string };
 };
 
-const OPTIONAL_ACCOUNT_FIELDS = new Set(['phone', 'notes', 'updated_at', 'landmark', 'area']);
+const OPTIONAL_ACCOUNT_FIELDS = new Set(['phone', 'notes', 'updated_at', 'landmark', 'area', 'deleted_at', 'admin_level']);
 const OPTIONAL_COURIER_FIELDS = new Set(['phone', 'username', 'areas', 'area', 'availability', 'work_status', 'updated_at', 'created_at']);
 
 export function cleanText(value: unknown, max = 160): string {
   return String(value ?? '').trim().slice(0, max);
+}
+
+
+export function assertStrongPassword(password: string): void {
+  if (password.length < 12 || !/[0-9]/.test(password) || !/[A-Za-z؀-ۿ]/.test(password)) {
+    throw new Error('كلمة المرور يجب أن تكون 12 حرفاً على الأقل وتتضمن حروفاً وأرقاماً');
+  }
+}
+
+export function requireSuperAdmin(context: AdminContext): void {
+  if (context.caller.adminLevel !== 'super_admin') throw new Error('هذه العملية تتطلب صلاحية المدير الأعلى');
 }
 
 export function normalizeUsername(value: unknown): string {
@@ -96,7 +107,7 @@ export async function ensureAuthUserForAccount(
   const name = cleanText(input.name, 120);
   const role = cleanText(input.role, 30);
   if (!accountId || !username || !name) throw new Error('بيانات الحساب غير مكتملة');
-  if (password.length < 8) throw new Error('كلمة المرور يجب أن تكون 8 أحرف أو أرقام على الأقل');
+  assertStrongPassword(password);
 
   const email = emailForUsername(username);
   const updatePayload = {
@@ -143,7 +154,7 @@ export function makeAccountId(role: string): string {
   return `${prefix[role] || 'U'}${crypto.randomUUID().replaceAll('-', '').slice(0, 22)}`;
 }
 
-export async function requireAdmin(req: Request): Promise<AdminContext> {
+export async function requireAdmin(req: Request, permission = ''): Promise<AdminContext> {
   const url = Deno.env.get('SUPABASE_URL');
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   if (!url || !serviceKey) throw new Error('إعدادات Supabase السرية غير متوفرة داخل Edge Function');
@@ -161,15 +172,28 @@ export async function requireAdmin(req: Request): Promise<AdminContext> {
 
   const { data: account, error: accountError } = await admin
     .from('accounts')
-    .select('id,role,status')
+.select('id,role,status,admin_level,deleted_at')
     .eq('auth_user_id', userData.user.id)
     .maybeSingle();
   if (accountError) throw accountError;
-  if (!account || account.role !== 'admin' || account.status !== 'active') {
+  if (!account || account.role !== 'admin' || account.status !== 'active' || account.deleted_at) {
     throw new Error('هذه العملية مسموحة للمدير فقط');
   }
 
-  return { admin, caller: { id: userData.user.id, accountId: String(account.id) } };
+  const context = { admin, caller: { id: userData.user.id, accountId: String(account.id), adminLevel: String(account.admin_level || 'operator') } };
+  const requested = cleanText(permission, 40).toLowerCase();
+  if (requested && context.caller.adminLevel !== 'super_admin') {
+    const { data: allowed, error: permissionError } = await admin
+      .from('account_permissions')
+      .select('permission')
+      .eq('account_id', context.caller.accountId)
+      .eq('permission', requested)
+      .eq('granted', true)
+      .maybeSingle();
+    if (permissionError) throw permissionError;
+    if (!allowed) throw new Error('لا تملك صلاحية تنفيذ هذه العملية');
+  }
+  return context;
 }
 
 function missingColumn(error: { message?: string } | null): string | null {

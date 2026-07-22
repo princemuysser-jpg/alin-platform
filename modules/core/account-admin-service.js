@@ -4,6 +4,7 @@
   'use strict';
   const runtime=()=>window.ALINAuthRuntime||{};
   const client=()=>runtime().client?.()||window.sb||window.AlinCloud?.client?.()||null;
+  const strongPassword=value=>String(value||'').length>=12&&/[0-9]/.test(value)&&/[A-Za-z\u0600-\u06FF]/.test(value);
   const invokeAdmin=(name,body)=>{
     const invoke=runtime().invokeAdmin;
     if(typeof invoke!=='function')throw new Error('خدمة إدارة الحسابات غير جاهزة');
@@ -11,7 +12,7 @@
   };
   async function createAccount(payload){
     if(!payload?.name||!payload?.username||!payload?.password)throw new Error('أكمل الاسم واسم الدخول وكلمة المرور');
-    if(String(payload.password).length<8)throw new Error('كلمة المرور يجب أن تكون 8 أحرف أو أرقام على الأقل');
+    if(!strongPassword(payload.password))throw new Error('كلمة المرور يجب أن تكون 12 حرفاً على الأقل وتتضمن حروفاً وأرقاماً');
     const data=await invokeAdmin('admin-create-account',payload);
     if(typeof load==='function')await load();
     return data.account;
@@ -60,7 +61,7 @@
     return data.account;
   }
   async function resetPasswordFromAdmin(accountId,password){
-    if(String(password||'').length<8)throw new Error('كلمة المرور يجب أن تكون 8 أحرف أو أرقام على الأقل');
+    if(!strongPassword(password))throw new Error('كلمة المرور يجب أن تكون 12 حرفاً على الأقل وتتضمن حروفاً وأرقاماً');
     await repairAuthLink(accountId);
     return invokeAdmin('admin-reset-password',{account_id:accountId,password});
   }

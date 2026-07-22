@@ -1,5 +1,5 @@
 // === library/orders.js ===
-/* ALIN v2.4.2 R6 — atomic library workflow and finance RPC. */
+/* ALIN v2.8.0 Stage 5 — atomic library workflow and finance RPC. */
 (function(){
   'use strict';
   const modules=window.AlinLibraryModules=window.AlinLibraryModules||{};
@@ -33,8 +33,8 @@
   }
   function serviceError(error){
     const message=String(error?.message||error||'').trim();
-    if(/alin_library_set_order_status|function .* does not exist|schema cache/i.test(message)){
-      return new Error('خدمة طلبات المكتبة غير محدثة. نفّذ ملف LIBRARY_FINANCE_STATUS_FIX_v2_4_2_R6.sql ثم حدّث الصفحة.');
+    if(/alin_order_transition_atomic|function .* does not exist|schema cache/i.test(message)){
+      return new Error('خدمة الطلبات والحسابات غير محدثة. نفّذ ملف المرحلة الخامسة ثم حدّث الصفحة.');
     }
     return error instanceof Error?error:new Error(message||'تعذر تحديث الطلب');
   }

@@ -1,7 +1,0 @@
-{
-  "version": "2.7.1-pgcrypto-digest-hotfix",
-  "tested_at_utc": "2026-07-22T20:25:29.508774+00:00",
-  "npm_test": "passed",
-  "pgcrypto_hotfix_checks": "6/6 passed",
-  "notes": "Guarded checkout search_path now includes extensions schema so pgcrypto digest() resolves in Supabase."
-}

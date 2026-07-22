@@ -1,17 +1,18 @@
-import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
-import { cleanText, ensureAuthUserForAccount, removeLegacyPassword, requireAdmin } from '../_shared/admin.ts';
+import { corsHeaders, jsonResponse, publicError } from '../_shared/cors.ts';
+import { cleanText, ensureAuthUserForAccount, removeLegacyPassword, requireAdmin, assertStrongPassword, requireSuperAdmin } from '../_shared/admin.ts';
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (req.method !== 'POST') return jsonResponse({ ok: false, error: 'الطريقة غير مسموحة' }, 405);
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) });
+  if (req.method !== 'POST') return jsonResponse(req, { ok: false, error: 'الطريقة غير مسموحة' }, 405);
 
   try {
-    const { admin } = await requireAdmin(req);
+    const context = await requireAdmin(req, 'accounts');
+    const { admin } = context;
     const body = await req.json();
     const accountId = cleanText(body.account_id, 80);
     const password = String(body.password || '');
     if (!accountId) throw new Error('معرّف الحساب مطلوب');
-    if (password.length < 8) throw new Error('كلمة المرور يجب أن تكون 8 أحرف أو أرقام على الأقل');
+    assertStrongPassword(password);
 
     const { data: account, error } = await admin
       .from('accounts')
@@ -20,6 +21,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     if (error) throw error;
     if (!account) throw new Error('الحساب غير موجود');
+    if (account.role === 'admin') requireSuperAdmin(context);
 
     const resolved = await ensureAuthUserForAccount(admin, {
       accountId,
@@ -42,8 +44,8 @@ Deno.serve(async (req: Request) => {
     }
     await removeLegacyPassword(admin, 'accounts', accountId);
     await removeLegacyPassword(admin, 'couriers', accountId);
-    return jsonResponse({ ok: true });
+    return jsonResponse(req, { ok: true });
   } catch (error) {
-    return jsonResponse({ ok: false, error: error instanceof Error ? error.message : 'تعذر تغيير كلمة المرور' }, 400);
+    return jsonResponse(req, { ok: false, error: publicError(error, 'تعذر تغيير كلمة المرور') }, 400);
   }
 });

@@ -1,4 +1,4 @@
-/* ALIN v2.4.2 — Supabase authentication, session restore and login attempt protection. */
+/* ALIN v3.0.0 — Supabase authentication with server-side attempt protection. */
 (function(){
   'use strict';
   const ATTEMPT_KEY='alin_auth_attempts_v139',MAX_ATTEMPTS=5,LOCK_MS=10*60*1000;
@@ -14,6 +14,20 @@
     return `${key}@${cfg().authEmailDomain||'users.alin.local'}`;
   };
   const msg=text=>{const el=window.loginMsg||document.getElementById('loginMsg');if(el)el.textContent=text};
+  const DEVICE_KEY='alin_device_id_v3';
+  function deviceId(){
+    try{let value=localStorage.getItem(DEVICE_KEY);if(!value){value=crypto.randomUUID?.()||`${Date.now()}-${Math.random()}`;localStorage.setItem(DEVICE_KEY,value)}return value}
+    catch(_){return 'browser-session'}
+  }
+  async function secureSignIn(username,password){
+    const c=client();if(!c?.functions||!c?.auth)throw new Error('خدمة تسجيل الدخول الآمنة غير متاحة');
+    const {data,error}=await c.functions.invoke('secure-login',{body:{username:String(username||''),password:String(password||''),device_id:deviceId()}});
+    if(error){let message=error.message||'تعذر تسجيل الدخول';try{message=(await error.context?.json())?.error||message}catch(_){}throw new Error(message)}
+    if(!data?.ok||!data?.session?.access_token||!data?.session?.refresh_token)throw new Error(data?.error||'تعذر تسجيل الدخول');
+    const applied=await c.auth.setSession({access_token:data.session.access_token,refresh_token:data.session.refresh_token});
+    if(applied?.error||!applied?.data?.user)throw applied?.error||new Error('تعذر تثبيت جلسة الدخول');
+    return applied.data;
+  }
   const readAttempts=()=>{try{return JSON.parse(localStorage.getItem(ATTEMPT_KEY)||'{}')}catch(_){return{}}};
   const writeAttempts=x=>{try{localStorage.setItem(ATTEMPT_KEY,JSON.stringify(x))}catch(_){}};
   const attemptId=(role,user)=>`${String(role||'').toLowerCase()}:${String(user||'').trim().toLowerCase()}`;
@@ -51,7 +65,7 @@
 
   async function accountForUser(user){
     const c=client();if(!c||!user)return null;
-    const {data,error}=await c.from('accounts').select('id,role,name,username,status,auth_user_id,area,phone,landmark').eq('auth_user_id',user.id).maybeSingle();
+    const {data,error}=await c.from('accounts').select('id,role,name,username,status,auth_user_id,area,phone,landmark,admin_level,deleted_at').eq('auth_user_id',user.id).maybeSingle();
     if(error)throw error;
     return data||null;
   }
@@ -64,8 +78,8 @@
     if(!username.trim()||!password)throw new Error('اكتب اسم الدخول وكلمة المرور');
     const left=lockRemaining(requested,username);
     if(left>0)throw new Error(`تم إيقاف المحاولات مؤقتاً. حاول بعد ${Math.ceil(left/60000)} دقيقة`);
-    const {data,error}=await c.auth.signInWithPassword({email:emailFor(username),password});
-    if(error){const state=failAttempt(requested,username);const remain=Math.max(0,MAX_ATTEMPTS-state.count);throw new Error(state.lockedUntil>Date.now()?'تم إيقاف المحاولات لمدة 10 دقائق بسبب تكرار الخطأ':`بيانات الدخول غير صحيحة. المحاولات المتبقية: ${remain}`)}
+    let data;
+    try{data=await secureSignIn(username,password)}catch(error){const state=failAttempt(requested,username);throw new Error(error?.message||(state.lockedUntil>Date.now()?'تم إيقاف المحاولات مؤقتاً':'بيانات الدخول غير صحيحة'))}
     const account=await accountForUser(data.user);
     if(!account||account.status!=='active'){
       await c.auth.signOut();failAttempt(requested,username);throw new Error('الحساب غير مربوط أو غير فعال');
@@ -74,7 +88,7 @@
       await c.auth.signOut();failAttempt(requested,username);throw new Error('نوع الحساب لا يطابق البوابة المختارة');
     }
     clearAttempts(requested,username);
-    window.current={role:account.role,id:account.id,name:account.name,username:account.username,auth_user_id:data.user.id,area:account.area||'',phone:account.phone||'',landmark:account.landmark||''};
+    window.current={role:account.role,id:account.id,name:account.name,username:account.username,auth_user_id:data.user.id,area:account.area||'',phone:account.phone||'',landmark:account.landmark||'',admin_level:account.admin_level||'operator'};
     if(typeof window.load==='function')await window.load();
     const targetPage=account.role==='accountant'?'admin':account.role;
     if(typeof window.openPage==='function')window.openPage(targetPage,{render:false});
@@ -95,7 +109,7 @@
     document.getElementById('login')?.classList.remove('hidden');
   }
   function accountState(account,user){
-    return {role:account.role,id:account.id,name:account.name,username:account.username,auth_user_id:user.id,area:account.area||'',phone:account.phone||'',landmark:account.landmark||''};
+    return {role:account.role,id:account.id,name:account.name,username:account.username,auth_user_id:user.id,area:account.area||'',phone:account.phone||'',landmark:account.landmark||'',admin_level:account.admin_level||'operator'};
   }
   async function openPublicStore(){
     try{window.AlinCloud?.loadCachedSnapshot?.()}catch(_){}
@@ -146,6 +160,7 @@
     logoutPromise=(async()=>{
       explicitSignOut=true;
       try{await client()?.auth?.signOut()}finally{explicitSignOut=false}
+      try{window.AlinCloud?.clearPrivateCache?.()}catch(_){}
       finishAuthBoot();
       return true;
     })().finally(()=>{logoutPromise=null});
@@ -162,7 +177,7 @@
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 
-  window.ALINAuthRuntime=Object.freeze({client,invokeAdmin,adminSession,finishAuthBoot,showSignedOut});
+  window.ALINAuthRuntime=Object.freeze({client,invokeAdmin,adminSession,finishAuthBoot,showSignedOut,deviceId,secureSignIn});
   window.ALINAuth=Object.assign(window.ALINAuth||{},{
     enabled,emailFor,login,loginFromUI,signOut,restoreSession,accountForUser,
     ensureAdminSession:()=>adminSession(false)

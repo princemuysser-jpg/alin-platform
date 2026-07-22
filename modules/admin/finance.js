@@ -28,13 +28,14 @@
   function balanceCards(){
     return parties().map(p=>{
       const summary=finance()?.partySummary?.(p.role,p.id)||{earned:0,paid:0,remaining:0};
-      const debt=p.role==='library'?(summary.debt||finance()?.librarySummary?.(p.id)):null;
+      const libraryDebt=p.role==='library'?(summary.debt||finance()?.librarySummary?.(p.id)):null;
+      const delegateDebt=p.role==='delegate'?(finance()?.delegateSummary?.(p.id)||summary):null;
+      const payoutRole=['admin','teacher'].includes(p.role);
       return `<article class="admin-v137-party-card" data-role="${escv(p.role)}" data-search="${escv(`${p.name||''} ${p.label}`.toLowerCase())}">
-        <div><b>${escv(p.name||p.label)}</b><small>${escv(p.label)} — الإجمالي ${moneyv(summary.earned)} د.ع</small></div>
-        <div class="admin-v137-party-values"><span>المسدد <b>${moneyv(summary.paid)}</b></span><span class="remain">المتبقي <b>${moneyv(summary.remaining)}</b></span>
-          ${summary.remaining>0?`<button onclick="AlinFinance.payBalance('${escv(p.role)}','${escv(p.id)}')">${p.role==='admin'?'استلام الربح':'تسديد الأرباح'}</button>`:'<em>مصفّى</em>'}
-        </div>
-        ${debt?`<div class="admin-v223-library-debt"><span>ذمة المكتبة للإدارة <b>${moneyv(debt.remaining)} د.ع</b></span>${debt.remaining>0?`<button class="secondary" onclick="AlinFinance.settleLibrary('${escv(p.id)}')">تثبيت التسوية</button>`:'<em>الذمة مصفّاة</em>'}</div>`:''}
+        <div><b>${escv(p.name||p.label)}</b><small>${escv(p.label)} — الإجمالي ${moneyv(summary.earned||summary.earnings)} د.ع</small></div>
+        ${payoutRole?`<div class="admin-v137-party-values"><span>المسدد <b>${moneyv(summary.paid)}</b></span><span class="remain">المتبقي <b>${moneyv(summary.remaining)}</b></span>${summary.remaining>0?`<button onclick="AlinFinance.payBalance('${escv(p.role)}','${escv(p.id)}')">${p.role==='admin'?'استلام الربح':'تسديد الأرباح'}</button>`:'<em>مصفّى</em>'}</div>`:''}
+        ${libraryDebt?`<div class="admin-v223-library-debt"><span>ربح المكتبة <b>${moneyv(libraryDebt.libraryProfit)} د.ع</b> • ذمتها للإدارة <b>${moneyv(libraryDebt.remaining)} د.ع</b></span>${libraryDebt.remaining>0?`<button class="secondary" onclick="AlinFinance.settleLibrary('${escv(p.id)}')">تثبيت التسوية</button>`:'<em>الذمة مصفّاة</em>'}</div>`:''}
+        ${delegateDebt?`<div class="admin-v223-library-debt"><span>ربح المندوب <b>${moneyv(delegateDebt.earnings||delegateDebt.earned)} د.ع</b> • ذمته للإدارة <b>${moneyv(delegateDebt.debt||delegateDebt.remaining)} د.ع</b></span>${(delegateDebt.debt||delegateDebt.remaining)>0?`<button class="secondary" onclick="AlinFinance.settleDelegate('${escv(p.id)}')">تثبيت تسوية المندوب</button>`:'<em>الذمة مصفّاة</em>'}</div>`:''}
       </article>`;
     }).join('');
   }
@@ -47,9 +48,11 @@
   function settlementRows(){
     const payouts=finance()?.payoutRows?.()||[];
     const librarySettlements=arr(database().library_settlements).length?arr(database().library_settlements):arr(database().librarySettlements);
+    const delegateSettlements=arr(database().delegate_settlements).length?arr(database().delegate_settlements):arr(database().courierSettlements);
     const rows=[
       ...payouts.map(row=>({kind:'payout',id:row.id||row.voucher_number,number:row.voucher_number||row.id,name:row.party_name||finance()?.partyName?.(row.party_role,row.party_id),amount:row.amount,method:row.payment_method,status:row.status,created_at:row.created_at})),
-      ...librarySettlements.map(row=>({kind:'library',id:row.id||row.receipt_number,number:row.receipt_number||row.id,name:finance()?.partyName?.('library',row.library_id),amount:row.amount,method:row.payment_method,status:row.status,created_at:row.created_at}))
+      ...librarySettlements.map(row=>({kind:'library',id:row.id||row.receipt_number,number:row.receipt_number||row.id,name:finance()?.partyName?.('library',row.library_id),amount:row.amount,method:row.payment_method,status:row.status,created_at:row.created_at})),
+      ...delegateSettlements.map(row=>({kind:'delegate',id:row.id||row.receipt_number,number:row.receipt_number||row.id,name:finance()?.partyName?.('delegate',row.delegate_id||row.courier_id),amount:row.amount,method:row.payment_method,status:row.status,created_at:row.created_at}))
     ].sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
     return rows.map(row=>`<div class="admin-v137-finance-row"><div><b>${escv(row.name||row.kind)}</b><small>${escv(row.number||'')} • ${escv(String(row.created_at||'').slice(0,10))} • ${escv(row.method||'نقدي')}</small></div><div><strong>${moneyv(row.amount)} د.ع</strong><span>${escv(row.status||'')}</span></div></div>`).join('')||'<div class="empty">لا توجد سندات أو تسويات.</div>';
   }
@@ -62,7 +65,9 @@
   function renderFinanceAdmin(){
     const root=document.getElementById('adminContent');if(!root)return false;
     const t=totals();
-    const debt=arr(database().accounts?.libraries).reduce((sum,row)=>sum+num(finance()?.librarySummary?.(row.id)?.remaining),0);
+    const libraryDebt=arr(database().accounts?.libraries).reduce((sum,row)=>sum+num(finance()?.librarySummary?.(row.id)?.remaining),0);
+    const delegateDebt=arr(database().delegates||database().accounts?.couriers||database().couriers).reduce((sum,row)=>sum+num(finance()?.delegateSummary?.(row.id)?.debt),0);
+    const debt=libraryDebt+delegateDebt;
     root.innerHTML=`<section class="admin-v137-finance">
       <header class="admin-v137-finance-head"><div><h2>المالية والتسويات</h2><p>مسار مالي واحد للطلبات المسلّمة، الأرباح، ذمم المكتبات وسندات التسديد.</p></div><span class="admin-v137-finance-date">${new Date().toLocaleDateString(window.AlinI18n?.locale?.()||'ar-IQ')}</span></header>
       <section class="admin-v137-finance-metrics">
@@ -71,7 +76,7 @@
         <article class="admin-v137-finance-metric"><small>أرباح المدرسين</small><strong>${moneyv(t.teacher)} د.ع</strong></article>
         <article class="admin-v137-finance-metric"><small>أرباح المكتبات</small><strong>${moneyv(t.library)} د.ع</strong></article>
         <article class="admin-v137-finance-metric"><small>أرباح المندوبين</small><strong>${moneyv(t.delegate)} د.ع</strong></article>
-        <article class="admin-v137-finance-metric red"><small>ذمم المكتبات</small><strong>${moneyv(debt)} د.ع</strong></article>
+        <article class="admin-v137-finance-metric red"><small>ذمم المكتبات والمندوبين</small><strong>${moneyv(debt)} د.ع</strong></article>
       </section>
       <nav class="admin-v137-finance-tabs"><button class="active" data-finance-tab="balances">الأرصدة</button><button data-finance-tab="ledger">القيود</button><button data-finance-tab="settlements">السندات والتسويات</button><button data-finance-tab="withdrawals">طلبات السحب</button></nav>
       <section data-finance-panel="balances"><div class="admin-v137-finance-panel"><div class="admin-v137-finance-search"><input id="financeSearch" placeholder="ابحث باسم الحساب"><select id="financeRole"><option value="">كل الحسابات</option><option value="teacher">المدرسون</option><option value="library">المكتبات</option><option value="delegate">المندوبون</option><option value="admin">المنصة</option></select></div><div id="financeBalances" class="admin-v137-finance-list">${balanceCards()}</div></div></section>

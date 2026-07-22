@@ -112,13 +112,6 @@
       if(typeof window.load==='function')await window.load();
     }finally{busy=false}
   }
-  async function deductStockOnce(order,nextStatus){
-    if(nextStatus!=='processing'||order.kind==='booklet')return;
-    const history=arr(order.status_history);if(history.some(h=>h.status==='processing'))return;
-    const product=products().find(x=>String(x.id)===String(order.item_id));if(!product)return;
-    const next=Math.max(0,Number(product.stock||0)-Math.max(1,Number(order.qty||1)));
-    await window.update('products',{stock:next,updated_at:now()},{id:product.id});
-  }
   function statusPatch(order,status,reason=''){
     const history=[...arr(order.status_history),{status,at:now(),by:window.current?.name||window.current?.username||'المدير'}];
     const patch={status,status_history:history};
@@ -133,14 +126,12 @@
   async function changeStatus(id,status,reason=''){
     const order=orders().find(x=>String(x.id)===String(id));if(!order)return alert('الطلب غير موجود');
     try{
-      if(['processing','ready','completed','delivered'].includes(status)&&typeof window.ensureOrderFinancials==='function')await window.ensureOrderFinancials(order);
-      await deductStockOnce(order,status);
-      await updateOrder(id,statusPatch(order,status,reason));
-      if(['completed','delivered'].includes(status)&&typeof window.alinV57SettleOrder==='function')await window.alinV57SettleOrder(order);
+      if(!window.AlinFinance?.transitionOrder)throw new Error('خدمة الانتقال الذري غير جاهزة');
+      await window.AlinFinance.transitionOrder(id,status,reason);
       addHistory(id,'تغيير الحالة',`${labelOf(status)}${reason?' — '+reason:''}`);
       if(typeof window.audit==='function')await window.audit('order',`تحديث الطلب ${order.order_number||id} إلى ${status}${reason?' بسبب: '+reason:''}`);
       if((status==='completed'||status==='delivered')&&window.AlinNotifications?.send)await window.AlinNotifications.send({role:'admin',title:'طلب مسلّم',message:`تم تسليم الطلب ${order.order_number||id}`});
-      render();notify('تم تحديث حالة الطلب');
+      render();notify('تم تحديث حالة الطلب والحسابات');
     }catch(error){alert('تعذر تحديث الطلب: '+friendlyError(error))}
   }
   async function assign(id){

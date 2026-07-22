@@ -1,5 +1,5 @@
 // === core/platform.js ===
-/* ALIN v2.4.2 — small authoritative runtime core. Business features live in their own modules. */
+/* ALIN v3.0.0 — small authoritative runtime core. Business features live in their own modules. */
 (function(){
   'use strict';
 
@@ -46,9 +46,17 @@
   }
   async function audit(kind,text,meta={}){
     try{
-      const row={id:window.uid?.('A')||`A${Date.now()}`,kind,text,meta,created_at:new Date().toISOString()};
-      await window.insert('audit',row);
-    }catch(error){console.warn('[ALIN audit]',error)}
+      const client=window.sb||window.AlinCloud?.client?.();
+      if(!client||!window.current?.id)return false;
+      const entityType=String(meta?.entity_type||meta?.table||'').slice(0,80)||null;
+      const entityId=String(meta?.entity_id||meta?.id||'').slice(0,120)||null;
+      const safeMeta={...(meta||{})};delete safeMeta.entity_type;delete safeMeta.entity_id;delete safeMeta.table;delete safeMeta.id;
+      const {error}=await client.rpc('alin_audit_write',{
+        p_action:String(kind||'event').slice(0,80),p_summary:String(text||'').slice(0,1000),
+        p_meta:safeMeta,p_entity_type:entityType,p_entity_id:entityId
+      });
+      if(error)throw error;return true;
+    }catch(error){console.warn('[ALIN audit]',error);return false}
   }
   function teacherName(id){return (stateDb.accounts?.teachers||[]).find(row=>String(row.id)===String(id))?.name||''}
   function libIsOpen(library){return !(library?.is_open===false||String(library?.is_open)==='false'||String(library?.open_status||'').toLowerCase()==='closed')}
@@ -75,11 +83,11 @@
   async function seedData(){throw new Error('البيانات التجريبية معطلة في النسخة المستقرة')}
 
   Object.assign(window,{
-    ALIN_VERSION:'2.4.2',init,requireConnection,audit,renderAll,seedData,
+    ALIN_VERSION:'3.0.0',init,requireConnection,audit,renderAll,seedData,
     teacherName,libIsOpen,libStatusText,activeLibraries,alinOpenLibraries:activeLibraries,
     alinLibOpen:libIsOpen,deliveryFee,isMissingTableError,usePermit
   });
-  window.AlinRuntime=Object.freeze({version:'2.4.2',init,requireConnection,renderAll,getDb:()=>stateDb,getCurrent:()=>stateCurrent});
+  window.AlinRuntime=Object.freeze({version:'3.0.0',init,requireConnection,renderAll,getDb:()=>stateDb,getCurrent:()=>stateCurrent});
 
   /* PLATFORM STEP 1: coupons are owned by modules/store/coupons.js and modules/admin/coupons.js. */
   /* PLATFORM STEP 2: cart and order creation are owned by modules/store/cart.js and modules/store/order-routing.js. */

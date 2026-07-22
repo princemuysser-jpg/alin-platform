@@ -1,11 +1,11 @@
 // === core/supabase.js ===
-/* ALIN v2.4.2 — authoritative Supabase data service.
+/* ALIN v3.0.0 — authoritative Supabase data service.
    This file is the only owner of query/insert/update/removeRow/load and cloud snapshots.
 */
 (function(){
   'use strict';
 
-  const VERSION='2.4.2';
+  const VERSION='3.0.0';
   const TABLES=[
     'settings','accounts','delivery_areas','couriers','courier_areas','categories',
     'booklets','teacher_requests','teacher_request_versions','products','orders',
@@ -13,10 +13,10 @@
     'financial_payouts','withdrawals','library_settlements','teacher_settlements',
     'delegate_settlements','admin_settlements','notifications','banners','coupons',
     'student_profiles','product_reviews','stock_alerts','bundles','bundle_items',
-    'audit','backup_logs','system_health_logs'
+    'audit_events','notification_reads','account_permissions','backup_logs','system_health_logs'
   ];
-  const REQUIRED_TABLES=['settings','accounts','booklets','products','orders','notifications','audit'];
-  const SORTED_TABLES=new Set(['orders','notifications','audit','order_timeline','financial_entries']);
+  const REQUIRED_TABLES=['settings','accounts','booklets','products','orders','notifications','audit_events'];
+  const SORTED_TABLES=new Set(['orders','notifications','audit_events','order_timeline','financial_entries']);
   const CRITICAL_TABLES=new Set([
     'orders','order_items','order_timeline','coupons','products','ledger','financial_entries',
     'financial_payouts','withdrawals','library_settlements','teacher_settlements',
@@ -25,13 +25,14 @@
   const NO_CLIENT_ID=new Set(['settings','courier_areas']);
   const QUEUE_KEY='alin_rc5_offline_queue';
   const DEAD_QUEUE_KEY='alin_rc5_failed_queue';
-  const SNAPSHOT_KEY='alin_rc5_last_cloud_snapshot';
+  const SNAPSHOT_KEY='alin_v3_public_snapshot';
+  const SESSION_SNAPSHOT_KEY='alin_v3_session_snapshot';
   const STATUS_EVENT='alin:cloud-status';
   const REFRESH_EVENT='alin:data-refreshed';
   const MUTATION_EVENT='alin:cloud-mutation';
   const TABLE_TO_DB={
     booklets:'booklets',products:'products',categories:'categories',banners:'banners',orders:'orders',
-    permits:'permits',ledger:'ledger',withdrawals:'withdrawals',audit:'audit',couriers:'couriers',
+    permits:'permits',ledger:'ledger',withdrawals:'withdrawals',audit_events:'audit',couriers:'couriers',
     delivery_areas:'deliveryAreas',courier_areas:'courierAreas',notifications:'notifications',
     teacher_requests:'teacherRequests',teacher_request_versions:'teacherRequestVersions',
     order_items:'orderItems',order_timeline:'orderTimeline',financial_entries:'financialEntries',
@@ -39,7 +40,7 @@
     teacher_settlements:'teacherSettlements',delegate_settlements:'courierSettlements',
     admin_settlements:'adminSettlements',coupons:'coupons',student_profiles:'studentProfiles',
     product_reviews:'productReviews',stock_alerts:'stockAlerts',bundles:'bundles',bundle_items:'bundleItems',
-    backup_logs:'backupLogs',system_health_logs:'systemHealthLogs'
+    notification_reads:'notificationReads',account_permissions:'accountPermissions',backup_logs:'backupLogs',system_health_logs:'systemHealthLogs'
   };
 
   let realtimeChannel=null;
@@ -51,8 +52,15 @@
   const nowIso=()=>new Date().toISOString();
   const normalizeError=error=>error?.message||String(error||'خطأ غير معروف');
   const safeId=(prefix='ID')=>`${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2,9)}`;
-  const readJson=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||'null')??fallback}catch(_){return fallback}};
-  const writeJson=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value))}catch(_){}};
+  const readJson=(key,fallback,storage=localStorage)=>{try{return JSON.parse(storage.getItem(key)||'null')??fallback}catch(_){return fallback}};
+  const writeJson=(key,value,storage=localStorage)=>{try{storage.setItem(key,JSON.stringify(value))}catch(_){}};
+  function publicSnapshot(snapshot){
+    return {booklets:snapshot.booklets||[],products:snapshot.products||[],categories:snapshot.categories||[],banners:snapshot.banners||[],settings:snapshot.settings||{storeType:'booklet'},accounts:{all:[],teachers:snapshot.accounts?.teachers||[],libraries:snapshot.accounts?.libraries||[],couriers:[],accountants:[]},notifications:[]};
+  }
+  function persistSnapshot(snapshot){
+    if(window.current?.id){writeJson(SESSION_SNAPSHOT_KEY,{at:nowIso(),snapshot},sessionStorage);return}
+    writeJson(SNAPSHOT_KEY,{at:nowIso(),snapshot:publicSnapshot(snapshot)},localStorage);
+  }
   const readQueue=()=>readJson(QUEUE_KEY,[]);
   const writeQueue=queue=>writeJson(QUEUE_KEY,(queue||[]).slice(-500));
   const readDeadQueue=()=>readJson(DEAD_QUEUE_KEY,[]);
@@ -167,9 +175,21 @@
     const {data,error}=await c.from('alin_public_settings').select('*');
     if(error)throw error;return data||[];
   }
+  async function currentRole(){
+    try{
+      const c=client();if(!c?.auth)return '';
+      const {data:{user}}=await c.auth.getUser();if(!user)return '';
+      const {data}=await c.from('accounts').select('role').eq('auth_user_id',user.id).maybeSingle();
+      return String(data?.role||'');
+    }catch(_){return ''}
+  }
   async function fetchTable(table,options={}){
     if(table==='accounts')return selectAccountsForCurrentSession();
     if(table==='settings')return selectSettingsForCurrentSession();
+    if(table==='orders'&&await currentRole()==='teacher'){
+      const c=client();const {data,error}=await c.from('alin_teacher_orders').select('*').order('created_at',{ascending:false});
+      if(error)throw error;return data||[];
+    }
     return selectAll(table,{...options,orderBy:options.orderBy||(SORTED_TABLES.has(table)?'created_at':undefined),ascending:options.ascending??false});
   }
   async function query(table,options={}){return fetchTable(table,options)}
@@ -311,7 +331,7 @@
       window.db=snapshot;
       try{window.couriers=snapshot.couriers||snapshot.accounts?.couriers||[]}catch(_){ }
       try{window.courierSettlements=snapshot.courierSettlements||[]}catch(_){ }
-      writeJson(SNAPSHOT_KEY,{at:nowIso(),snapshot});
+      persistSnapshot(snapshot);
       lastRefreshErrors=errors;
       window.dispatchEvent(new CustomEvent(REFRESH_EVENT,{detail:{version:VERSION,errors,at:nowIso(),reason:options.reason||'load'}}));
       if(options.render!==false){try{window.renderAll?.()}catch(error){console.warn('[ALIN renderAll]',error)}}
@@ -321,10 +341,11 @@
     try{return await snapshotPromise}finally{snapshotPromise=null}
   }
   function loadCachedSnapshot(){
-    const cached=readJson(SNAPSHOT_KEY,null);
+    const cached=window.current?.id?readJson(SESSION_SNAPSHOT_KEY,null,sessionStorage):readJson(SNAPSHOT_KEY,null,localStorage);
     if(cached?.snapshot){window.db=cached.snapshot;const restored=ensureDb();restored.accounts=deriveAccounts(restored.accounts.all||[]);return syncAliases(restored)}
     return null;
   }
+  function clearPrivateCache(){try{sessionStorage.removeItem(SESSION_SNAPSHOT_KEY)}catch(_){}}
   async function refresh(options={}){const db=await loadCloudSnapshot({...options,force:options.force??true});return {db,errors:lastRefreshErrors}}
 
   async function tableExists(table){
@@ -370,12 +391,13 @@
   window.AlinCloud=Object.freeze({
     version:VERSION,client,connected,selectAll,query,insert,update,remove:removeRow,
     flushQueue,loadCloudSnapshot,loadCachedSnapshot,refresh,schemaCheck,verify,health,startRealtime,
-    queueSize:()=>readQueue().length,failedQueueSize:()=>readDeadQueue().length
+    queueSize:()=>readQueue().length,failedQueueSize:()=>readDeadQueue().length,clearPrivateCache
   });
   window.AlinRepository=Object.freeze({version:VERSION,client,online:connected,fetchTable,refresh,verify,schemaCheck,health});
 
   window.addEventListener('online',()=>{flushQueue();startRealtime();if(window.ALIN_CONFIG?.authEnabled!==true)loadCloudSnapshot({force:true,reason:'online'}).catch(()=>{})});
   window.addEventListener('offline',()=>emit('offline'));
+  window.addEventListener('alin:logout',clearPrivateCache);
   document.addEventListener('DOMContentLoaded',async()=>{
     if(!navigator.onLine)loadCachedSnapshot();
     try{

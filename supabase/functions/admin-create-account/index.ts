@@ -1,4 +1,4 @@
-import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
+import { corsHeaders, jsonResponse, publicError } from '../_shared/cors.ts';
 import {
   cleanText,
   ensureAuthUserForAccount,
@@ -7,18 +7,19 @@ import {
   normalizeUsername,
   publicAccount,
   requireAdmin,
+  assertStrongPassword,
 } from '../_shared/admin.ts';
 
 const ALLOWED_ROLES = new Set(['teacher', 'library', 'courier', 'accountant']);
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (req.method !== 'POST') return jsonResponse({ ok: false, error: 'الطريقة غير مسموحة' }, 405);
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) });
+  if (req.method !== 'POST') return jsonResponse(req, { ok: false, error: 'الطريقة غير مسموحة' }, 405);
 
   let createdUserId = '';
   let accountId = '';
   try {
-    const { admin } = await requireAdmin(req);
+    const { admin } = await requireAdmin(req, 'accounts');
     const body = await req.json();
     const role = cleanText(body.role, 30).toLowerCase();
     const name = cleanText(body.name, 120);
@@ -33,7 +34,7 @@ Deno.serve(async (req: Request) => {
       : cleanText(body.area, 120);
     if (!ALLOWED_ROLES.has(role)) throw new Error('نوع الحساب غير مدعوم');
     if (!name || !username || !password) throw new Error('أكمل الاسم واسم الدخول وكلمة المرور');
-    if (password.length < 8) throw new Error('كلمة المرور يجب أن تكون 8 أحرف أو أرقام على الأقل');
+    assertStrongPassword(password);
     if (role === 'courier' && !requestedAreas.length && !primaryArea) throw new Error('اختر منطقة عمل واحدة على الأقل للمندوب');
     if (role === 'courier' && !cleanText(body.phone, 40)) throw new Error('أدخل رقم هاتف المندوب');
 
@@ -87,18 +88,18 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    return jsonResponse({ ok: true, account: publicAccount(account) });
+    return jsonResponse(req, { ok: true, account: publicAccount(account) });
   } catch (error) {
     if (createdUserId) {
       try {
         const url = Deno.env.get('SUPABASE_URL')!;
         const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-        const { createClient } = await import('npm:@supabase/supabase-js@2');
+        const { createClient } = await import('npm:@supabase/supabase-js@2.110.7');
         const cleanup = createClient(url, serviceKey, { auth: { persistSession: false } });
         if (accountId) await cleanup.from('accounts').delete().eq('id', accountId);
         await cleanup.auth.admin.deleteUser(createdUserId);
       } catch (_) { /* best effort rollback */ }
     }
-    return jsonResponse({ ok: false, error: error instanceof Error ? error.message : 'تعذر إنشاء الحساب' }, 400);
+    return jsonResponse(req, { ok: false, error: publicError(error, 'تعذر إنشاء الحساب') }, 400);
   }
 });

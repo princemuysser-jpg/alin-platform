@@ -1,0 +1,37 @@
+
+> alin-platform@3.0.0-production-unified test
+> npm run syntax && node tests/production-unified-v3-check.mjs && node tests/sql-master-static-check.mjs && node tests/static-load-smoke.mjs && node tests/module-order-check.mjs && node tests/release-check.mjs
+
+
+> alin-platform@3.0.0-production-unified syntax
+> node tests/syntax-check.mjs
+
+{"ok":true,"files":75}
+{
+  "ok": true,
+  "version": "3.0.0",
+  "checks": 99,
+  "bundles": 3,
+  "edgeFunctions": 5
+}
+{
+  "ok": true,
+  "securityDefinerFunctions": 17,
+  "dollarQuotePairs": 27
+}
+{
+  "ok": true,
+  "requests": 300,
+  "concurrency": 50,
+  "errors": 0,
+  "bytes": 75298920,
+  "p50_ms": 39.38,
+  "p95_ms": 254.53,
+  "scope": "local-static-assets-only"
+}
+{"ok":true,"modules":66,"bytes":701836}
+{
+  "ok": true,
+  "version": "3.0.0-production-unified",
+  "required": 19
+}

@@ -32,8 +32,8 @@
   }
   async function courierOrderStatus(id,status){
     try{
-      await update('orders',workflowValues(status),{id});
-      if(typeof load==='function')await load();
+      if(!window.AlinFinance?.transitionOrder)throw new Error('خدمة الطلبات الذرية غير جاهزة');
+      await window.AlinFinance.transitionOrder(id,status);
       if(typeof renderCourierSettlementsAdmin==='function')renderCourierSettlementsAdmin();
       return true;
     }catch(error){console.error('[ALIN courier status admin]',error);notify(friendlyOrderError(error));return false}

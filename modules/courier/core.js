@@ -68,9 +68,11 @@
   function today(o){const x=o.delivered_at||o.completed_at||o.updated_at||o.created_at||'';return String(x).slice(0,10)===new Date().toISOString().slice(0,10)}
   function todayDone(c){return myOrders(c).filter(o=>done(o)&&today(o)).length}
   function financials(c){
-    const rows=myOrders(c).filter(done),collected=rows.reduce((a,o)=>a+(+o.total||0),0),earnings=rows.reduce((a,o)=>a+(+o.courier_profit||+o.delivery_fee||0),0);
+    const serverSummary=window.AlinFinance?.delegateSummary?.(c?.id);
+    if(serverSummary)return{collected:+serverSummary.collected||0,earnings:+serverSummary.earnings||+serverSummary.earned||0,paid:+serverSummary.settled||+serverSummary.paid||0,debt:+serverSummary.debt||+serverSummary.remaining||0,balance:+serverSummary.earned||0};
+    const rows=myOrders(c).filter(done),collected=rows.reduce((a,o)=>a+(+o.total||0),0),earnings=rows.reduce((a,o)=>a+(+o.delegate_profit||+o.courier_profit||0),0);
     const paid=settlements().filter(s=>String(s.courier_id||s.delegate_id||s.party_id||'')===String(c.id)&&String(s.status||'paid')!=='cancelled').reduce((a,s)=>a+(+s.amount||0),0);
-    return{collected,earnings,paid,debt:Math.max(0,collected-earnings-paid),balance:Math.max(0,earnings-paid)};
+    return{collected,earnings,paid,debt:Math.max(0,collected-earnings-paid),balance:earnings};
   }
   const ORDER_STATUSES=Object.freeze({pending:'pending',new:'new',pending_admin:'pending_admin',assigned:'assigned',accepted:'accepted',picked_up:'picked_up',out_for_delivery:'out_for_delivery',processing:'processing',ready:'ready',completed:'completed',delivered:'delivered',cancelled:'cancelled',rejected:'rejected'});
   function orderState(st){return({pending:'جديد',pending_admin:'بانتظار التعيين',assigned:'بانتظار القبول',new:'طلب جديد',accepted:'مقبول',picked_up:'تم استلام الطلب',out_for_delivery:'في الطريق',out_delivery:'في الطريق',processing:'قيد التنفيذ',ready:'جاهز',completed:'تم التسليم',delivered:'تم التسليم',cancelled:'ملغي',rejected:'مرفوض'})[st]||st||'جديد'}

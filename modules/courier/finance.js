@@ -8,12 +8,13 @@ function renderCourierSettlementsAdmin(){
 }
 
 async function recordCourierSettlementForOrder(orderId){
-  const o=(db.orders||[]).find(x=>x.id===orderId); if(!o)return;
-  const amount=+(prompt('مبلغ تسوية المندوب', String(o.total||0))||0); if(amount<=0)return alert('المبلغ غير صحيح');
-  const method=prompt('طريقة التسوية','نقدي')||'نقدي';
-  const receipt='CR-'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
-  await insert('courier_settlements',{id:uid('CS'),receipt_number:receipt,courier_id:o.courier_id||'',amount,payment_method:method,note:'تسوية طلب '+(o.order_number||o.id),status:'received'});
-  await audit('courier','تسوية مندوب للطلب '+(o.order_number||o.id)); await load(); renderCourierSettlementsAdmin();
+  const o=(db.orders||[]).find(x=>x.id===orderId);if(!o)return false;
+  const courierId=o.delegate_id||o.courier_id;if(!courierId)return alert('الطلب غير مرتبط بمندوب');
+  if(!window.AlinFinance?.settleDelegate)throw new Error('خدمة تسوية المندوب غير جاهزة');
+  const result=await window.AlinFinance.settleDelegate(courierId);
+  if(result&&typeof audit==='function')await audit('courier','تسوية مندوب للطلب '+(o.order_number||o.id));
+  if(typeof renderCourierSettlementsAdmin==='function')renderCourierSettlementsAdmin();
+  return result;
 }
 window.AlinCourierModules['renderCourierSettlementsAdmin']=typeof renderCourierSettlementsAdmin==='function'?renderCourierSettlementsAdmin:window['renderCourierSettlementsAdmin'];window['renderCourierSettlementsAdmin']=window.AlinCourierModules['renderCourierSettlementsAdmin'];
 window.AlinCourierModules['recordCourierSettlementForOrder']=typeof recordCourierSettlementForOrder==='function'?recordCourierSettlementForOrder:window['recordCourierSettlementForOrder'];window['recordCourierSettlementForOrder']=window.AlinCourierModules['recordCourierSettlementForOrder'];

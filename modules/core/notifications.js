@@ -1,5 +1,5 @@
 // === core/notifications.js ===
-/* ALIN v2.2.6 — authoritative notification data service. */
+/* ALIN v3.0.0 — notifications with per-account server read state. */
 (function(){
   'use strict';
 
@@ -89,12 +89,10 @@
   }
 
   function isRead(row,input={}){
-    if(!row)return true;
-    const context=accountContext(input);
-    const id=rowKey(row);
-    if(seen(context).has(id))return true;
-    const target=targetId(row);
-    return Boolean(target&&target===context.id&&(row.read_at||row.is_read));
+    if(!row)return true;const context=accountContext(input),id=rowKey(row);
+    if(context.id&&arr(window.db?.notificationReads).some(item=>String(item.notification_id)===id&&String(item.account_id)===context.id))return true;
+    if(!context.id&&seen(context).has(id))return true;
+    const target=targetId(row);return Boolean(target&&target===context.id&&(row.read_at||row.is_read));
   }
 
   function unreadCount(input={}){
@@ -155,32 +153,21 @@
   async function markRead(id,input={}){
     const row=rows().find(item=>rowKey(item)===String(id));
     if(!row)return false;
-    const context=accountContext(input);
-    const values=seen(context);values.add(rowKey(row));saveSeen(values,context);
-    const target=targetId(row);
-    if(target&&target===context.id&&typeof window.update==='function'){
-      const stamp=now();
-      try{await window.update('notifications',{read_at:stamp},{id:row.id});updateLocalRow(rowKey(row),{read_at:stamp,is_read:true})}
-      catch(error){console.warn('[ALIN notifications] remote read state',error)}
-    }
+    const context=accountContext(input),key=rowKey(row);
+    if(context.id){
+      try{const client=window.sb||window.AlinCloud?.client?.();const {error}=await client.from('notification_reads').upsert({notification_id:key,account_id:context.id,read_at:now()},{onConflict:'notification_id,account_id'});if(error)throw error;window.db.notificationReads=arr(window.db.notificationReads).filter(item=>!(String(item.notification_id)===key&&String(item.account_id)===context.id));window.db.notificationReads.push({notification_id:key,account_id:context.id,read_at:now()})}
+      catch(error){console.warn('[ALIN notifications] read state',error)}
+    }else{const values=seen(context);values.add(key);saveSeen(values,context)}
     emit('read');
     return true;
   }
 
   async function markAll(input={}){
-    const context=accountContext(input);
-    const values=seen(context);
-    const visibleRows=visible(context);
-    visibleRows.forEach(row=>values.add(rowKey(row)));
-    saveSeen(values,context);
-    for(const row of visibleRows){
-      const target=targetId(row);
-      if(target&&target===context.id&&!(row.read_at||row.is_read)&&typeof window.update==='function'){
-        const stamp=now();
-        try{await window.update('notifications',{read_at:stamp},{id:row.id});updateLocalRow(rowKey(row),{read_at:stamp,is_read:true})}
-        catch(error){console.warn('[ALIN notifications] mark all',error)}
-      }
-    }
+    const context=accountContext(input),visibleRows=visible(context);
+    if(context.id){
+      try{const client=window.sb||window.AlinCloud?.client?.();const payload=visibleRows.map(row=>({notification_id:rowKey(row),account_id:context.id,read_at:now()}));if(payload.length){const {error}=await client.from('notification_reads').upsert(payload,{onConflict:'notification_id,account_id'});if(error)throw error}window.db.notificationReads=[...arr(window.db.notificationReads).filter(item=>String(item.account_id)!==context.id),...payload]}
+      catch(error){console.warn('[ALIN notifications] mark all',error)}
+    }else{const values=seen(context);visibleRows.forEach(row=>values.add(rowKey(row)));saveSeen(values,context)}
     emit('read-all');
     return true;
   }

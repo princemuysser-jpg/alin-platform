@@ -1,4 +1,4 @@
-import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
+import { corsHeaders, jsonResponse, publicError } from '../_shared/cors.ts';
 import {
   cleanText,
   emailForUsername,
@@ -9,28 +9,32 @@ import {
   removeLegacyPassword,
   requireAdmin,
   updateCompat,
+  assertStrongPassword,
+  requireSuperAdmin,
 } from '../_shared/admin.ts';
 
 const ALLOWED_ROLES = new Set(['admin', 'teacher', 'library', 'courier', 'accountant']);
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (req.method !== 'POST') return jsonResponse({ ok: false, error: 'الطريقة غير مسموحة' }, 405);
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) });
+  if (req.method !== 'POST') return jsonResponse(req, { ok: false, error: 'الطريقة غير مسموحة' }, 405);
 
   try {
-    const { admin } = await requireAdmin(req);
+    const context = await requireAdmin(req, 'accounts');
+    const { admin } = context;
     const body = await req.json();
     const accountId = cleanText(body.account_id, 80);
     if (!accountId) throw new Error('معرّف الحساب مطلوب');
 
     let { data: account, error: accountError } = await admin
       .from('accounts')
-      .select('id,role,name,username,status,auth_user_id')
+      .select('id,role,name,username,status,auth_user_id,deleted_at')
       .eq('id', accountId)
       .maybeSingle();
     if (accountError) throw accountError;
 
     const requestedRole = cleanText(body.role || account?.role || 'courier', 30).toLowerCase();
+    if (requestedRole === 'admin' || account?.role === 'admin') requireSuperAdmin(context);
     if (!ALLOWED_ROLES.has(requestedRole)) throw new Error('نوع الحساب غير مدعوم');
     const hasRequestedAreas = Array.isArray(body.areas);
     const requestedAreas = hasRequestedAreas
@@ -45,12 +49,16 @@ Deno.serve(async (req: Request) => {
     const username = body.username === undefined ? normalizeUsername(account?.username) : normalizeUsername(body.username);
     const name = body.name === undefined ? cleanText(account?.name, 120) : cleanText(body.name, 120);
     const password = String(body.password || '');
+    if (password) assertStrongPassword(password);
+    if (account?.deleted_at && body.status === 'active' && !password) {
+      throw new Error('لتفعيل حساب مؤرشف عيّن كلمة مرور جديدة أولاً');
+    }
 
     // Seamless migration for a legacy courier row that has no accounts/Auth user yet.
     if (!account) {
       if (requestedRole !== 'courier') throw new Error('الحساب غير موجود');
-      if (!username || !name || password.length < 8) {
-        throw new Error('هذا مندوب قديم غير مربوط. اكتب اسمه واسم الدخول وكلمة مرور جديدة من 8 أحرف لترحيله');
+      if (!username || !name || password.length < 12) {
+        throw new Error('هذا مندوب قديم غير مربوط. اكتب اسمه واسم الدخول وكلمة مرور جديدة من 12 حرفاً تتضمن حروفاً وأرقاماً لترحيله');
       }
       const resolved = await ensureAuthUserForAccount(admin, {
         accountId, authUserId: null, username, password, name, role: 'courier',
@@ -104,6 +112,7 @@ Deno.serve(async (req: Request) => {
         name: nextName,
         username: nextUsername,
         status: ['active', 'inactive', 'pending'].includes(body.status) ? body.status : account.status,
+        deleted_at: body.status === 'active' ? null : account.deleted_at,
         auth_user_id: account.auth_user_id,
         area: requestedPrimaryArea,
         landmark: body.landmark === undefined ? undefined : cleanText(body.landmark, 180),
@@ -135,8 +144,8 @@ Deno.serve(async (req: Request) => {
     }
     await removeLegacyPassword(admin, 'accounts', accountId);
 
-    return jsonResponse({ ok: true, account: publicAccount(account as Record<string, unknown>) });
+    return jsonResponse(req, { ok: true, account: publicAccount(account as Record<string, unknown>) });
   } catch (error) {
-    return jsonResponse({ ok: false, error: error instanceof Error ? error.message : 'تعذر تحديث الحساب' }, 400);
+    return jsonResponse(req, { ok: false, error: publicError(error, 'تعذر تحديث الحساب') }, 400);
   }
 });

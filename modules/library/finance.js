@@ -50,10 +50,10 @@
   async function reverseLibrarySettlement(id){
     const row=summary().settlements.find(item=>same(item.id,id)||same(item.receipt_number,id));
     if(!row||!window.confirm('إلغاء أثر سند التسوية؟'))return false;
-    if(typeof window.update!=='function')throw new Error('خدمة تحديث التسوية غير جاهزة');
-    await window.update('library_settlements',{status:'reversed',updated_at:new Date().toISOString()},{id:row.id});
-    if(typeof window.audit==='function')await window.audit('finance',`عكس سند تسوية ${row.receipt_number||row.id}`);
-    if(typeof window.load==='function')await window.load();
+    const reason=(window.prompt('اكتب سبب عكس سند التسوية')||'').trim();if(!reason)return false;
+    if(!window.AlinFinance?.reverseSettlement)throw new Error('خدمة عكس التسوية غير جاهزة');
+    await window.AlinFinance.reverseSettlement('library',row.id,reason);
+    if(typeof window.audit==='function')await window.audit('finance',`عكس سند تسوية ${row.receipt_number||row.id}: ${reason}`);
     return true;
   }
 

@@ -92,7 +92,7 @@
   function renderAudit(content=root()){
     if(!content)return;
     const rows=[...arr(window.db?.audit)].sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
-    content.innerHTML=`<section class="admin-audit-module"><header><h2>سجل العمليات</h2><p>آخر العمليات المسجلة داخل المنصة.</p></header>${rows.length?rows.map(row=>`<article class="row"><div><b>${esc(row.text||row.action||row.kind||'عملية')}</b><small>${esc(row.details||'')}${row.created_at?' — '+esc(new Date(row.created_at).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ')):''}</small></div><span>${esc(row.kind||'سجل')}</span></article>`).join(''):'<div class="empty">لا توجد عمليات مسجلة.</div>'}</section>`;
+    content.innerHTML=`<section class="admin-audit-module"><header><h2>سجل العمليات</h2><p>آخر العمليات المسجلة داخل المنصة.</p></header>${rows.length?rows.map(row=>`<article class="row"><div><b>${esc(row.summary||row.text||row.action||row.kind||'عملية')}</b><small>${esc(row.details||row.entity_type||'')}${row.created_at?' — '+esc(new Date(row.created_at).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ')):''}</small></div><span>${esc(row.actor_role||row.kind||'سجل')}</span></article>`).join(''):'<div class="empty">لا توجد عمليات مسجلة.</div>'}</section>`;
   }
 
   function resolveRenderer(tab){

@@ -2,7 +2,7 @@
 /* ALIN v2.4.2 — authoritative backup owner. No admin router wrapping. */
 (function(){
   'use strict';
-  const VERSION='2.4.2';
+  const VERSION='3.0.0';
   const LOG_KEY='alin_backup_log_v227';
   const RESTORABLE=['categories','products','booklets','banners','coupons'];
   let pending=null;
@@ -17,11 +17,16 @@
     const value=logs();value.unshift({id:`B${Date.now()}`,name,size,type,status,created_at:new Date().toISOString()});saveLogs(value);
   }
   function snapshot(){
-    const data=clone(window.db||{});
+    const source=clone(window.db||{});
+    const data={
+      settings:source.settings||{},categories:rows(source.categories),products:rows(source.products),
+      booklets:rows(source.booklets).map(({pdf_url,pdf_path,file_url,file_path,...row})=>row),
+      banners:rows(source.banners),coupons:rows(source.coupons)
+    };
     return {
       app:'ALIN',format:'alin-cloud-backup',backup_version:VERSION,created_at:new Date().toISOString(),
-      schema:'catalog-settings-v1',
-      counts:{orders:rows(data.orders).length,accounts:rows(data.accounts?.all).length,booklets:rows(data.booklets).length,products:rows(data.products).length},
+      schema:'catalog-settings-v2-no-personal-data',
+      counts:{booklets:data.booklets.length,products:data.products.length,categories:data.categories.length,banners:data.banners.length,coupons:data.coupons.length},
       data
     };
   }
@@ -61,9 +66,9 @@
   function render(){
     const root=document.getElementById('adminContent');if(!root)return;const data=window.db||{},history=logs();
     root.dataset.adminModule='backup';
-    root.innerHTML=`<section class="admin-backup-rc1"><header class="admin-backup-head"><div><h2>النسخ الاحتياطي والاستعادة</h2><p>نسخة سحابية قابلة للفحص. الاستعادة الآمنة تشمل الإعدادات والمنتجات والملازم والأقسام والإعلانات والكوبونات، ولا تستبدل الطلبات أو الحسابات أو القيود المالية.</p></div><span class="status">v${VERSION}</span></header>
+    root.innerHTML=`<section class="admin-backup-rc1"><header class="admin-backup-head"><div><h2>النسخ الاحتياطي والاستعادة</h2><p>نسخة كتالوج آمنة لا تحتوي أرقام الطلاب أو الطلبات أو الحسابات أو القيود المالية أو روابط ملفات الملازم الخاصة.</p></div><span class="status">v${VERSION}</span></header>
       <section class="admin-backup-summary"><article class="admin-backup-stat"><small>الطلبات</small><b>${rows(data.orders).length}</b></article><article class="admin-backup-stat"><small>الحسابات</small><b>${rows(data.accounts?.all).length}</b></article><article class="admin-backup-stat"><small>الملازم</small><b>${rows(data.booklets).length}</b></article><article class="admin-backup-stat"><small>المنتجات</small><b>${rows(data.products).length}</b></article></section>
-      <section class="admin-backup-grid"><article class="admin-backup-card"><h3>إنشاء نسخة</h3><p>ينزّل ملف JSON من البيانات المحمّلة حاليًا من Supabase.</p><div class="admin-backup-actions"><button type="button" onclick="alinCreateBackup()">إنشاء وتنزيل النسخة</button></div></article>
+      <section class="admin-backup-grid"><article class="admin-backup-card"><h3>إنشاء نسخة</h3><p>ينزّل ملف JSON للكتالوج والإعدادات العامة فقط، بدون بيانات شخصية أو مالية.</p><div class="admin-backup-actions"><button type="button" onclick="alinCreateBackup()">إنشاء وتنزيل النسخة</button></div></article>
       <article class="admin-backup-card"><h3>استعادة آمنة</h3><p>لا يتم المساس بالطلبات والحسابات والمالية أثناء الاستعادة.</p><div class="admin-backup-file"><input id="alinBackupFile" type="file" accept=".json,application/json" onchange="alinReadBackup(this.files[0])"><div id="alinBackupStatus" class="admin-backup-warning">لم يتم اختيار ملف.</div><div id="alinBackupPreview"></div><div class="admin-backup-actions"><button id="alinRestoreBtn" class="admin-backup-danger" disabled type="button" onclick="alinRestoreBackup()">استعادة الكتالوج والإعدادات</button></div></div></article></section>
       <article class="admin-backup-card"><h3>سجل النسخ</h3><div class="admin-backup-log">${history.length?history.map(item=>`<article><div><b>${escv(item.name)}</b><small>${new Date(item.created_at).toLocaleString(window.AlinI18n?.locale?.()||'ar-IQ')} — ${bytesLabel(item.size)}</small></div><span>${item.type==='restore'?'استعادة':'نسخة'}</span></article>`).join(''):'<p class="muted">لا توجد عمليات مسجلة بعد.</p>'}</div></article></section>`;
   }

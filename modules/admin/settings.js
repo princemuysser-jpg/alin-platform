@@ -47,7 +47,7 @@
       const password=document.getElementById('adminNewPass')?.value.trim()||'';
       const confirmPassword=document.getElementById('adminNewPass2')?.value.trim()||'';
       if(!username)throw new Error('اكتب اسم دخول المدير');
-      if(password&&password.length<8)throw new Error('كلمة المرور يجب أن تكون 8 أحرف أو أرقام على الأقل');
+      if(password&&(password.length<12||!/[0-9]/.test(password)||!/[A-Za-z\u0600-\u06FF]/.test(password)))throw new Error('كلمة المرور يجب أن تكون 12 حرفاً على الأقل وتتضمن حروفاً وأرقاماً');
       if(password!==confirmPassword)throw new Error('تأكيد كلمة المرور غير مطابق');
       if(!window.ALINAuth?.updateAccountFromAdmin)throw new Error('خدمة الحسابات الآمنة غير جاهزة');
       await window.ALINAuth.updateAccountFromAdmin({account_id:account.id,role:'admin',name:account.name||'مدير المنصة',username,status:'active'});
