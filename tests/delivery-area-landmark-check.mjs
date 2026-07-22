@@ -17,8 +17,8 @@ assert(!cart.includes('id="deliveryAddress"'),'cart:address-field-removed');
 assert(cart.includes('id="deliveryLandmark"'),'cart:landmark-field');
 assert(routing.includes("const area=value('deliveryArea'),landmark=value('deliveryLandmark')"),'routing:area-landmark-only');
 assert(!routing.includes("value('deliveryAddress')"),'routing:no-address-read');
-assert(routing.includes('delivery_address:null'),'routing:null-address');
-assert(routing.includes("delivery_location_source:latitude?'student_device':'landmark'"),'routing:location-source');
+assert(!routing.includes('delivery_address:'),'routing:no-address-payload');
+assert(!routing.includes('delivery_location_source:'),'routing:server-location-source');
 assert(!delivery.includes('العنوان الكامل'),'delivery:no-full-address-copy');
 assert(delivery.includes("const oldAddress=$('#deliveryAddress',root);if(oldAddress)oldAddress.remove()"),'delivery:legacy-address-removal');
 assert(courier.includes('window.alinNormalizeDeliveryArea'),'courier:area-normalizer');
@@ -52,13 +52,14 @@ vm.runInContext(routing,context);
 const route=context.window.alinOrderExtra();
 assert(route.delivery_area==='عرفة','route:area');
 assert(route.delivery_landmark==='قرب جامع نور الرحمن','route:landmark');
-assert(route.delivery_address===null,'route:address-null');
-assert(route.delivery_location_url.includes('maps.google.com'),'route:gps-kept');
-assert(route.delivery_fee===2000,'route:delivery-fee');
+assert(!('delivery_address' in route),'route:address-not-sent');
+assert(route.delivery_latitude===35.46&&route.delivery_longitude===44.39,'route:gps-coordinates');
+assert(!('delivery_location_url' in route),'route:server-builds-map-url');
+assert(!('delivery_fee' in route),'route:server-calculates-fee');
 
 elements.deliveryArea.value='';
 let threw=false;try{context.window.alinOrderExtra()}catch(e){threw=String(e.message).includes('اختر منطقة التوصيل')}
 assert(threw,'route:area-required');
 
 if(failures.length){console.error(JSON.stringify({ok:false,failures},null,2));process.exit(1)}
-console.log(JSON.stringify({ok:true,checks:20},null,2));
+console.log(JSON.stringify({ok:true,checks:21},null,2));

@@ -26,7 +26,8 @@ begin
     'alin_row_owner_match(jsonb)','alin_notification_visible(jsonb)','alin_order_visible(jsonb)',
     'alin_order_manageable(jsonb)','alin_protect_order_update()','alin_create_store_orders(jsonb,jsonb,jsonb,text)',
     'alin_validate_coupon(text)','alin_track_order(text)','alin_set_library_open(boolean)',
-    'alin_library_set_order_status(text,text,text)','alin_upsert_order_finance(text)'
+    'alin_library_set_order_status(text,text,text)','alin_upsert_order_finance(text)',
+    'alin_setting_text(text,text)','alin_setting_numeric(text,numeric)','alin_setting_boolean(text,boolean)'
   ] loop
     if to_regprocedure('public.'||item) is null then missing:=array_append(missing,'function:'||item); end if;
   end loop;
@@ -87,6 +88,13 @@ begin
     where n.nspname='public' and t.relname='orders'
       and tr.tgname='alin_orders_protect_update' and not tr.tgisinternal
   ) then missing:=array_append(missing,'trigger:public.orders.alin_orders_protect_update'); end if;
+
+  if has_table_privilege('anon','public.orders','INSERT') then
+    missing:=array_append(missing,'privilege:anon.orders.insert_must_be_blocked');
+  end if;
+  if has_table_privilege('authenticated','public.orders','INSERT') then
+    missing:=array_append(missing,'privilege:authenticated.orders.insert_must_be_blocked');
+  end if;
 
   if to_regclass('public.alin_public_accounts') is null then missing:=array_append(missing,'view:alin_public_accounts'); end if;
   if to_regclass('public.alin_public_settings') is null then missing:=array_append(missing,'view:alin_public_settings'); end if;

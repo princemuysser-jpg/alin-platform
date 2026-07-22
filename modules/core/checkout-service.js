@@ -1,5 +1,5 @@
 // === core/checkout-service.js ===
-/* ALIN v2.4.2 — secure checkout and cart normalization. */
+/* ALIN v2.6.0 Stage 3 — server-authoritative checkout and strict payload allowlist. */
 (function(){
   'use strict';
   const client=()=>window.ALINAuthRuntime?.client?.()||window.sb||window.AlinCloud?.client?.()||null;
@@ -30,6 +30,32 @@
     });
   }
 
+
+  function normalizeFulfillment(raw={}){
+    const type=String(raw?.fulfillment_type||raw?.delivery_type||'').trim().toLowerCase();
+    if(['pickup','library'].includes(type)){
+      const libraryId=String(raw?.library_id||raw?.pickup_library_id||'').trim();
+      if(!libraryId)throw new Error('اختر مكتبة الاستلام');
+      return {fulfillment_type:'pickup',library_id:libraryId,pickup_library_id:libraryId};
+    }
+    if(['home_delivery','courier','delivery'].includes(type)){
+      const area=String(raw?.delivery_area||'').trim();
+      const landmark=String(raw?.delivery_landmark||'').trim().slice(0,300);
+      const latitude=raw?.delivery_latitude==null||raw.delivery_latitude===''?null:Number(raw.delivery_latitude);
+      const longitude=raw?.delivery_longitude==null||raw.delivery_longitude===''?null:Number(raw.delivery_longitude);
+      const accuracy=raw?.delivery_location_accuracy==null||raw.delivery_location_accuracy===''?null:Math.round(Number(raw.delivery_location_accuracy));
+      if(!area)throw new Error('اختر منطقة التوصيل');
+      if(!landmark&&!Number.isFinite(latitude))throw new Error('حدد الموقع أو اكتب أقرب نقطة دالة');
+      return {
+        fulfillment_type:'home_delivery',delivery_area:area,delivery_landmark:landmark,
+        delivery_latitude:Number.isFinite(latitude)?latitude:null,
+        delivery_longitude:Number.isFinite(longitude)?longitude:null,
+        delivery_location_accuracy:Number.isFinite(accuracy)?accuracy:null
+      };
+    }
+    throw new Error('اختر طريقة استلام صحيحة');
+  }
+
   let checkoutPending=false;
   async function secureCheckout(){
     if(checkoutPending)return;
@@ -43,7 +69,7 @@
       const phone=(document.getElementById('studentPhone')?.value||'').trim().replace(/\s+/g,'');
       if(name.length<2)throw new Error('اكتب اسم الطالب بصورة صحيحة');
       if(!/^\+?[0-9٠-٩]{7,15}$/.test(phone))throw new Error('اكتب رقم هاتف صحيح');
-      const fulfillment=typeof alinOrderExtra==='function'?alinOrderExtra():{};
+      const fulfillment=normalizeFulfillment(typeof alinOrderExtra==='function'?alinOrderExtra():{});
       const coupon=(window.AlinCoupons?.getAppliedCode?.()||document.getElementById('couponInput')?.value||'').trim();
       const cartSnapshot=cart.map(item=>({...item}));
       const items=normalizeCheckoutItems(cart);
@@ -99,5 +125,5 @@
     finally{checkoutPending=false;if(button){button.disabled=false;button.removeAttribute('aria-busy');button.textContent=button.dataset.originalText||'تأكيد الطلب'}}
   }
   window.ALINAuth=Object.assign(window.ALINAuth||{},{secureCheckout});
-  window.ALINCheckout=Object.freeze({normalizeCheckoutItems,secureCheckout});
+  window.ALINCheckout=Object.freeze({normalizeCheckoutItems,normalizeFulfillment,secureCheckout});
 })();

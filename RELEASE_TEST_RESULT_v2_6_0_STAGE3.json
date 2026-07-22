@@ -1,0 +1,20 @@
+{
+  "version": "2.6.0-stage3-secure-checkout",
+  "status": "passed",
+  "javascript_files_checked": 75,
+  "module_files_checked": 66,
+  "stage3_security_checks": 14,
+  "key_guards": [
+    "server_authoritative_item_price",
+    "server_authoritative_delivery_fee",
+    "server_forced_payment_status",
+    "server_forced_assignment_status",
+    "library_open_validation",
+    "delivery_area_validation",
+    "gps_validation_and_server_map_url",
+    "atomic_stock_decrement",
+    "coupon_row_lock_and_usage_limit",
+    "direct_orders_insert_revoked",
+    "client_direct_fallback_removed"
+  ]
+}
