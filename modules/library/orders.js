@@ -1,11 +1,12 @@
 // === library/orders.js ===
-/* ALIN v2.2.6 — authoritative library order workflow. */
+/* ALIN v2.4.2 R6 — atomic library workflow and finance RPC. */
 (function(){
   'use strict';
   const modules=window.AlinLibraryModules=window.AlinLibraryModules||{};
   const allowed={
     new:['processing','cancelled'],
     pending:['processing','cancelled'],
+    pending_admin:['processing','cancelled'],
     accepted:['processing','cancelled'],
     processing:['ready','cancelled'],
     printing:['ready','cancelled'],
@@ -16,9 +17,11 @@
     canceled:[]
   };
   const normalize=status=>String(status||'new').toLowerCase()==='canceled'?'cancelled':String(status||'new').toLowerCase();
+  const client=()=>window.ALINAuthRuntime?.client?.()||window.sb||window.AlinCloud?.client?.()||null;
 
   function findOrder(id){return (window.db?.orders||[]).find(row=>String(row.id)===String(id));}
   function currentLibraryId(){return String(window.current?.role==='library'?(window.current.id||window.current.library_id||''):'');}
+  function orderLibraryId(order){return String(order?.library_id||order?.pickup_library_id||order?.assigned_library_id||'');}
   function ownsOrder(order){
     const id=currentLibraryId();
     if(!id)return false;
@@ -27,6 +30,28 @@
   function canMove(from,to){
     const source=normalize(from),target=normalize(to);
     return source===target||Boolean(allowed[source]?.includes(target));
+  }
+  function serviceError(error){
+    const message=String(error?.message||error||'').trim();
+    if(/alin_library_set_order_status|function .* does not exist|schema cache/i.test(message)){
+      return new Error('خدمة طلبات المكتبة غير محدثة. نفّذ ملف LIBRARY_FINANCE_STATUS_FIX_v2_4_2_R6.sql ثم حدّث الصفحة.');
+    }
+    return error instanceof Error?error:new Error(message||'تعذر تحديث الطلب');
+  }
+
+  async function callOrderRpc(order,target,reason=''){
+    const c=client();
+    if(!c?.rpc)throw new Error('خدمة Supabase غير متاحة. تحقق من الاتصال وسجل الدخول من جديد.');
+    const {data,error}=await c.rpc('alin_library_set_order_status',{
+      p_order_id:String(order.id),
+      p_status:target,
+      p_reason:reason||null
+    });
+    if(error)throw serviceError(error);
+    if(!data?.ok)throw new Error('لم يؤكد الخادم تحديث الطلب');
+    if(data.order&&typeof data.order==='object')Object.assign(order,data.order);
+    else Object.assign(order,{status:target,updated_at:new Date().toISOString()});
+    return data;
   }
 
   async function libraryOrderStatus(id,status){
@@ -37,23 +62,9 @@
     if(!canMove(source,target))throw new Error('لا يمكن نقل الطلب من '+source+' إلى '+target);
     if(source===target)return order;
 
-    const now=new Date().toISOString();
-    const history=[...(Array.isArray(order.status_history)?order.status_history:[]),{status:target,at:now,by:window.current?.id||'library'}];
-    const payload={status:target,status_history:history,updated_at:now};
-    if(target==='processing')payload.processing_at=now;
-    if(target==='ready')payload.ready_at=now;
-    if(['completed','delivered'].includes(target)){
-      payload.completed_at=order.completed_at||now;
-      payload.delivered_at=order.delivered_at||now;
-      payload.payment_status='paid';
-    }
-    if(target==='cancelled')payload.cancelled_at=now;
-
-    await update('orders',payload,{id:order.id});
-    Object.assign(order,payload);
-    if(['completed','delivered'].includes(target)&&typeof ensureOrderFinancials==='function')await ensureOrderFinancials(order);
+    await callOrderRpc(order,target);
     if(typeof audit==='function')await audit('order',`المكتبة حدثت الطلب ${order.order_number||order.id} من ${source} إلى ${target}`);
-    if(typeof load==='function')await load();
+    if(typeof load==='function')await load({force:true,reason:'library-order-status'});
     else modules.renderLibrary?.();
     return order;
   }
@@ -63,14 +74,12 @@
     if(!text)throw new Error('اكتب سبب الإلغاء');
     const order=findOrder(id);
     if(!order)throw new Error('الطلب غير موجود');
-    const now=new Date().toISOString();
-    const history=[...(Array.isArray(order.status_history)?order.status_history:[]),{status:'cancelled',at:now,by:window.current?.id||'library',reason:text}];
-    const payload={status:'cancelled',cancellation_reason:text,cancelled_at:now,status_history:history,updated_at:now};
-    await update('orders',payload,{id:order.id});
-    Object.assign(order,payload);
+    if(window.current?.role==='library'&&!ownsOrder(order))throw new Error('هذا الطلب غير مسند إلى مكتبتك');
+    await callOrderRpc(order,'cancelled',text);
     if(typeof audit==='function')await audit('order',`المكتبة ألغت الطلب ${order.order_number||order.id}: ${text}`);
-    if(typeof load==='function')await load();
+    if(typeof load==='function')await load({force:true,reason:'library-order-cancel'});
     else modules.renderLibrary?.();
+    return order;
   }
 
   function selectedLibraryLine(){
@@ -94,6 +103,7 @@
   window.cancelLibraryOrder=cancelLibraryOrder;
   window.selectedLibraryLine=selectedLibraryLine;
   window.alinLibraryOptions=alinLibraryOptions;
+  window.AlinLibraryOrderService=Object.freeze({libraryOrderStatus,cancelLibraryOrder,callOrderRpc,orderLibraryId});
   modules.libraryOrderStatus=libraryOrderStatus;
   modules.cancelLibraryOrder=cancelLibraryOrder;
   modules.selectedLibraryLine=selectedLibraryLine;

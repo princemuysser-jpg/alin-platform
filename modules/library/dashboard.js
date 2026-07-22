@@ -99,7 +99,27 @@
   function notificationsView(){const ns=notifications();return `<section class="library-v116-panel"><div class="library-v116-toolbar"><h3>إشعارات المكتبة</h3><button onclick="AlinLibraryV116.markAllRead()">تحديد الكل كمقروء</button></div><div class="library-v116-list">${ns.map(n=>{const read=window.AlinNotifications?.isRead?.(n,{role:'library',id:libId()})??Boolean(n.read_at||n.is_read);return `<article class="library-v116-notification ${read?'':'unread'}"><b>${escx(n.title||'إشعار')}</b><p>${escx(n.message||n.text||'')}</p><small>${escx(n.created_at||'')}</small></article>`}).join('')||'<div class="library-v116-empty">لا توجد إشعارات</div>'}</div></section>`}
   function settingsView(){const l=getLibrary()||{};return `<section class="library-v116-panel"><h3>إعدادات المكتبة</h3><div class="library-v116-settings"><div class="library-v116-field"><small>اسم المكتبة</small><b>${escx(l.name||'—')}</b></div><div class="library-v116-field"><small>المنطقة</small><b>${escx(l.area||'—')}</b></div><div class="library-v116-field"><small>أقرب نقطة دالة</small><b>${escx(l.landmark||'—')}</b></div><div class="library-v116-field"><small>واتساب</small><b>${escx(l.whatsapp||l.phone||'—')}</b></div><div class="library-v116-field"><small>اسم الدخول</small><b>${escx(l.username||currentUser()?.username||'—')}</b></div><div class="library-v116-field"><small>حالة المكتبة</small><b>${isOpen(l)?'مفتوحة':'مغلقة'}</b></div><div class="library-v116-settings-actions"><button onclick="AlinLibraryV116.toggleOpen()">${isOpen(l)?'إغلاق المكتبة':'فتح المكتبة'}</button><button class="secondary" onclick="alert('تغيير كلمة المرور يكون من إدارة الحسابات حالياً')">تغيير كلمة المرور</button><button class="logout" onclick="logout()">تسجيل الخروج</button></div></div></section>`}
   function render(){if(currentUser()?.role!=='library')return;updateHeader();document.querySelectorAll('.library-v116-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.libraryTab===state.tab));const c=document.getElementById('libraryV116Content');if(!c)return;c.innerHTML=state.tab==='orders'?ordersView():state.tab==='finance'?financeView():state.tab==='notifications'?notificationsView():state.tab==='settings'?settingsView():home()}
-  async function toggleOpen(){const lib=getLibrary();if(!lib)return alert('تعذر تحديد حساب المكتبة');const open=!isOpen(lib);try{if(typeof update==='function')await update('accounts',{is_open:open,open_status:open?'open':'closed'},{id:lib.id});lib.is_open=open;lib.open_status=open?'open':'closed';if(typeof audit==='function')await audit('library',open?'فتح المكتبة':'إغلاق المكتبة');if(typeof load==='function')await load();render()}catch(e){console.error(e);alert('تعذر تحديث حالة المكتبة') }}
+  async function toggleOpen(){
+    const lib=getLibrary();if(!lib)return alert('تعذر تحديد حساب المكتبة');
+    const open=!isOpen(lib);
+    try{
+      const client=window.ALINAuthRuntime?.client?.()||window.sb||window.AlinCloud?.client?.()||null;
+      if(!client?.rpc)throw new Error('خدمة Supabase غير متاحة. سجل الدخول من جديد وحاول مرة أخرى.');
+      const {data,error}=await client.rpc('alin_set_library_open',{p_open:open});
+      if(error){
+        const message=String(error.message||'');
+        if(/alin_set_library_open|function .* does not exist|schema cache/i.test(message))throw new Error('خدمة حالة المكتبة غير محدثة. نفّذ ملف LIBRARY_FINANCE_STATUS_FIX_v2_4_2_R6.sql.');
+        throw error;
+      }
+      if(!data?.ok)throw new Error('لم يؤكد الخادم تحديث حالة المكتبة');
+      const updated=data.library||{};
+      Object.assign(lib,updated,{is_open:open,open_status:open?'open':'closed'});
+      if(typeof audit==='function')await audit('library',open?'فتح المكتبة':'إغلاق المكتبة');
+      if(typeof load==='function')await load({force:true,reason:'library-open-status'});
+      render();
+      if(typeof toast==='function')toast(open?'تم فتح المكتبة واستقبال الطلبات':'تم إغلاق المكتبة وإيقاف الطلبات الجديدة');
+    }catch(e){console.error(e);alert(e?.message||'تعذر تحديث حالة المكتبة')}
+  }
   async function setStatus(id,status){
     try{
       const action=window.AlinLibraryModules?.libraryOrderStatus||window.libraryOrderStatus;

@@ -25,9 +25,17 @@ begin
     'alin_current_account_id()','alin_current_role()','alin_is_admin()','alin_is_finance_staff()',
     'alin_row_owner_match(jsonb)','alin_notification_visible(jsonb)','alin_order_visible(jsonb)',
     'alin_order_manageable(jsonb)','alin_protect_order_update()','alin_create_store_orders(jsonb,jsonb,jsonb,text)',
-    'alin_validate_coupon(text)','alin_track_order(text)'
+    'alin_validate_coupon(text)','alin_track_order(text)','alin_set_library_open(boolean)',
+    'alin_library_set_order_status(text,text,text)','alin_upsert_order_finance(text)'
   ] loop
     if to_regprocedure('public.'||item) is null then missing:=array_append(missing,'function:'||item); end if;
+  end loop;
+
+  foreach item in array array['is_open','open_status'] loop
+    if not exists(
+      select 1 from information_schema.columns
+      where table_schema='public' and table_name='accounts' and column_name=item
+    ) then missing:=array_append(missing,'column:public.accounts.'||item); end if;
   end loop;
 
   if not exists(

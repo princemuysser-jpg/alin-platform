@@ -25,7 +25,7 @@
     const raw=String(order?.fulfillment_type||order?.delivery_type||order?.delivery_method||'').toLowerCase();
     if(/delegate|courier|مندوب/.test(raw))return 'delegate';
     if(/library|pickup|مكتبة/.test(raw))return 'library';
-    return order?.library_id?'library':'delegate';
+    return (order?.library_id||order?.pickup_library_id||order?.assigned_library_id)?'library':'delegate';
   }
 
   function booklet(order){
@@ -171,10 +171,11 @@
   }
 
   async function persistPermit(order){
-    if(String(order?.kind||'').toLowerCase()!=='booklet'||!order.library_id)return;
+    const libraryId=order?.library_id||order?.pickup_library_id||order?.assigned_library_id||'';
+    if(String(order?.kind||'').toLowerCase()!=='booklet'||!libraryId)return;
     if(arr(db().permits).some(row=>same(row.order_id,order.id)))return;
     const insert=api('insert');if(!insert)return;
-    const row={id:api('uid')?window.uid('P'):`P-${Date.now()}`,order_id:order.id,booklet_id:order.item_id||order.booklet_id,library_id:order.library_id,qty:Math.max(1,num(order.qty)||1),used:0,status:'active'};
+    const row={id:api('uid')?window.uid('P'):`P-${Date.now()}`,order_id:order.id,booklet_id:order.item_id||order.booklet_id,library_id:libraryId,qty:Math.max(1,num(order.qty)||1),used:0,status:'active'};
     await insert('permits',row);
   }
 
@@ -186,7 +187,7 @@
     const payload={
       order_id:order.id,order_number:order.order_number||order.id,
       alin:split.admin,admin:split.admin,teacher:split.teacher,teacher_id:book?.teacher_id||order.teacher_id||'',
-      library:split.library,library_id:order.library_id||'',delegate:split.delegate,delegate_id:order.delegate_id||order.courier_id||'',
+      library:split.library,library_id:order.library_id||order.pickup_library_id||order.assigned_library_id||'',delegate:split.delegate,delegate_id:order.delegate_id||order.courier_id||'',
       total:split.total,delivery_type:split.delivery,settlement_status:'pending',updated_at:now()
     };
     let row;

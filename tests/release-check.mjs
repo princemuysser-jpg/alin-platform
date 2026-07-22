@@ -6,7 +6,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const failures=[];
 const required=[
   'index.html','store-desktop.html','store-mobile.html','service-worker.js','VERSION','styles/alin-splash.css','core/splash.js','assets/images/alin-splash-desktop.webp','assets/images/alin-splash-mobile.webp',
-  'RUN_ON_SUPABASE_v2_1_8_COMPLETE.sql','CHECK_SUPABASE_READINESS_v2_1_8.sql',
+  'RUN_ON_SUPABASE_v2_1_8_COMPLETE.sql','CHECK_SUPABASE_READINESS_v2_1_8.sql','LIBRARY_FINANCE_STATUS_FIX_v2_4_2_R6.sql',
   'modules/module-order.json','modules/courier/core.js','modules/courier/admin.js','modules/courier/areas.js','modules/courier/assignment.js','modules/courier/dashboard.js','modules/core/config.js','modules/core/i18n-en.js','modules/core/i18n-ku.js','modules/core/i18n.js','modules/core/ui.js','modules/core/platform.js','modules/core/storage.js','modules/core/navigation.js','modules/core/notifications.js','modules/core/cloud-status.js','modules/core/auth-service.js','modules/core/account-admin-service.js','modules/core/checkout-service.js','modules/core/backend-check.js','modules/core/cloud-status-ui.js','modules/store/tracking.js','modules/store/discovery-core.js','modules/store/discovery-catalog.js','modules/store/discovery-details.js','modules/store/discovery-growth.js','modules/store/student-auth.js','modules/admin/orders.js',
   'store/banners.js','store/notifications.js','core/finance-runtime.js'
 ];
@@ -27,7 +27,7 @@ for(const stale of ['RUN_ON_SUPABASE_v2_0_1_COMPLETE.sql','CHECK_SUPABASE_READIN
 const run=fs.readFileSync(path.join(root,'RUN_ON_SUPABASE_v2_1_8_COMPLETE.sql'),'utf8');
 const check=fs.readFileSync(path.join(root,'CHECK_SUPABASE_READINESS_v2_1_8.sql'),'utf8');
 if((run.match(/\bbegin\s*;/gi)||[]).length!==(run.match(/\bcommit\s*;/gi)||[]).length)failures.push('sql:transaction-count');
-for(const name of ['alin_current_account_id','alin_current_role','alin_is_admin','alin_create_store_orders','alin_validate_coupon','alin_track_order','alin_repair_auth_links','alin_notification_visible','alin_order_visible','alin_protect_order_update']){
+for(const name of ['alin_current_account_id','alin_current_role','alin_is_admin','alin_create_store_orders','alin_validate_coupon','alin_track_order','alin_repair_auth_links','alin_notification_visible','alin_order_visible','alin_protect_order_update','alin_set_library_open','alin_library_set_order_status','alin_upsert_order_finance']){
   if(!run.includes(name))failures.push(`sql:function:${name}`);
   if(!check.includes(name))failures.push(`check:function:${name}`);
 }
@@ -108,6 +108,15 @@ for(const rel of ['./modules/core/cloud-status.js','./modules/core/auth-service.
 for(const rel of ['./modules/store/discovery-core.js','./modules/store/discovery-catalog.js','./modules/store/discovery-details.js','./modules/store/discovery-growth.js']){if(!serviceWorker.includes(`'${rel}'`))failures.push(`pwa:discovery-not-cached:${rel}`);}
 for(const rel of ['./modules/courier/core.js','./modules/courier/admin.js','./modules/courier/areas.js','./modules/courier/assignment.js','./modules/courier/dashboard.js']){if(!serviceWorker.includes(`'${rel}'`))failures.push(`pwa:courier-not-cached:${rel}`);}
 if(!serviceWorker.includes("'./modules/core/i18n-en.js'")||!serviceWorker.includes("'./modules/core/i18n-ku.js'")||!serviceWorker.includes("'./modules/core/i18n.js'")||!serviceWorker.includes("'./styles/alin-i18n.css'"))failures.push('pwa:i18n-not-cached');
+
+const r6Sql=fs.readFileSync(path.join(root,'LIBRARY_FINANCE_STATUS_FIX_v2_4_2_R6.sql'),'utf8');
+const libraryOrdersR6=fs.readFileSync(path.join(root,'modules/library/orders.js'),'utf8');
+const libraryDashboardR6=fs.readFileSync(path.join(root,'modules/library/dashboard.js'),'utf8');
+for(const token of ['alin_library_set_order_status','alin_upsert_order_finance','alin_set_library_open','completed_orders_missing_finance']){
+  if(!r6Sql.includes(token))failures.push(`r6:${token}`);
+}
+if(!libraryOrdersR6.includes("c.rpc('alin_library_set_order_status'"))failures.push('r6:library-order-rpc');
+if(!libraryDashboardR6.includes("client.rpc('alin_set_library_open'"))failures.push('r6:library-status-rpc');
 
 const financeRuntime=fs.readFileSync(path.join(root,'core/finance-runtime.js'),'utf8');
 for(const token of ['canonicalLedger','librarySummary','teacherSummary',"settlement_status:'pending'","settlement_status:'settled'"]){
