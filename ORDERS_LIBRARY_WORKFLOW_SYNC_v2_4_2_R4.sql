@@ -105,6 +105,18 @@ declare
   v_old_status text := lower(coalesce(old.status,'new'));
   v_new_status text := lower(coalesce(new.status,v_old_status));
 begin
+  -- Internal checkout finalization. The caller cannot choose these values;
+  -- alin_create_store_orders_guarded derives them on the server.
+  if current_setting('alin.internal_order_update',true)='stage4_checkout_finalize' then
+    v_allowed:=array[
+      'checkout_request_key','checkout_group_id','stock_reserved','stock_restored_at'
+    ];
+    if (to_jsonb(new)-v_allowed)<>(to_jsonb(old)-v_allowed) then
+      raise exception 'تم منع تعديل داخلي غير مصرح في الطلب';
+    end if;
+    return new;
+  end if;
+
   if public.alin_is_admin() then
     return new;
   end if;

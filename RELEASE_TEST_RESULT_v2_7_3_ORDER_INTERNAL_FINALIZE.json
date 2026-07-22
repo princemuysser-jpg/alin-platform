@@ -1,0 +1,10 @@
+{
+  "version": "2.7.3-order-internal-finalize-hotfix",
+  "purpose": "Allow only the guarded checkout RPC to finalize four server-derived order fields without weakening normal order update protection.",
+  "expected_sql_checks": {
+    "trigger_accepts_internal_finalize": true,
+    "guarded_rpc_sets_internal_marker": true,
+    "internal_fields_are_limited": true,
+    "protection_trigger_exists": true
+  }
+}

@@ -1,137 +1,105 @@
--- ALIN v2.7.0 — Stage 4
--- منع تكرار الطلبات، تحديد المعدل، وحماية المخزون عند الإلغاء/الحذف.
--- آمن للتنفيذ أكثر من مرة. لا يحذف الطلبات أو المنتجات الحالية.
+-- ALIN v2.7.3 — إصلاح تعارض حماية الطلب مع الإنهاء الداخلي للطلب
+-- السبب: دالة المرحلة الرابعة تنشئ الطلب ثم تضع مفاتيح منع التكرار وحجز المخزون،
+-- وكان trigger حماية الطلب يعتبر هذا التحديث الداخلي تحديثاً من زائر ويرفضه.
+-- الإصلاح لا يضعف حماية المكتبة أو المندوب؛ يسمح فقط بأربعة حقول مشتقة من الخادم.
+-- آمن لإعادة التنفيذ ولا يحذف طلبات أو مخزوناً.
 
 begin;
-create schema if not exists extensions;
-create extension if not exists pgcrypto with schema extensions;
 
--- معلومات الربط بين الطلب ومحاولة الدفع/الشراء.
-alter table public.orders add column if not exists checkout_request_key text;
-alter table public.orders add column if not exists checkout_group_id text;
-alter table public.orders add column if not exists stock_reserved boolean not null default false;
-alter table public.orders add column if not exists stock_restored_at timestamptz;
-
--- v2.7.2: jsonb_populate_record may pass NULL instead of applying the column default.
-create or replace function public.alin_fill_stock_reserved_default()
-returns trigger
-language plpgsql
-set search_path=public,pg_temp
-as $$
-begin
-  if new.stock_reserved is null then
-    new.stock_reserved:=false;
-  end if;
-  return new;
-end
-$$;
-
-drop trigger if exists alin_orders_stock_reserved_default on public.orders;
-create trigger alin_orders_stock_reserved_default
-before insert or update of stock_reserved on public.orders
-for each row execute function public.alin_fill_stock_reserved_default();
-
-
-create index if not exists orders_checkout_request_key_idx on public.orders(checkout_request_key);
-create index if not exists orders_checkout_group_id_idx on public.orders(checkout_group_id);
-
--- سجل داخلي لمحاولات إنشاء الطلب. لا يمكن للمتصفح قراءته أو تعديله مباشرة.
-create table if not exists public.checkout_requests(
-  id uuid primary key default gen_random_uuid(),
-  request_key text not null unique,
-  device_hash text not null,
-  phone_hash text not null,
-  payload_hash text not null,
-  status text not null default 'pending',
-  result jsonb,
-  created_at timestamptz not null default now(),
-  completed_at timestamptz,
-  constraint checkout_requests_status_valid check(status in ('pending','completed'))
-);
-
-create index if not exists checkout_requests_phone_created_idx
-  on public.checkout_requests(phone_hash,created_at desc);
-create index if not exists checkout_requests_device_created_idx
-  on public.checkout_requests(device_hash,created_at desc);
-create index if not exists checkout_requests_payload_created_idx
-  on public.checkout_requests(payload_hash,created_at desc);
-
-alter table public.checkout_requests enable row level security;
-revoke all on public.checkout_requests from public,anon,authenticated;
-
--- يعيد المخزون مرة واحدة فقط عندما ينتقل طلب منتج إلى ملغي،
--- ويمنع إعادة تفعيل الطلب الملغي بعد إرجاع المخزون.
-create or replace function public.alin_order_stock_guard()
+create or replace function public.alin_protect_order_update()
 returns trigger
 language plpgsql
 security definer
-set search_path=public,pg_temp
+set search_path=public
 as $$
 declare
-  v_old_status text;
-  v_new_status text;
-  v_kind text;
-  v_item_id text;
-  v_qty numeric;
+  v_role text := public.alin_current_role();
+  v_allowed text[];
+  v_old_status text := lower(coalesce(old.status,'new'));
+  v_new_status text := lower(coalesce(new.status,v_old_status));
 begin
-  if tg_op='DELETE' then
-    if coalesce(old.stock_reserved,false) and old.stock_restored_at is null then
-      v_kind:=lower(coalesce(old.kind,''));
-      if v_kind not in ('booklet','booklets','ملزمة','ملازم') then
-        v_item_id:=coalesce(old.item_id::text,'');
-        v_qty:=greatest(coalesce(old.qty,1),1);
-        update public.products p
-          set stock=coalesce(p.stock,0)+v_qty
-        where p.id::text=v_item_id;
+  -- Internal checkout finalization. The caller cannot choose these values;
+  -- alin_create_store_orders_guarded derives them on the server.
+  if current_setting('alin.internal_order_update',true)='stage4_checkout_finalize' then
+    v_allowed:=array[
+      'checkout_request_key','checkout_group_id','stock_reserved','stock_restored_at'
+    ];
+    if (to_jsonb(new)-v_allowed)<>(to_jsonb(old)-v_allowed) then
+      raise exception 'تم منع تعديل داخلي غير مصرح في الطلب';
+    end if;
+    return new;
+  end if;
+
+  if public.alin_is_admin() then
+    return new;
+  end if;
+
+  if v_role='library' then
+    v_allowed:=array[
+      'status','status_history','updated_at','processing_at','ready_at',
+      'completed_at','delivered_at','cancelled_at','cancellation_reason',
+      'cancel_reason','payment_status','notes','library_note'
+    ];
+
+    if old.status is distinct from new.status then
+      if not (
+        (v_old_status in ('new','pending','pending_admin','accepted') and v_new_status in ('processing','cancelled'))
+        or (v_old_status in ('processing','printing') and v_new_status in ('ready','cancelled'))
+        or (v_old_status='ready' and v_new_status in ('completed','delivered','cancelled'))
+      ) then
+        raise exception 'انتقال حالة الطلب غير مسموح للمكتبة: % إلى %',old.status,new.status;
       end if;
     end if;
-    return old;
-  end if;
 
-  v_old_status:=lower(coalesce(old.status,'new'));
-  v_new_status:=lower(coalesce(new.status,'new'));
-  if v_old_status='canceled' then v_old_status:='cancelled'; end if;
-  if v_new_status='canceled' then v_new_status:='cancelled'; end if;
-
-  if v_old_status='cancelled'
-     and v_new_status<>'cancelled'
-     and old.stock_restored_at is not null then
-    raise exception 'لا يمكن إعادة تفعيل طلب ملغي بعد إرجاع المخزون. أنشئ طلباً جديداً';
-  end if;
-
-  if v_new_status='cancelled'
-     and v_old_status<>'cancelled'
-     and coalesce(old.stock_reserved,false)
-     and old.stock_restored_at is null then
-    v_kind:=lower(coalesce(old.kind,''));
-    if v_kind not in ('booklet','booklets','ملزمة','ملازم') then
-      v_item_id:=coalesce(old.item_id::text,'');
-      v_qty:=greatest(coalesce(old.qty,1),1);
-      update public.products p
-        set stock=coalesce(p.stock,0)+v_qty
-      where p.id::text=v_item_id;
+    -- توافق بين اسم الحقل القديم والجديد.
+    if new.cancellation_reason is distinct from old.cancellation_reason and new.cancel_reason is not distinct from old.cancel_reason then
+      new.cancel_reason:=new.cancellation_reason;
+    elsif new.cancel_reason is distinct from old.cancel_reason and new.cancellation_reason is not distinct from old.cancellation_reason then
+      new.cancellation_reason:=new.cancel_reason;
     end if;
-    new.stock_reserved:=false;
-    new.stock_restored_at:=now();
+
+    if v_new_status in ('completed','delivered') then
+      new.payment_status:='paid';
+    elsif new.payment_status is distinct from old.payment_status then
+      raise exception 'لا يمكن للمكتبة تغيير حالة الدفع قبل إكمال الطلب';
+    end if;
+
+  elsif v_role='courier' then
+    v_allowed:=array[
+      'status','assignment_status','updated_at','accepted_at','picked_up_at',
+      'out_for_delivery_at','completed_at','delivered_at','rejected_at','cancelled_at',
+      'delivery_note','proof_path','handoff_token'
+    ];
+
+    if old.status is distinct from new.status then
+      if not (
+        (v_old_status in ('pending','new','pending_admin','assigned') and v_new_status in ('accepted','rejected'))
+        or (v_old_status='accepted' and v_new_status in ('picked_up','rejected'))
+        or (v_old_status='picked_up' and v_new_status in ('out_for_delivery','rejected'))
+        or (v_old_status in ('out_for_delivery','out_delivery','processing') and v_new_status in ('completed','delivered'))
+      ) then
+        raise exception 'انتقال حالة الطلب غير مسموح للمندوب: % إلى %',old.status,new.status;
+      end if;
+    end if;
+  else
+    raise exception 'غير مسموح بتعديل الطلب';
+  end if;
+
+  if (to_jsonb(new)-v_allowed)<>(to_jsonb(old)-v_allowed) then
+    raise exception 'تم منع تعديل بيانات حساسة في الطلب';
   end if;
 
   return new;
 end
 $$;
 
-revoke all on function public.alin_order_stock_guard() from public,anon,authenticated;
+revoke all on function public.alin_protect_order_update() from public,anon,authenticated;
 
-drop trigger if exists alin_orders_stock_cancel_guard on public.orders;
-create trigger alin_orders_stock_cancel_guard
-before update of status on public.orders
-for each row execute function public.alin_order_stock_guard();
+drop trigger if exists alin_orders_protect_update on public.orders;
+create trigger alin_orders_protect_update
+before update on public.orders
+for each row execute function public.alin_protect_order_update();
 
-drop trigger if exists alin_orders_stock_delete_guard on public.orders;
-create trigger alin_orders_stock_delete_guard
-before delete on public.orders
-for each row execute function public.alin_order_stock_guard();
-
--- واجهة إنشاء الطلب المحمية. الدالة الأساسية من المرحلة الثالثة تبقى داخلية فقط.
 create or replace function public.alin_create_store_orders_guarded(
   p_items jsonb,
   p_customer jsonb,
@@ -299,20 +267,15 @@ begin
 end
 $$;
 
--- لا يمكن استدعاء الدالة الأساسية مباشرة من المتصفح بعد هذه المرحلة.
-revoke all on function public.alin_create_store_orders(jsonb,jsonb,jsonb,text) from public,anon,authenticated;
 revoke all on function public.alin_create_store_orders_guarded(jsonb,jsonb,jsonb,text,text,text) from public;
 grant execute on function public.alin_create_store_orders_guarded(jsonb,jsonb,jsonb,text,text,text) to anon,authenticated;
 
 notify pgrst,'reload schema';
 commit;
 
--- فحص المرحلة الرابعة: يجب أن تكون القيم كلها true، والأعداد 0.
+-- يجب أن تكون القيم الأربع true.
 select
-  to_regprocedure('public.alin_create_store_orders_guarded(jsonb,jsonb,jsonb,text,text,text)') is not null as guarded_checkout_rpc_exists,
-  not has_function_privilege('anon','public.alin_create_store_orders(jsonb,jsonb,jsonb,text)','EXECUTE') as anon_core_checkout_blocked,
-  has_function_privilege('anon','public.alin_create_store_orders_guarded(jsonb,jsonb,jsonb,text,text,text)','EXECUTE') as anon_guarded_checkout_allowed,
-  to_regclass('public.checkout_requests') is not null as checkout_requests_table_exists,
-  to_regprocedure('public.alin_order_stock_guard()') is not null as stock_guard_function_exists,
-  exists(select 1 from pg_trigger where tgrelid='public.orders'::regclass and tgname='alin_orders_stock_cancel_guard' and not tgisinternal) as stock_cancel_trigger_exists,
-  (select count(*) from public.orders where stock_restored_at is not null and stock_reserved=true) as invalid_restored_reservations;
+  coalesce((select p.prosrc like '%stage4_checkout_finalize%' from pg_proc p where p.oid=to_regprocedure('public.alin_protect_order_update()')),false) as trigger_accepts_internal_finalize,
+  coalesce((select p.prosrc like '%set_config(''alin.internal_order_update'',''stage4_checkout_finalize'',true)%' from pg_proc p where p.oid=to_regprocedure('public.alin_create_store_orders_guarded(jsonb,jsonb,jsonb,text,text,text)')),false) as guarded_rpc_sets_internal_marker,
+  coalesce((select p.prosrc like '%checkout_request_key%checkout_group_id%stock_reserved%stock_restored_at%' from pg_proc p where p.oid=to_regprocedure('public.alin_protect_order_update()')),false) as internal_fields_are_limited,
+  exists(select 1 from pg_trigger where tgrelid='public.orders'::regclass and tgname='alin_orders_protect_update' and not tgisinternal) as protection_trigger_exists;
