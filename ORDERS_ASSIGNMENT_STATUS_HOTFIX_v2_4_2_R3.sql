@@ -150,6 +150,7 @@ begin
       'library_id',p_fulfillment->>'library_id','pickup_library_id',p_fulfillment->>'pickup_library_id',
       'delivery_area',p_fulfillment->>'delivery_area','delivery_address',p_fulfillment->>'delivery_address',
       'delivery_landmark',p_fulfillment->>'delivery_landmark','delivery_fee',case when v_index=1 then v_delivery_fee else 0 end,
+      'stock_reserved',false,'stock_restored_at',null,
       'created_at',now(),'updated_at',now()
     );
 

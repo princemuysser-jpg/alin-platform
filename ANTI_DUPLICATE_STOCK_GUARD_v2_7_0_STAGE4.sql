@@ -12,6 +12,26 @@ alter table public.orders add column if not exists checkout_group_id text;
 alter table public.orders add column if not exists stock_reserved boolean not null default false;
 alter table public.orders add column if not exists stock_restored_at timestamptz;
 
+-- v2.7.2: jsonb_populate_record may pass NULL instead of applying the column default.
+create or replace function public.alin_fill_stock_reserved_default()
+returns trigger
+language plpgsql
+set search_path=public,pg_temp
+as $$
+begin
+  if new.stock_reserved is null then
+    new.stock_reserved:=false;
+  end if;
+  return new;
+end
+$$;
+
+drop trigger if exists alin_orders_stock_reserved_default on public.orders;
+create trigger alin_orders_stock_reserved_default
+before insert or update of stock_reserved on public.orders
+for each row execute function public.alin_fill_stock_reserved_default();
+
+
 create index if not exists orders_checkout_request_key_idx on public.orders(checkout_request_key);
 create index if not exists orders_checkout_group_id_idx on public.orders(checkout_group_id);
 

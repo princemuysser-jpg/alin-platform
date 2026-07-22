@@ -1,4 +1,4 @@
-const VERSION='alin-v2.7.0-stage4-order-guard';
+const VERSION='alin-v2.7.2-stock-reserved-hotfix';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[

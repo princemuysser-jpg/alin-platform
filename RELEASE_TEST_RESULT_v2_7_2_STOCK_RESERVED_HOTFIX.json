@@ -1,0 +1,9 @@
+{
+  "version": "2.7.2-stock-reserved-hotfix",
+  "tested_at_utc": "2026-07-22T20:32:53.680922+00:00",
+  "npm_test": "passed",
+  "stock_reserved_hotfix_checks": "9/9 passed",
+  "syntax_files": 75,
+  "module_order": 66,
+  "notes": "Orders insert now sends stock_reserved=false and a defensive BEFORE trigger converts legacy NULL values to false before NOT NULL validation."
+}

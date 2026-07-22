@@ -460,6 +460,7 @@ begin
       'delivery_latitude',v_latitude,'delivery_longitude',v_longitude,
       'delivery_location_url',v_location_url,'delivery_location_accuracy',v_accuracy,
       'delivery_location_source',v_location_source,
+      'stock_reserved',false,'stock_restored_at',null,
       'created_at',now(),'updated_at',now()
     );
 

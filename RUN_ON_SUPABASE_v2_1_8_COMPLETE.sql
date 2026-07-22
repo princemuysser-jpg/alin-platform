@@ -465,6 +465,7 @@ begin
       'library_id',p_fulfillment->>'library_id','pickup_library_id',p_fulfillment->>'pickup_library_id',
       'delivery_area',p_fulfillment->>'delivery_area','delivery_address',p_fulfillment->>'delivery_address',
       'delivery_landmark',p_fulfillment->>'delivery_landmark','delivery_fee',case when v_index=1 then v_delivery_fee else 0 end,
+      'stock_reserved',false,'stock_restored_at',null,
       'created_at',now(),'updated_at',now()
     );
 
@@ -2763,6 +2764,7 @@ begin
       'delivery_latitude',v_latitude,'delivery_longitude',v_longitude,
       'delivery_location_url',v_location_url,'delivery_location_accuracy',v_accuracy,
       'delivery_location_source',v_location_source,
+      'stock_reserved',false,'stock_restored_at',null,
       'created_at',now(),'updated_at',now()
     );
 
@@ -2824,6 +2826,26 @@ alter table public.orders add column if not exists checkout_request_key text;
 alter table public.orders add column if not exists checkout_group_id text;
 alter table public.orders add column if not exists stock_reserved boolean not null default false;
 alter table public.orders add column if not exists stock_restored_at timestamptz;
+
+-- v2.7.2: jsonb_populate_record may pass NULL instead of applying the column default.
+create or replace function public.alin_fill_stock_reserved_default()
+returns trigger
+language plpgsql
+set search_path=public,pg_temp
+as $$
+begin
+  if new.stock_reserved is null then
+    new.stock_reserved:=false;
+  end if;
+  return new;
+end
+$$;
+
+drop trigger if exists alin_orders_stock_reserved_default on public.orders;
+create trigger alin_orders_stock_reserved_default
+before insert or update of stock_reserved on public.orders
+for each row execute function public.alin_fill_stock_reserved_default();
+
 
 create index if not exists orders_checkout_request_key_idx on public.orders(checkout_request_key);
 create index if not exists orders_checkout_group_id_idx on public.orders(checkout_group_id);
