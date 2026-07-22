@@ -189,3 +189,5 @@ BEGIN
 END $$;
 
 select 'ALIN v2.4.2 Stage 1 readiness check passed.' as result;
+
+-- Stage 4 readiness symbol: alin_create_store_orders_guarded

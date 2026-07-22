@@ -1,5 +1,5 @@
 // === core/checkout-service.js ===
-/* ALIN v2.6.0 Stage 3 — server-authoritative checkout and strict payload allowlist. */
+/* ALIN v2.7.0 Stage 4 — guarded checkout, idempotency and device rate limits. */
 (function(){
   'use strict';
   const client=()=>window.ALINAuthRuntime?.client?.()||window.sb||window.AlinCloud?.client?.()||null;
@@ -56,6 +56,34 @@
     throw new Error('اختر طريقة استلام صحيحة');
   }
 
+
+  function randomId(){
+    if(globalThis.crypto?.randomUUID)return globalThis.crypto.randomUUID();
+    const bytes=new Uint8Array(16);globalThis.crypto?.getRandomValues?.(bytes);
+    if(!bytes.some(Boolean)){for(let i=0;i<bytes.length;i++)bytes[i]=Math.floor(Math.random()*256)}
+    bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;
+    return [...bytes].map((b,i)=>([4,6,8,10].includes(i)?'-':'')+b.toString(16).padStart(2,'0')).join('');
+  }
+  function deviceId(){
+    const key='alin_device_id_v1';
+    try{
+      let value=localStorage.getItem(key);
+      if(!value||value.length<16){value=randomId();localStorage.setItem(key,value)}
+      return value;
+    }catch(_){return randomId()}
+  }
+  function checkoutAttempt(fingerprint){
+    const key='alin_checkout_attempt_v1';
+    const now=Date.now();
+    try{
+      const saved=JSON.parse(sessionStorage.getItem(key)||'null');
+      if(saved?.fingerprint===fingerprint&&saved?.requestKey&&now-Number(saved.createdAt||0)<15*60*1000)return saved;
+      const next={fingerprint,requestKey:randomId(),createdAt:now};
+      sessionStorage.setItem(key,JSON.stringify(next));return next;
+    }catch(_){return {fingerprint,requestKey:randomId(),createdAt:now}}
+  }
+  function clearCheckoutAttempt(){try{sessionStorage.removeItem('alin_checkout_attempt_v1')}catch(_){}}
+
   let checkoutPending=false;
   async function secureCheckout(){
     if(checkoutPending)return;
@@ -73,11 +101,21 @@
       const coupon=(window.AlinCoupons?.getAppliedCode?.()||document.getElementById('couponInput')?.value||'').trim();
       const cartSnapshot=cart.map(item=>({...item}));
       const items=normalizeCheckoutItems(cart);
+      const fingerprint=JSON.stringify({items,customer:{name,phone},fulfillment,coupon:coupon.toLowerCase()});
+      const attempt=checkoutAttempt(fingerprint);
       if(typeof cartSave==='function')cartSave();
-      const {data,error}=await c.rpc('alin_create_store_orders',{p_items:items,p_customer:{name,phone},p_fulfillment:fulfillment,p_coupon_code:coupon||null});
-      if(error)throw error;
+      const {data,error}=await c.rpc('alin_create_store_orders_guarded',{
+        p_items:items,p_customer:{name,phone},p_fulfillment:fulfillment,p_coupon_code:coupon||null,
+        p_request_key:attempt.requestKey,p_device_id:deviceId()
+      });
+      if(error){
+        const message=String(error.message||'');
+        if(/PGRST202|Could not find the function|schema cache/i.test(message))throw new Error('خدمة حماية الطلبات غير محدثة. نفّذ ملف المرحلة الرابعة ثم حدّث الصفحة.');
+        throw error;
+      }
       const numbers=Array.isArray(data)?data.map(x=>String(x.order_number||'')).filter(Boolean):[];
       if(!numbers.length)throw new Error('لم يرجع الخادم رقم تتبع للطلب');
+      clearCheckoutAttempt();
       cart=[];if(typeof cartSave==='function')cartSave();
       if(typeof load==='function')await load();
       const box=window.checkoutBox||document.getElementById('checkoutBox');

@@ -27,7 +27,7 @@ for(const stale of ['RUN_ON_SUPABASE_v2_0_1_COMPLETE.sql','CHECK_SUPABASE_READIN
 const run=fs.readFileSync(path.join(root,'RUN_ON_SUPABASE_v2_1_8_COMPLETE.sql'),'utf8');
 const check=fs.readFileSync(path.join(root,'CHECK_SUPABASE_READINESS_v2_1_8.sql'),'utf8');
 if((run.match(/\bbegin\s*;/gi)||[]).length!==(run.match(/\bcommit\s*;/gi)||[]).length)failures.push('sql:transaction-count');
-for(const name of ['alin_current_account_id','alin_current_role','alin_is_admin','alin_create_store_orders','alin_validate_coupon','alin_track_order','alin_repair_auth_links','alin_notification_visible','alin_order_visible','alin_protect_order_update','alin_set_library_open','alin_library_set_order_status','alin_upsert_order_finance']){
+for(const name of ['alin_current_account_id','alin_current_role','alin_is_admin','alin_create_store_orders','alin_create_store_orders_guarded','alin_validate_coupon','alin_track_order','alin_repair_auth_links','alin_notification_visible','alin_order_visible','alin_protect_order_update','alin_set_library_open','alin_library_set_order_status','alin_upsert_order_finance']){
   if(!run.includes(name))failures.push(`sql:function:${name}`);
   if(!check.includes(name))failures.push(`check:function:${name}`);
 }

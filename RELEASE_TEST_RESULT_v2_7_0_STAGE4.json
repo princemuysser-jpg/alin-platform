@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "version": "2.7.0-stage4-order-guard",
+  "tested_at_utc": "2026-07-22T17:33:02.435083+00:00",
+  "checks": {
+    "javascript_syntax_files": 75,
+    "module_order_files": 66,
+    "stage4_security_checks": "15/15",
+    "full_npm_test": "passed"
+  },
+  "notes": [
+    "Database SQL was statically validated by project tests but not executed against the user Supabase project.",
+    "Rate limiting is by normalized phone and browser device id; IP/CAPTCHA protection requires a later Edge Function stage."
+  ]
+}
