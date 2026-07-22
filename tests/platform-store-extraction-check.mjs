@@ -40,9 +40,9 @@ check(!/window\.renderStore\s*=/.test(features),'features-render-wrapper-remains
 
 const moduleNames=['discovery-core.js','discovery-catalog.js','discovery-details.js','discovery-growth.js','discovery.js'];
 for(const [name,html] of [['desktop',desktop],['mobile',mobile]]){
-  let previous=html.indexOf('./modules/core/platform.js?v=2.3.9');
+  let previous=html.indexOf('./modules/core/platform.js?v=2.4.1');
   for(const file of moduleNames){
-    const pos=html.indexOf(`./modules/store/${file}?v=2.3.9`);
+    const pos=html.indexOf(`./modules/store/${file}?v=2.4.1`);
     check(pos>previous,`${name}-load-order:${file}`);
     previous=pos;
   }

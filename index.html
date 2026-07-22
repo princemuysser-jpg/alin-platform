@@ -1,64 +1,27 @@
 <!DOCTYPE html>
-
 <html dir="rtl" lang="ar">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/>
-<meta content="#f8f3e8" name="theme-color"/>
+<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
+<meta content="#00143c" name="theme-color"/>
 <title>منصة آلين</title>
-<style>html,body{margin:0;min-height:100%;background:#f8f3e8}noscript{display:block;padding:24px;color:#0b2345;font-family:Tahoma,"Segoe UI",sans-serif;text-align:center}noscript a{color:#f0c75e;margin:0 8px}</style>
-<script>
-    (()=>{
-      const key='alin_device_view';
-      try{
-        const current=new URL(location.href);
-        const forced=current.searchParams.get('view');
-        let chosen=forced==='mobile'||forced==='desktop'?forced:'';
-        if(chosen){
-          try{sessionStorage.setItem(key,chosen)}catch(_){ }
-        }else{
-          try{
-            const saved=sessionStorage.getItem(key);
-            if(saved==='mobile'||saved==='desktop')chosen=saved;
-          }catch(_){ }
-        }
-        if(!chosen){
-          const viewportWidth=window.visualViewport&&window.visualViewport.width;
-          const width=Math.max(1,Math.round(viewportWidth||window.innerWidth||document.documentElement.clientWidth||1024));
-          let coarse=false,hoverNone=false,portrait=false,touch=false;
-          try{coarse=matchMedia('(pointer: coarse)').matches;hoverNone=matchMedia('(hover: none)').matches;portrait=matchMedia('(orientation: portrait)').matches}catch(_){portrait=innerHeight>=innerWidth}
-          try{touch=(navigator.maxTouchPoints||0)>0}catch(_){ }
-          const ua=String(navigator.userAgent||'');
-          const hintedMobile=!!(navigator.userAgentData&&navigator.userAgentData.mobile===true);
-          const phone=hintedMobile||/iPhone|iPod|Android.+Mobile|Windows Phone|Mobile/i.test(ua)||(width<800&&coarse);
-          const tablet=/iPad|Tablet|Kindle|Silk|Android(?!.*Mobile)/i.test(ua)||(/Macintosh/i.test(ua)&&touch)||((coarse||hoverNone)&&touch&&width>=800&&width<=1180);
-          chosen=phone?'mobile':tablet&&(portrait||width<1000)?'mobile':'desktop';
-          try{sessionStorage.setItem(key,chosen)}catch(_){ }
-        }
-        current.searchParams.delete('view');
-        current.pathname=current.pathname.replace(/[^/]*$/,'')+(chosen==='mobile'?'store-mobile.html':'store-desktop.html');
-        location.replace(current.href);
-      }catch(_){
-        const fallback=(window.innerWidth||1024)<800?'store-mobile.html':'store-desktop.html';
-        let query='';
-        try{
-          query=String(location.search||'').replace(/^\?/,'').split('&').filter(part=>{
-            if(!part)return false;
-            let key=part.split('=')[0].replace(/\+/g,' ');
-            try{key=decodeURIComponent(key)}catch(_){ }
-            return key!=='view';
-          }).join('&');
-        }catch(_){query=''}
-        location.replace('./'+fallback+(query?'?'+query:'')+String(location.hash||''));
-      }
-    })();
-  </script>
-<link href="./dist/css/landing.bundle.css?v=2.3.9" rel="stylesheet"/>
-<script src="./core/runtime-guard.js?v=2.3.9" defer></script>
+<link href="./styles/alin-splash.css?v=2.4.1" rel="stylesheet"/>
+<link href="./assets/images/alin-splash-mobile.webp" rel="preload" as="image" media="(max-width:760px), (orientation:portrait)"/>
+<link href="./assets/images/alin-splash-desktop.webp" rel="preload" as="image" media="(min-width:761px) and (orientation:landscape)"/>
+<script src="./core/device-router.js?v=2.4.1" defer></script>
+<script src="./core/runtime-guard.js?v=2.4.1" defer></script>
 </head>
 <body>
-<noscript>يلزم تشغيل JavaScript للاختيار التلقائي. <a href="./store-mobile.html">فتح الواجهة الخفيفة</a><a href="./store-desktop.html">فتح الواجهة الواسعة</a></noscript>
-<script src="./dist/js/landing.bundle.js?v=2.3.9" defer></script>
-<script src="./core/pwa-register.js?v=2.3.9" defer></script>
+<main id="alinSplash" class="alin-splash" role="status" aria-live="polite" aria-label="جار دخول منصة آلين">
+  <div class="alin-splash__art" aria-hidden="true"></div>
+  <div class="alin-splash__logo-motion" aria-hidden="true"></div>
+  <div class="alin-splash__shine" aria-hidden="true"></div>
+  <div class="alin-splash__sweep" aria-hidden="true"></div>
+  <div class="alin-splash__progress" aria-hidden="true"><i></i></div>
+  <span class="alin-splash__sr">جار دخول منصة آلين، يرجى الانتظار.</span>
+</main>
+<noscript style="display:block;padding:24px;color:#fff;background:#00143c;font-family:Tahoma,'Segoe UI',sans-serif;text-align:center">يلزم تشغيل JavaScript للدخول التلقائي. <a style="color:#35e5ff;margin:0 8px" href="./store-mobile.html">فتح واجهة الموبايل</a><a style="color:#35e5ff;margin:0 8px" href="./store-desktop.html">فتح واجهة الكمبيوتر</a></noscript>
+<script src="./core/splash.js?v=2.4.1" defer></script>
+<script src="./core/pwa-register.js?v=2.4.1" defer></script>
 </body>
 </html>

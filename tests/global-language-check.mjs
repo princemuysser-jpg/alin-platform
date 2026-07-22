@@ -43,12 +43,12 @@ const order=JSON.parse(fs.readFileSync(path.join(root,'modules/module-order.json
 check(order.early.slice(1,4).join('|')==='modules/core/i18n-en.js|modules/core/i18n-ku.js|modules/core/i18n.js','module-order');
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const source=fs.readFileSync(path.join(root,htmlName),'utf8');
-  check(source.includes('./modules/core/i18n-en.js?v=2.3.9')&&source.includes('./modules/core/i18n-ku.js?v=2.3.9')&&source.includes('./modules/core/i18n.js?v=2.3.9'),`${htmlName}-scripts`);
-  check(source.includes('./styles/alin-i18n.css?v=2.3.9'),`${htmlName}-style`);
+  check(source.includes('./modules/core/i18n-en.js?v=2.4.1')&&source.includes('./modules/core/i18n-ku.js?v=2.4.1')&&source.includes('./modules/core/i18n.js?v=2.4.1'),`${htmlName}-scripts`);
+  check(source.includes('./styles/alin-i18n.css?v=2.4.1'),`${htmlName}-style`);
   check(source.indexOf('modules/core/i18n-en.js')<source.indexOf('modules/core/i18n-ku.js')&&source.indexOf('modules/core/i18n-ku.js')<source.indexOf('modules/core/i18n.js')&&source.indexOf('modules/core/i18n.js')<source.indexOf('modules/core/ui.js'),`${htmlName}-early-load`);
 }
 const serviceWorker=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
 check(serviceWorker.includes("'./modules/core/i18n-en.js'")&&serviceWorker.includes("'./modules/core/i18n-ku.js'")&&serviceWorker.includes("'./modules/core/i18n.js'")&&serviceWorker.includes("'./styles/alin-i18n.css'"),'pwa-cache');
 const dictionarySource=fs.readFileSync(path.join(root,'modules/core/i18n-en.js'),'utf8')+fs.readFileSync(path.join(root,'modules/core/i18n-ku.js'),'utf8');
 for(const role of ['لوحة المدير','لوحة المدرس','لوحة المكتبة','صفحة المندوب','المحاسب'])check(dictionarySource.includes(`\"${role}\"`),`role-${role}`);
-console.log(JSON.stringify({ok:true,checks:checks.length,version:'2.3.9'},null,2));
+console.log(JSON.stringify({ok:true,checks:checks.length,version:'2.4.1'},null,2));

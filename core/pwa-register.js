@@ -1,4 +1,4 @@
-/* ALIN v2.3.9 — silent PWA updater without forced page reloads. */
+/* ALIN v2.4.1 — silent PWA updater for animated store entry. */
 (function(){
   'use strict';
   try{localStorage.removeItem('alin_v121_accountant_pass');localStorage.removeItem('alin_v121_accountant_user')}catch(_){ }
@@ -7,7 +7,7 @@
 
   window.addEventListener('load',async()=>{
     try{
-      const registration=await navigator.serviceWorker.register('./service-worker.js?v=2.3.9',{scope:'./',updateViaCache:'none'});
+      const registration=await navigator.serviceWorker.register('./service-worker.js?v=2.4.1',{scope:'./',updateViaCache:'none'});
       registration.addEventListener('updatefound',()=>{
         const worker=registration.installing;
         if(!worker)return;

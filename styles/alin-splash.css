@@ -1,0 +1,138 @@
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{width:100%;min-height:100%;margin:0;overflow:hidden;background:#00143c}
+body{font-family:Tahoma,"Segoe UI",Arial,sans-serif}
+.alin-splash{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  background:#00143c;
+  isolation:isolate;
+}
+.alin-splash__art,
+.alin-splash__logo-motion{
+  position:absolute;
+  inset:0;
+  background-position:center;
+  background-repeat:no-repeat;
+  background-size:cover;
+  background-image:url('../assets/images/alin-splash-desktop.webp');
+}
+.alin-splash__art{
+  transform:scale(1.025);
+  animation:alinSplashReveal 1.45s cubic-bezier(.2,.75,.25,1) both;
+}
+.alin-splash__logo-motion{
+  z-index:1;
+  clip-path:circle(24% at 50% 35%);
+  filter:saturate(1.08) brightness(1.04);
+  transform-origin:50% 35%;
+  animation:alinSplashLogo 1.25s cubic-bezier(.2,.75,.2,1) both;
+}
+.alin-splash__shine{
+  position:absolute;
+  z-index:2;
+  top:8%;
+  left:50%;
+  width:min(42vw,520px);
+  aspect-ratio:1;
+  border-radius:50%;
+  transform:translateX(-50%);
+  background:radial-gradient(circle,rgba(29,193,255,.24) 0,rgba(21,135,255,.09) 38%,transparent 72%);
+  mix-blend-mode:screen;
+  animation:alinSplashGlow 1.25s ease-in-out infinite alternate;
+  pointer-events:none;
+}
+.alin-splash__sweep{
+  position:absolute;
+  z-index:3;
+  inset:-35%;
+  width:32%;
+  background:linear-gradient(100deg,transparent 12%,rgba(255,255,255,.08) 38%,rgba(255,255,255,.42) 50%,rgba(72,207,255,.12) 62%,transparent 88%);
+  transform:translateX(-250%) rotate(8deg);
+  animation:alinSplashSweep 1.6s .1s ease-in-out both;
+  pointer-events:none;
+}
+.alin-splash__progress{
+  position:absolute;
+  z-index:4;
+  left:50%;
+  bottom:10.65%;
+  width:min(30.5vw,390px);
+  height:7px;
+  overflow:hidden;
+  border-radius:999px;
+  transform:translateX(-50%);
+  background:rgba(0,10,36,.78);
+  border:1px solid rgba(93,175,255,.26);
+  box-shadow:0 0 0 1px rgba(0,0,0,.18),0 0 22px rgba(0,170,255,.12);
+}
+.alin-splash__progress>i{
+  display:block;
+  width:100%;
+  height:100%;
+  border-radius:inherit;
+  background:linear-gradient(90deg,#00a7ff,#35e5ff 68%,#9af4ff);
+  box-shadow:0 0 14px rgba(0,204,255,.82);
+  transform:scaleX(.04);
+  transform-origin:right center;
+  animation:alinSplashProgress 1.45s cubic-bezier(.15,.7,.2,1) forwards;
+}
+.alin-splash__sr{
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+  border:0;
+}
+.alin-splash.is-leaving{
+  animation:alinSplashExit .28s ease forwards;
+}
+@media (max-width:760px),(orientation:portrait){
+  .alin-splash__art,
+  .alin-splash__logo-motion{background-image:url('../assets/images/alin-splash-mobile.webp')}
+  .alin-splash__logo-motion{clip-path:circle(31% at 50% 35%);transform-origin:50% 35%}
+  .alin-splash__shine{top:9%;width:min(82vw,520px)}
+  .alin-splash__progress{bottom:9.45%;width:81%;height:7px}
+}
+@media (prefers-reduced-motion:reduce){
+  .alin-splash__art,
+  .alin-splash__logo-motion,
+  .alin-splash__shine,
+  .alin-splash__sweep,
+  .alin-splash__progress>i{animation-duration:.55s!important;animation-iteration-count:1!important}
+}
+@keyframes alinSplashReveal{
+  from{opacity:0;transform:scale(1.07);filter:blur(4px)}
+  to{opacity:1;transform:scale(1.025);filter:blur(0)}
+}
+@keyframes alinSplashLogo{
+  0%{opacity:.25;transform:scale(.88)}
+  58%{opacity:1;transform:scale(1.035)}
+  100%{opacity:1;transform:scale(1)}
+}
+@keyframes alinSplashGlow{
+  from{opacity:.55;transform:translateX(-50%) scale(.94)}
+  to{opacity:1;transform:translateX(-50%) scale(1.06)}
+}
+@keyframes alinSplashSweep{
+  0%{opacity:0;transform:translateX(-250%) rotate(8deg)}
+  18%{opacity:1}
+  100%{opacity:0;transform:translateX(470%) rotate(8deg)}
+}
+@keyframes alinSplashProgress{
+  0%{transform:scaleX(.04)}
+  35%{transform:scaleX(.38)}
+  72%{transform:scaleX(.76)}
+  100%{transform:scaleX(1)}
+}
+@keyframes alinSplashExit{
+  to{opacity:0;transform:scale(1.012)}
+}

@@ -1,5 +1,5 @@
 // === core/cloud-status-ui.js ===
-/* ALIN v2.3.9 — final boot verification for modular cloud services. */
+/* ALIN v2.4.1 — final boot verification for modular cloud services. */
 (function(){
   'use strict';
   const required=['enabled','loginFromUI','signOut','restoreSession','secureCheckout','createAccountFromAdmin','updateAccountFromAdmin','resetPasswordFromAdmin'];

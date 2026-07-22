@@ -1,5 +1,5 @@
 // === admin/branding.js ===
-/* ALIN v2.3.9 — visual identity editor with calm presets and appearance-safe theming. */
+/* ALIN v2.4.1 — visual identity editor with calm presets and appearance-safe theming. */
 (function(){
   'use strict';
 
@@ -200,7 +200,7 @@
     root.innerHTML=`
       <header class="ab235-head">
         <div><span class="ab235-eyebrow">إعدادات المظهر</span><h2>الهوية البصرية</h2><p>غيّر هوية المنصة بأمان. القالب لا يغيّر الوضع النهاري أو الليلي.</p></div>
-        <span class="ab235-version">v2.3.9</span>
+        <span class="ab235-version">v2.4.1</span>
       </header>
       <div class="ab235-layout">
         <main class="ab235-main">

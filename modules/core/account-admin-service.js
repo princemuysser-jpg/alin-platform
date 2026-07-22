@@ -1,5 +1,5 @@
 // === core/account-admin-service.js ===
-/* ALIN v2.3.9 — secure account administration adapter. */
+/* ALIN v2.4.1 — secure account administration adapter. */
 (function(){
   'use strict';
   const runtime=()=>window.ALINAuthRuntime||{};

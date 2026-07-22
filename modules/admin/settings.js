@@ -1,5 +1,5 @@
 // === admin/settings.js ===
-/* ALIN v2.3.9 — authoritative platform settings. No router wrapping. */
+/* ALIN v2.4.1 — authoritative platform settings. No router wrapping. */
 (function(){
   'use strict';
 
@@ -70,7 +70,7 @@
   function render(content=root()){
     if(!content)return;
     content.className='panel admin-settings-v144';
-    const version=window.ALIN_CONFIG?.version||'2.3.9';
+    const version=window.ALIN_CONFIG?.version||'2.4.1';
     content.innerHTML=`
       <div class="as144-head"><div><h2>إعدادات المنصة</h2><p>إدارة الإعدادات العامة والأرباح والطلبات والتواصل وأمان المدير.</p></div><span class="as144-version">v${escv(version)}</span></div>
       <div class="as144-tabs" role="tablist"><button class="active" data-as144-tab="general">عام</button><button data-as144-tab="profits">الأرباح</button><button data-as144-tab="orders">الطلبات</button><button data-as144-tab="contact">التواصل</button><button data-as144-tab="security">أمان المدير</button></div>

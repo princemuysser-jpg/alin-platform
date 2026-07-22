@@ -17,7 +17,7 @@ const context={window,document,console,setTimeout,clearTimeout,setInterval,clear
 context.globalThis=context;context.db=window.db;context.current=null;
 vm.createContext(context);vm.runInContext(code,context);
 const api=context.window.AlinCourierDashboard;
-assert(api?.version==='2.3.9','api:version');
+assert(api?.version==='2.4.1','api:version');
 for(const [status,column] of [['assigned','assigned_at'],['accepted','accepted_at'],['picked_up','picked_up_at'],['out_for_delivery','out_for_delivery_at'],['completed','delivered_at'],['rejected','rejected_at']]){
   const values=api.workflowValues(status);
   assert(values.status===status,`payload:${status}:status`);

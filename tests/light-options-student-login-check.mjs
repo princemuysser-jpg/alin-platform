@@ -19,4 +19,4 @@ check(student.includes('data-lpignore="true" data-1p-ignore="true"'),'student-pa
 check(student.includes("raw.includes('@')||/[A-Za-z]/.test(raw)"),'student-email-autofill-rejected');
 check(!student.includes('type="email"'),'student-no-email-input');
 check(student.includes('يعتمد رقم الهاتف فقط'),'student-phone-only-copy');
-console.log(JSON.stringify({ok:true,checks:checks.length,version:'2.3.9'},null,2));
+console.log(JSON.stringify({ok:true,checks:checks.length,version:'2.4.1'},null,2));

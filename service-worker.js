@@ -1,12 +1,13 @@
-const VERSION='alin-v2.3.9-cloud-services-modularized';
+const VERSION='alin-v2.4.1-animated-store-entry';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[
   './','./index.html','./store-desktop.html','./store-mobile.html',
   './manifest-desktop.webmanifest','./manifest-mobile.webmanifest',
-  './dist/css/landing.bundle.css','./dist/css/desktop.bundle.css','./dist/css/mobile.bundle.css',
+  './styles/alin-splash.css','./core/splash.js',
+  './assets/images/alin-splash-desktop.webp','./assets/images/alin-splash-mobile.webp',
+  './dist/css/desktop.bundle.css','./dist/css/mobile.bundle.css',
   './styles/alin-tokens.css','./styles/alin-shared.css','./styles/alin-i18n.css','./styles/alin-desktop.css','./styles/alin-mobile.css','./styles/alin-branding.css',
-  './dist/js/landing.bundle.js',
   './modules/core/config.js',
   './modules/core/i18n-en.js',
   './modules/core/i18n-ku.js',
@@ -71,7 +72,7 @@ const CORE=[
   './modules/core/backend-check.js',
   './modules/store/tracking.js',
   './modules/core/cloud-status-ui.js',
-  './core/lazy-libs.js','./core/finance-runtime.js','./core/pwa-register.js','./core/runtime-guard.js','./core/app-health.js','./core/v2-runtime.js','./options.js',
+  './core/device-router.js','./core/lazy-libs.js','./core/finance-runtime.js','./core/pwa-register.js','./core/runtime-guard.js','./core/app-health.js','./core/v2-runtime.js','./options.js',
   './store/banners.css','./store/banners.js','./store/notifications.js',
   './store/mobile-navigation.css','./store/mobile-navigation.js',
   './assets/icons/icon-192.png','./assets/icons/icon-512.png',

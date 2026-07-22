@@ -1,4 +1,4 @@
-/* ALIN v2.3.9 — KU translation dictionary. Data only. */
+/* ALIN v2.4.1 — KU translation dictionary. Data only. */
 (function(root){
   'use strict';
   const registry=root.__ALIN_I18N_DICTIONARIES__||(root.__ALIN_I18N_DICTIONARIES__=Object.create(null));

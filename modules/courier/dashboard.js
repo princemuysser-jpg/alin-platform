@@ -1,5 +1,5 @@
 // === courier/dashboard.js ===
-/* ALIN v2.3.9 — courier-facing dashboard renderer and actions only. */
+/* ALIN v2.4.1 — courier-facing dashboard renderer and actions only. */
 (function(){
   'use strict';
   const core=window.AlinCourierCore;if(!core)throw new Error('AlinCourierCore is required before courier/dashboard.js');
@@ -31,7 +31,7 @@
 
 
   window.renderCourierDashboard=renderCourierDashboard;
-  window.AlinCourierDashboard=Object.freeze({version:'2.3.9',resolveCourier,myOrders,workflowValues,refreshCourierData,render:renderCourierDashboard});
+  window.AlinCourierDashboard=Object.freeze({version:'2.4.1',resolveCourier,myOrders,workflowValues,refreshCourierData,render:renderCourierDashboard});
 
   window.addEventListener('alin:page-open',event=>{if(event.detail?.page==='courier')renderCourierDashboard('home',{force:true})});
   window.addEventListener('alin:data-refreshed',()=>{if($('#courierPage:not(.hidden)'))renderCourierDashboard($('.courier-v161-tabs .active')?.dataset.courierTab||'home',{refresh:false})});
