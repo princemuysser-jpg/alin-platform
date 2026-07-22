@@ -20,8 +20,8 @@ for(const rel of ['styles/alin-splash.css','core/splash.js','assets/images/alin-
   check(fs.existsSync(path.join(root,rel)),`asset:${rel}`);
 }
 check(index.includes('id="alinSplash"')&&index.includes('جار دخول منصة آلين'),'index-splash-markup');
-check(index.includes('./styles/alin-splash.css?v=2.4.1'),'index-splash-css');
-check(index.includes('./core/splash.js?v=2.4.1'),'index-splash-js');
+check(index.includes('./styles/alin-splash.css?v=2.4.2'),'index-splash-css');
+check(index.includes('./core/splash.js?v=2.4.2'),'index-splash-js');
 check(index.indexOf('device-router.js')<index.indexOf('splash.js'),'index-router-before-splash');
 check(css.includes('@keyframes alinSplashLogo')&&css.includes('.alin-splash__logo-motion'),'css-logo-animation');
 check(css.includes('@media (prefers-reduced-motion:reduce)'),'css-reduced-motion');
@@ -41,4 +41,4 @@ check(desktopBytes<100_000&&mobileBytes<100_000,`images-lightweight:${desktopByt
 check(!js.includes('setInterval(')&&!css.includes('video'),'no-heavy-animation-runtime');
 
 if(failures.length){console.error(JSON.stringify({ok:false,checks,failures},null,2));process.exit(1)}
-console.log(JSON.stringify({ok:true,checks,version:'2.4.1',assets:{desktopBytes,mobileBytes}},null,2));
+console.log(JSON.stringify({ok:true,checks,version:'2.4.2',assets:{desktopBytes,mobileBytes}},null,2));

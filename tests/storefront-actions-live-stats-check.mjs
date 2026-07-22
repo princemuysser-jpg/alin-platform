@@ -41,4 +41,4 @@ check(options.includes('function openAbout()')&&options.includes('function close
 check(sharedCss.includes('.alin-about-dialog .alin-about-content'),'about-dialog-style');
 check(!options.includes("$('#aboutPlatformBox') || $('#storeAbout')"),'about-no-store-scroll');
 check(core.includes("$('#mobileBottomCartCount')||$('#mobileCartCount')"),'mobile-cart-count-live-target');
-console.log(JSON.stringify({ok:true,checks:checks.length,version:'2.4.1'},null,2));
+console.log(JSON.stringify({ok:true,checks:checks.length,version:'2.4.2'},null,2));

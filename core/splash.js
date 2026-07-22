@@ -1,4 +1,4 @@
-/* ALIN v2.4.1 — lightweight animated splash before the existing store. */
+/* ALIN v2.4.2 — lightweight animated splash before the existing store. */
 (()=>{
   'use strict';
   const root=document.getElementById('alinSplash');

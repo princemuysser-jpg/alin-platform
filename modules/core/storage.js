@@ -1,132 +1,232 @@
 // === core/storage.js ===
-/* ALIN v2.4.1 — authoritative file storage and media resolver. */
+/* ALIN v2.4.2 — strict public-media/private-document storage separation. */
 (function(){
   'use strict';
 
-  function client(){try{if(typeof window.init==='function')window.init();return window.sb||null}catch(_){return null}}
-  function requireClient(){const value=client();if(!value)throw new Error('الاتصال بالتخزين غير متاح');return value}
-  function normalizedFolder(value){return String(value||'files').replace(/^\/+|\/+$/g,'').replace(/[^a-z0-9_\-/]/gi,'')||'files'}
+  const PUBLIC_BUCKET='alin-files';
+  const PRIVATE_BUCKET='alin-private';
+  const PRIVATE_ROOTS=new Set(['booklets','teacher-requests']);
+  const OBJECT_URLS=new Set();
 
-  async function ensureStorageReady(){
-    const c=requireClient();
+  function client(){
     try{
-      const {error}=await c.storage.from('alin-files').list('',{limit:1});
-      if(error){
-        const message=String(error.message||'').toLowerCase();
-        if(message.includes('bucket')||message.includes('not found'))throw new Error('مجلد التخزين alin-files غير موجود. نفّذ ملف تحديث Supabase الأخير مرة واحدة.');
-        if(message.includes('policy')||message.includes('permission')||message.includes('row-level'))throw new Error('صلاحيات التخزين ناقصة. نفّذ ملف تحديث Supabase الأخير مرة واحدة.');
-        throw error;
+      if(typeof window.init==='function')window.init();
+      return window.sb||null;
+    }catch(_){return null;}
+  }
+  function requireClient(){
+    const value=client();
+    if(!value)throw new Error('الاتصال بالتخزين غير متاح');
+    return value;
+  }
+  function cleanSegment(value,label='المعرّف'){
+    const clean=String(value||'').trim().replace(/[^a-zA-Z0-9_-]/g,'').slice(0,96);
+    if(!clean)throw new Error(`${label} غير صالح`);
+    return clean;
+  }
+  function normalizedFolder(value){
+    return String(value||'files').replace(/^\/+|\/+$/g,'').replace(/[^a-z0-9_\-/]/gi,'')||'files';
+  }
+  function rootFolder(value){return normalizedFolder(value).split('/')[0]||'files';}
+  function isPrivateRoot(value){return PRIVATE_ROOTS.has(rootFolder(value));}
+  function isDocumentPath(value){return PRIVATE_ROOTS.has(String(value||'').replace(/^\/+/, '').split('/')[0]);}
+
+  function parseStoredRef(value){
+    let raw=String(value||'').trim();
+    if(!raw)return {bucket:PUBLIC_BUCKET,path:'',external:false};
+    if(raw.startsWith('private://'))raw=raw.slice('private://'.length);
+    try{
+      if(/^https?:\/\//i.test(raw)){
+        const url=new URL(raw);
+        const decoded=decodeURIComponent(url.pathname);
+        for(const marker of ['/storage/v1/object/public/','/storage/v1/object/sign/','/storage/v1/object/authenticated/']){
+          if(!decoded.includes(marker))continue;
+          const parts=(decoded.split(marker)[1]||'').split('/').filter(Boolean);
+          const bucket=parts.shift()||'';
+          return {bucket:bucket||PUBLIC_BUCKET,path:parts.join('/'),external:false};
+        }
+        return {bucket:'external',path:raw,external:true};
       }
-      return true;
-    }catch(error){
-      if(error instanceof Error)throw error;
-      throw new Error(String(error||'تعذر فحص التخزين'));
-    }
+    }catch(_){ }
+    raw=raw.replace(/^\/+/, '');
+    if(raw.startsWith(`${PRIVATE_BUCKET}/`))return {bucket:PRIVATE_BUCKET,path:raw.slice(PRIVATE_BUCKET.length+1),external:false};
+    if(raw.startsWith(`${PUBLIC_BUCKET}/`))return {bucket:PUBLIC_BUCKET,path:raw.slice(PUBLIC_BUCKET.length+1),external:false};
+    return {bucket:isDocumentPath(raw)?PRIVATE_BUCKET:PUBLIC_BUCKET,path:raw,external:false};
+  }
+
+  async function requireAuthenticatedSession(){
+    const c=requireClient();
+    const {data,error}=await c.auth.getSession();
+    if(error||!data?.session?.user)throw new Error('انتهت جلسة الدخول. سجّل الدخول ثم أعد المحاولة');
+    return data.session;
+  }
+
+  async function ensureStorageReady(folder='files'){
+    if(isPrivateRoot(folder))await requireAuthenticatedSession();
+    else requireClient();
+    return true;
   }
 
   function safeFileName(name){
     const base=String(name||'file').split(/[\\/]/).pop().replace(/\.[^.]+$/,'');
     return base.replace(/[^\u0600-\u06FFa-zA-Z0-9_-]+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0,50)||'file';
   }
+  function fileExtension(file){return (String(file?.name||'').split('.').pop()||'').toLowerCase();}
+  async function fileHeader(file,length=16){
+    const bytes=new Uint8Array(await file.slice(0,length).arrayBuffer());
+    return bytes;
+  }
+  function bytesStart(bytes,signature){return signature.every((value,index)=>bytes[index]===value);}
 
-  function validateFile(file,{required=false,type='any',maxBytes=25*1024*1024}={}){
+  async function validateFile(file,{required=false,type='any',maxBytes}={}){
     const real=file&&typeof file==='object'&&file.name&&Number(file.size)>0;
-    if(!real){if(required)throw new Error('اختر الملف من جهازك');return null}
-    if(Number(file.size)>maxBytes)throw new Error(`حجم الملف أكبر من المسموح (${Math.round(maxBytes/1024/1024)}MB)`);
-    const ext=(String(file.name).split('.').pop()||'').toLowerCase();
-    const mime=String(file.type||'').toLowerCase();
-    if(type==='pdf'&&ext!=='pdf'&&!mime.includes('pdf'))throw new Error('اختر ملف PDF صحيح');
-    if(type==='image'&&!mime.startsWith('image/')&&!['jpg','jpeg','png','webp','gif','svg'].includes(ext))throw new Error('اختر صورة صحيحة');
+    if(!real){if(required)throw new Error('اختر الملف من جهازك');return null;}
+    const normalizedType=String(type||'any').toLowerCase();
+    const limit=Number(maxBytes)||(
+      normalizedType==='image'?5*1024*1024:
+      normalizedType==='docx'?20*1024*1024:
+      normalizedType==='pdf'?25*1024*1024:25*1024*1024
+    );
+    if(Number(file.size)>limit)throw new Error(`حجم الملف أكبر من المسموح (${Math.round(limit/1024/1024)}MB)`);
     if(Number(file.size)<100)throw new Error('الملف فارغ أو تالف');
-    return {ext,mime};
+
+    const ext=fileExtension(file);
+    const mime=String(file.type||'').toLowerCase();
+    const header=await fileHeader(file,16);
+
+    if(normalizedType==='pdf'){
+      if(ext!=='pdf')throw new Error('امتداد الملف يجب أن يكون PDF');
+      if(mime&&!['application/pdf','application/octet-stream'].includes(mime))throw new Error('نوع ملف PDF غير صحيح');
+      if(!bytesStart(header,[0x25,0x50,0x44,0x46,0x2d]))throw new Error('الملف لا يحتوي توقيع PDF صحيح');
+      return {ext:'pdf',mime:'application/pdf',type:'pdf'};
+    }
+    if(normalizedType==='docx'){
+      if(ext!=='docx')throw new Error('امتداد الملف يجب أن يكون DOCX');
+      if(mime&&!['application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/octet-stream'].includes(mime))throw new Error('نوع ملف Word غير صحيح');
+      const isZip=bytesStart(header,[0x50,0x4b,0x03,0x04])||bytesStart(header,[0x50,0x4b,0x05,0x06])||bytesStart(header,[0x50,0x4b,0x07,0x08]);
+      if(!isZip)throw new Error('ملف DOCX غير صحيح أو تالف');
+      return {ext:'docx',mime:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',type:'docx'};
+    }
+    if(normalizedType==='image'){
+      const allowed=['jpg','jpeg','png','webp'];
+      if(!allowed.includes(ext))throw new Error('اختر صورة JPG أو PNG أو WEBP');
+      if(mime&&!mime.startsWith('image/'))throw new Error('نوع الصورة غير صحيح');
+      const valid=(ext==='png'&&bytesStart(header,[0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]))||
+        ((ext==='jpg'||ext==='jpeg')&&bytesStart(header,[0xff,0xd8,0xff]))||
+        (ext==='webp'&&bytesStart(header,[0x52,0x49,0x46,0x46])&&String.fromCharCode(...header.slice(8,12))==='WEBP');
+      if(!valid)throw new Error('محتوى الصورة لا يطابق امتدادها');
+      const normalizedExt=ext==='jpeg'?'jpg':ext;
+      const normalizedMime=normalizedExt==='jpg'?'image/jpeg':`image/${normalizedExt}`;
+      return {ext:normalizedExt,mime:normalizedMime,type:'image'};
+    }
+    throw new Error('نوع الملف غير مسموح. استخدم PDF أو DOCX أو صورة مدعومة');
   }
 
-  function mediaUrl(path){
-    if(!path)return '';
-    const c=requireClient();
-    let raw=String(path).trim();
-    try{
-      if(/^https?:\/\//i.test(raw)){
-        const url=new URL(raw);
-        const markers=['/storage/v1/object/public/','/storage/v1/object/sign/','/storage/v1/object/authenticated/'];
-        const marker=markers.find(value=>url.pathname.includes(value));
-        if(!marker)return raw;
-        const parts=decodeURIComponent(url.pathname.split(marker)[1]||'').split('/').filter(Boolean);
-        const bucket=parts.shift()||'';
-        if(bucket==='alin-files')raw=parts.join('/');
-        else raw=`${bucket}/${parts.join('/')}`;
-      }
-    }catch(_){ }
-    raw=raw.replace(/^\/+/, '').replace(/^alin-files\//,'');
-    return c.storage.from('alin-files').getPublicUrl(raw).data.publicUrl;
+  function mediaUrl(value){
+    if(!value)return '';
+    const ref=parseStoredRef(value);
+    if(ref.external)return ref.path;
+    if(ref.bucket===PRIVATE_BUCKET||isDocumentPath(ref.path))return '';
+    return requireClient().storage.from(PUBLIC_BUCKET).getPublicUrl(ref.path).data.publicUrl;
   }
 
-  async function checkPublicFile(url){
+  function registerObjectUrl(blob){
+    const url=URL.createObjectURL(blob);
+    OBJECT_URLS.add(url);
+    window.setTimeout(()=>{try{URL.revokeObjectURL(url);}catch(_){ }OBJECT_URLS.delete(url);},10*60*1000);
+    return url;
+  }
+
+  async function downloadPrivate(value,preferredFolder=''){
+    await requireAuthenticatedSession();
+    const ref=parseStoredRef(value);
+    const expectedRoot=rootFolder(preferredFolder||ref.path);
+    if(ref.external||ref.bucket!==PRIVATE_BUCKET||!isDocumentPath(ref.path)||!PRIVATE_ROOTS.has(expectedRoot)){
+      throw new Error('هذا ملف قديم غير محمي. يجب على المدير إعادة رفعه إلى التخزين الخاص');
+    }
+    const {data,error}=await requireClient().storage.from(PRIVATE_BUCKET).download(ref.path);
+    if(error||!data)throw new Error('ليس لديك صلاحية لفتح هذا الملف أو لم يعد مرتبطاً بطلبك');
+    if(!Number(data.size))throw new Error('الملف فارغ أو غير متاح');
+    return {blob:data,url:registerObjectUrl(data),path:ref.path,bucket:PRIVATE_BUCKET,contentType:data.type||''};
+  }
+
+  async function secureFileUrl(value,_expiresIn=300,preferredFolder='booklets'){
+    const resolved=await downloadPrivate(value,preferredFolder);
+    return resolved.url;
+  }
+
+  async function checkFileUrl(url){
     try{
       const response=await fetch(url,{method:'GET',cache:'no-store'});
-      if(!response.ok)return false;
-      return !(response.headers.get('content-type')||'').toLowerCase().includes('application/json');
-    }catch(_){return true}
+      const contentType=(response.headers.get('content-type')||'').toLowerCase();
+      return response.ok&&!contentType.includes('application/json');
+    }catch(_){return false;}
   }
+  const checkPublicFile=checkFileUrl;
 
   async function uploadFile(folder,file,options={}){
-    const info=validateFile(file,options);if(!info)return null;
-    await ensureStorageReady();
-    const c=requireClient();
-    const type=options.type||'any';
-    const ext=type==='pdf'?'pdf':(info.ext||(type==='image'?'png':'bin'));
-    const path=`${normalizedFolder(folder)}/${Date.now()}_${crypto.randomUUID().replace(/-/g,'').slice(0,20)}.${ext}`;
-    const contentType=type==='pdf'?'application/pdf':(file.type||(type==='image'?'image/png':'application/octet-stream'));
-    const payload=file.slice?new File([file.slice(0,file.size)],file.name,{type:contentType}):file;
-    const {data,error}=await c.storage.from('alin-files').upload(path,payload,{upsert:false,contentType,cacheControl:'3600'});
+    folder=normalizedFolder(folder);
+    const root=rootFolder(folder);
+    const normalizedType=String(options.type||'any').toLowerCase();
+    const info=await validateFile(file,{...options,type:normalizedType});
+    if(!info)return null;
+    await ensureStorageReady(folder);
+
+    const privateDocument=PRIVATE_ROOTS.has(root);
+    if(privateDocument&&root==='booklets'&&info.type!=='pdf')throw new Error('مجلد الملازم يقبل ملفات PDF فقط');
+    if(privateDocument&&root==='teacher-requests'&&info.type!=='docx')throw new Error('طلبات المدرسين تقبل ملفات DOCX فقط');
+    if(!privateDocument&&info.type!=='image')throw new Error('التخزين العام مخصص للصور فقط');
+
+    let path='';
+    const randomId=crypto.randomUUID().replace(/-/g,'');
+    if(root==='booklets'){
+      const entityId=cleanSegment(options.entityId,'رقم الملزمة');
+      path=`booklets/${entityId}/${randomId}.pdf`;
+    }else if(root==='teacher-requests'){
+      const ownerId=cleanSegment(options.ownerId,'رقم المدرس');
+      const entityId=cleanSegment(options.entityId,'رقم الطلب');
+      path=`teacher-requests/${ownerId}/${entityId}/${randomId}.docx`;
+    }else{
+      path=`${folder}/${randomId}.${info.ext}`;
+    }
+
+    const bucket=privateDocument?PRIVATE_BUCKET:PUBLIC_BUCKET;
+    const payload=file.slice?new File([file.slice(0,file.size)],file.name,{type:info.mime}):file;
+    const {data,error}=await requireClient().storage.from(bucket).upload(path,payload,{
+      upsert:false,
+      contentType:info.mime,
+      cacheControl:privateDocument?'0':'3600'
+    });
     if(error){
       const message=String(error.message||'');
-      const lower=message.toLowerCase();
-      if(lower.includes('bucket')||lower.includes('not found'))throw new Error('مجلد التخزين alin-files غير موجود');
-      if(lower.includes('policy')||lower.includes('permission')||lower.includes('row-level'))throw new Error('صلاحيات رفع الملفات ناقصة');
+      if(/row-level|policy|permission|unauthorized/i.test(message))throw new Error('تم رفض رفع الملف بسبب الصلاحيات. نفّذ تحديث المرحلة الأولى في Supabase');
+      if(/bucket|not found/i.test(message))throw new Error(`حاوية التخزين ${bucket} غير موجودة. نفّذ تحديث المرحلة الأولى في Supabase`);
       throw new Error(`فشل رفع الملف: ${message||'خطأ غير معروف'}`);
     }
     const stored=data?.path||path;
-    const publicUrl=mediaUrl(stored);
-    if(!(await checkPublicFile(publicUrl)))throw new Error('تم رفع الملف لكن الرابط العام غير متاح');
-    return stored;
+    return privateDocument?`${PRIVATE_BUCKET}/${stored}`:stored;
   }
-
-  async function uploadFileV52(folder,file,options={}){return uploadFile(folder,file,options)}
+  async function uploadFileV52(folder,file,options={}){return uploadFile(folder,file,options);}
 
   async function alinResolveStoredFile(value,preferredFolder='booklets'){
     if(!value)return null;
-    const c=requireClient();
-    const raw=String(value).trim();
-    const candidates=[];
-    const add=value=>{const clean=String(value||'').replace(/^\/+/, '').replace(/^alin-files\//,'');if(clean&&!candidates.includes(clean))candidates.push(clean)};
-    if(!/^https?:\/\//i.test(raw))add(raw);
-    try{
-      if(/^https?:\/\//i.test(raw)){
-        const url=new URL(raw),decoded=decodeURIComponent(url.pathname);
-        for(const marker of ['/storage/v1/object/public/','/storage/v1/object/sign/','/storage/v1/object/authenticated/']){
-          if(!decoded.includes(marker))continue;
-          const parts=(decoded.split(marker)[1]||'').split('/').filter(Boolean),bucket=parts.shift()||'',rest=parts.join('/');
-          if(bucket==='alin-files')add(rest);else{add(`${bucket}/${rest}`);add(`${preferredFolder}/${parts.at(-1)||''}`)}
-        }
-        const filename=decoded.split('/').filter(Boolean).at(-1);if(filename)add(`${preferredFolder}/${filename}`);
-      }
-    }catch(_){ }
-    const filename=raw.split('?')[0].split('#')[0].split('/').filter(Boolean).at(-1);if(filename)add(`${preferredFolder}/${filename}`);
-    for(const path of candidates){
-      try{
-        const url=c.storage.from('alin-files').getPublicUrl(path).data?.publicUrl;if(!url)continue;
-        const response=await fetch(url,{cache:'no-store'});if(!response.ok)continue;
-        const contentType=(response.headers.get('content-type')||'').toLowerCase();if(contentType.includes('application/json'))continue;
-        const blob=await response.blob();if(!blob.size)continue;
-        return {path,url,blob,contentType:blob.type||contentType};
-      }catch(_){ }
-    }
-    return null;
+    const ref=parseStoredRef(value);
+    if(PRIVATE_ROOTS.has(rootFolder(preferredFolder))||isDocumentPath(ref.path))return downloadPrivate(value,preferredFolder);
+    if(ref.external)return {path:ref.path,bucket:'external',url:ref.path,blob:null,contentType:''};
+    const url=mediaUrl(value);
+    if(!url)return null;
+    return {path:ref.path,bucket:PUBLIC_BUCKET,url,blob:null,contentType:''};
   }
 
-  Object.assign(window,{ensureStorageReady,safeFileName,uploadFile,uploadFileV52,mediaUrl,checkPublicFile,alinResolveStoredFile});
-  window.AlinStorage=Object.freeze({ensureStorageReady,safeFileName,uploadFile,mediaUrl,checkPublicFile,resolve:alinResolveStoredFile});
-})();
+  window.addEventListener('pagehide',()=>{
+    for(const url of OBJECT_URLS){try{URL.revokeObjectURL(url);}catch(_){ }}
+    OBJECT_URLS.clear();
+  });
 
-;
+  Object.assign(window,{ensureStorageReady,safeFileName,uploadFile,uploadFileV52,mediaUrl,secureFileUrl,checkPublicFile,checkFileUrl,alinResolveStoredFile});
+  window.AlinStorage=Object.freeze({
+    publicBucket:PUBLIC_BUCKET,privateBucket:PRIVATE_BUCKET,
+    ensureStorageReady,safeFileName,uploadFile,mediaUrl,secureFileUrl,
+    checkFileUrl,resolve:alinResolveStoredFile,parseStoredRef
+  });
+})();

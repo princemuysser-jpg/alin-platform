@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "version": "2.4.2-stage1-private-documents-r2",
+  "date": "2026-07-22",
+  "syntax_files": 75,
+  "module_files": 66,
+  "stage1_security_checks": 31,
+  "npm_test": "passed",
+  "private_document_model": "authenticated Storage download + Blob URL",
+  "public_document_fallback": false,
+  "library_access": "assigned active booklet orders only"
+}

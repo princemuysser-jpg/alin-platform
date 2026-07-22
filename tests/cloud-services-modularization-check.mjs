@@ -37,7 +37,7 @@ check(positions.every(pos=>pos>=0),'module-order-presence');
 check(positions.every((pos,index)=>index===0||pos>positions[index-1]),'module-order-sequence');
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=read(htmlName);
-  const htmlPositions=sequence.map(rel=>html.indexOf(`./${rel}?v=2.4.1`));
+  const htmlPositions=sequence.map(rel=>html.indexOf(`./${rel}?v=2.4.2`));
   check(htmlPositions.every(pos=>pos>=0),`${htmlName}-presence`);
   check(htmlPositions.every((pos,index)=>index===0||pos>htmlPositions[index-1]),`${htmlName}-sequence`);
 }

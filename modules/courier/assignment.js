@@ -1,5 +1,5 @@
 // === courier/assignment.js ===
-/* ALIN v2.4.1 — delivery order assignment and admin workflow only. */
+/* ALIN v2.4.2 — delivery order assignment and admin workflow only. */
 (function(){
   'use strict';
   const core=window.AlinCourierCore;if(!core)throw new Error('AlinCourierCore is required before courier/assignment.js');

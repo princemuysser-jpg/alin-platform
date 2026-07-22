@@ -38,7 +38,7 @@ assert(indexes.every(index=>index>=0),'order:all-loaded');
 assert(indexes.every((value,index)=>index===0||value>indexes[index-1]),'order:correct');
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(htmlName,'utf8');
-  const positions=Object.values(files).map(path=>html.indexOf(`./${path}?v=2.4.1`));
+  const positions=Object.values(files).map(path=>html.indexOf(`./${path}?v=2.4.2`));
   assert(positions.every(value=>value>=0),`html:${htmlName}:all-loaded`);
   assert(positions.every((value,index)=>index===0||value>positions[index-1]),`html:${htmlName}:order`);
 }

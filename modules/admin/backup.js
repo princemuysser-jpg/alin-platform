@@ -1,8 +1,8 @@
 // === admin/backup.js ===
-/* ALIN v2.4.1 — authoritative backup owner. No admin router wrapping. */
+/* ALIN v2.4.2 — authoritative backup owner. No admin router wrapping. */
 (function(){
   'use strict';
-  const VERSION='2.4.1';
+  const VERSION='2.4.2';
   const LOG_KEY='alin_backup_log_v227';
   const RESTORABLE=['categories','products','booklets','banners','coupons'];
   let pending=null;

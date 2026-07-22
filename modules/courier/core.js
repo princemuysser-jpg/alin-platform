@@ -1,5 +1,5 @@
 // === courier/core.js ===
-/* ALIN v2.4.1 — single courier data, areas, workflow, and refresh service. */
+/* ALIN v2.4.2 — single courier data, areas, workflow, and refresh service. */
 (function(){
   'use strict';
 

@@ -1,5 +1,5 @@
 // === courier/areas.js ===
-/* ALIN v2.4.1 — delivery area administration only. */
+/* ALIN v2.4.2 — delivery area administration only. */
 (function(){
   'use strict';
   const core=window.AlinCourierCore;if(!core)throw new Error('AlinCourierCore is required before courier/areas.js');

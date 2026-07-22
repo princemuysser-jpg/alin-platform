@@ -1,5 +1,5 @@
 // === core/checkout-service.js ===
-/* ALIN v2.4.1 — secure checkout and cart normalization. */
+/* ALIN v2.4.2 — secure checkout and cart normalization. */
 (function(){
   'use strict';
   const client=()=>window.ALINAuthRuntime?.client?.()||window.sb||window.AlinCloud?.client?.()||null;

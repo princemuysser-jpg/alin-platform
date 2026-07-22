@@ -19,13 +19,10 @@
     }catch(_){return null;}
   }
   async function resolveSource(path){
-    try{
-      if(typeof alinResolveStoredFile==='function'){
-        const r=await alinResolveStoredFile(path,'booklets');
-        if(r?.url) return r.url;
-      }
-    }catch(_){ }
-    try{return typeof mediaUrl==='function'?mediaUrl(path):String(path||'');}catch(_){return String(path||'');}
+    if(typeof alinResolveStoredFile!=='function')throw new Error('خدمة المستندات الخاصة غير متاحة');
+    const resolved=await alinResolveStoredFile(path,'booklets');
+    if(!resolved?.url)throw new Error('ملف الملزمة غير محمي أو غير مرتبط بهذا الطلب');
+    return resolved.url;
   }
   async function ensurePdfJs(){
     if(window.pdfjsLib) return window.pdfjsLib;

@@ -137,3 +137,37 @@ begin
 end $$;
 
 select 'ALIN v2.1.8 readiness check passed.' as result;
+
+-- v2.4.2 Stage 1 private document readiness
+DO $$
+DECLARE
+  missing text[] := '{}';
+BEGIN
+  IF NOT EXISTS(select 1 from storage.buckets where id='alin-private' and public=false) THEN
+    missing:=array_append(missing,'storage_bucket:alin-private(private)');
+  END IF;
+  IF to_regprocedure('public.alin_private_can_insert(text)') IS NULL THEN
+    missing:=array_append(missing,'function:alin_private_can_insert(text)');
+  END IF;
+  IF to_regprocedure('public.alin_private_can_select(text)') IS NULL THEN
+    missing:=array_append(missing,'function:alin_private_can_select(text)');
+  END IF;
+  IF to_regprocedure('public.alin_library_has_booklet_order(text)') IS NULL THEN
+    missing:=array_append(missing,'function:alin_library_has_booklet_order(text)');
+  END IF;
+  IF NOT EXISTS(select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='alin_private_select_exact') THEN
+    missing:=array_append(missing,'policy:storage.objects.alin_private_select_exact');
+  END IF;
+  IF NOT EXISTS(select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='alin_private_insert_exact') THEN
+    missing:=array_append(missing,'policy:storage.objects.alin_private_insert_exact');
+  END IF;
+  IF EXISTS(select 1 from pg_policies where schemaname='storage' and tablename='objects' and roles::text like '%anon%' and coalesce(qual,'') like '%alin-private%') THEN
+    missing:=array_append(missing,'policy:alin-private-anon-access');
+  END IF;
+  IF cardinality(missing)>0 THEN
+    RAISE EXCEPTION 'ALIN v2.4.2 Stage 1 readiness failed. Missing: %',array_to_string(missing,', ');
+  END IF;
+  RAISE NOTICE 'ALIN v2.4.2 Stage 1 readiness check passed.';
+END $$;
+
+select 'ALIN v2.4.2 Stage 1 readiness check passed.' as result;

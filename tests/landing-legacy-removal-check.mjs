@@ -15,7 +15,7 @@ check(!fs.existsSync(path.join(root,'dist/js/landing.bundle.js')),'legacy-js-del
 check(!fs.existsSync(path.join(root,'dist/css/landing.bundle.css')),'legacy-css-deleted');
 check(!index.includes('landing.bundle.js'),'index-no-legacy-js');
 check(!index.includes('landing.bundle.css'),'index-no-legacy-css');
-check(index.includes('./core/device-router.js?v=2.4.1'),'index-device-router');
+check(index.includes('./core/device-router.js?v=2.4.2'),'index-device-router');
 check(router.includes("current.pathname=current.pathname.replace(/[^/]*$/,'')+(chosen==='mobile'?'store-mobile.html':'store-desktop.html')"),'router-targets');
 check(router.includes('window.AlinEntryRoute=Object.freeze'),'router-exposes-entry-route');
 check(router.includes('location.replace(destination)'),'router-replace-on-go');
@@ -56,4 +56,4 @@ const forced=runRouter({href:'https://alin.test/index.html?view=mobile&campaign=
 check(forced.route.target.includes('/store-mobile.html?campaign=1#x')&&!forced.route.target.includes('view='),'runtime-forced-route-preserves-query');
 
 if(failures.length){console.error(JSON.stringify({ok:false,checks,failures},null,2));process.exit(1)}
-console.log(JSON.stringify({ok:true,checks,version:'2.4.1'},null,2));
+console.log(JSON.stringify({ok:true,checks,version:'2.4.2'},null,2));

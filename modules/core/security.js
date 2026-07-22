@@ -59,9 +59,9 @@
 (function(){
   'use strict';
   const RULES={
-    image:{ext:['png','jpg','jpeg','webp'],mime:['image/png','image/jpeg','image/webp'],max:8*1024*1024},
-    pdf:{ext:['pdf'],mime:['application/pdf'],max:50*1024*1024},
-    word:{ext:['docx'],mime:['application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/octet-stream'],max:50*1024*1024}
+    image:{ext:['png','jpg','jpeg','webp'],mime:['image/png','image/jpeg','image/webp'],max:5*1024*1024},
+    pdf:{ext:['pdf'],mime:['application/pdf'],max:25*1024*1024},
+    word:{ext:['docx'],mime:['application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/octet-stream'],max:20*1024*1024}
   };
   const BLOCKED=['exe','msi','bat','cmd','com','scr','ps1','js','mjs','html','htm','svg','php','jar','apk','sh','dll'];
   const safeName=v=>String(v||'file').normalize('NFKC').replace(/[\\/:*?"<>|\u0000-\u001f]/g,'_').replace(/\s+/g,' ').trim().slice(0,120)||'file';

@@ -66,8 +66,8 @@ check(!all.includes('modules/admin/marketing.js'),'retired marketing not loaded'
 check(all.indexOf('modules/core/notifications.js')<all.indexOf('modules/admin/notifications.js'),'service before admin notifications');
 check(all.indexOf('modules/core/notifications.js')<all.indexOf('modules/teacher/notifications.js'),'service before teacher notifications');
 for(const [name,html] of [['desktop',desktop],['mobile',mobile]]){
-  check((html.match(/\.\/store\/banners\.js\?v=2\.4\.1/g)||[]).length===1,`${name} banner loaded once`);
-  check((html.match(/\.\/modules\/core\/notifications\.js\?v=2\.4\.1/g)||[]).length===1,`${name} service loaded once`);
+  check((html.match(/\.\/store\/banners\.js\?v=2\.4\.2/g)||[]).length===1,`${name} banner loaded once`);
+  check((html.match(/\.\/modules\/core\/notifications\.js\?v=2\.4\.2/g)||[]).length===1,`${name} service loaded once`);
   check(!html.includes('modules/admin/marketing.js'),`${name} retired marketing absent`);
   check(html.includes('AlinStoreNotifications?.open?.()'),`${name} notification control direct`);
 }

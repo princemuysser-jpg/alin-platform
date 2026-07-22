@@ -91,7 +91,7 @@
     const r=teacherRows().find(x=>String(x.id)===String(id));if(!r)return alert('الطلب غير موجود');
     const button=event?.currentTarget;if(button){button.disabled=true;button.textContent='جاري الرفع...'}
     try{
-      const path=await uploadFile('teacher-requests',file,{type:'any',required:true});const hist=parseHistory(r);hist.push({file_name:r.source_file_name||'',file_path:r.source_file_path||'',status:r.status||'',at:new Date().toISOString()});
+      const path=await uploadFile('teacher-requests',file,{type:'docx',required:true,ownerId:cur().id,entityId:id,maxBytes:20*1024*1024});const hist=parseHistory(r);hist.push({file_name:r.source_file_name||'',file_path:r.source_file_path||'',status:r.status||'',at:new Date().toISOString()});
       await update('teacher_requests',{source_file_path:path,source_file_name:file.name,source_file_type:'docx',status:'resubmitted',note:note||r.note||'',version_history:hist,updated_at:new Date().toISOString()},{id});
       if(typeof audit==='function')await audit('teacher_request','إعادة رفع نسخة Word معدلة للطلب '+id);if(typeof load==='function')await load();renderTeacherReview();if(typeof toast==='function')toast('تم إرسال النسخة المعدلة للإدارة');
     }catch(e){console.warn(e);alert(e.message||'تعذر رفع النسخة المعدلة');}finally{if(button&&document.body.contains(button)){button.disabled=false;button.textContent='إعادة الإرسال للإدارة'}}

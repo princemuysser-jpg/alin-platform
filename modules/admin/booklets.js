@@ -105,6 +105,7 @@
     const data=new FormData(form);
     const id=String(form.dataset.id||'');
     const existing=id?books().find(item=>String(item.id)===id):null;
+    const bookletId=existing?.id||(typeof window.uid==='function'?window.uid('B'):`B-${Date.now()}`);
     const title=String(data.get('title')||'').trim();
     const teacherId=String(data.get('teacherId')||'').trim();
     const price=Number(data.get('price')||0);
@@ -118,7 +119,7 @@
       let filePath=existing?.file_path||'';
       let fileName=existing?.file_name||'';
       if(coverFile&&coverFile.name)coverPath=await upload('covers',coverFile,{type:'image'});
-      if(pdfFile&&pdfFile.name){filePath=await upload('booklets',pdfFile,{type:'pdf',required:true});fileName=pdfFile.name}
+      if(pdfFile&&pdfFile.name){filePath=await upload('booklets',pdfFile,{type:'pdf',required:true,entityId:bookletId,maxBytes:25*1024*1024});fileName=pdfFile.name}
       if(!filePath)throw new Error('ملف PDF مطلوب');
       const payload={
         title,teacher_id:teacherId,
@@ -138,7 +139,7 @@
         await window.update('booklets',payload,{id:existing.id});
         if(typeof window.audit==='function')await window.audit('booklet',`تعديل الملزمة ${title} وحفظها بحالة ${statusLabel(status)}`);
       }else{
-        payload.id=typeof window.uid==='function'?window.uid('B'):`B-${Date.now()}`;
+        payload.id=bookletId;
         payload.created_at=new Date().toISOString();
         await window.insert('booklets',payload);
         if(typeof window.audit==='function')await window.audit('booklet',`إضافة الملزمة ${title} بحالة ${statusLabel(status)}`);
@@ -181,9 +182,18 @@
     }catch(error){alert(error?.message||'تعذر حذف الملزمة')}
   }
 
-  function previewBooklet(id){
+  async function previewBooklet(id){
     const book=books().find(item=>String(item.id)===String(id));if(!book?.file_path)return alert('ملف PDF غير متاح');
-    try{window.open(typeof window.mediaUrl==='function'?window.mediaUrl(book.file_path):book.file_path,'_blank','noopener')}catch(_){alert('تعذر فتح المعاينة')}
+    const preview=window.open('about:blank','_blank');
+    if(preview){preview.opener=null;preview.document.write('<p dir="rtl" style="font-family:Arial;padding:24px">جاري تجهيز المعاينة الآمنة...</p>');}
+    try{
+      const resolved=await window.alinResolveStoredFile(book.file_path,'booklets');
+      if(!resolved?.url)throw new Error('الملف غير محمي أو غير متاح');
+      if(preview)preview.location.replace(resolved.url);else window.location.href=resolved.url;
+    }catch(error){
+      try{preview?.close();}catch(_){ }
+      alert(error?.message||'تعذر فتح المعاينة أو لا توجد صلاحية');
+    }
   }
 
   function card(book){

@@ -18,9 +18,10 @@ async function sendTeacherBookRequest(){
     if(ext!=='docx') throw Error('صيغة الملف يجب أن تكون DOCX حتى يمكن عرضها داخل المنصة بدون تنزيل');
     const validMime=['application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/octet-stream',''];
     if(sourceFile.type && !validMime.includes(sourceFile.type)) throw Error('اختر ملف Word DOCX صحيح');
-    const path=await uploadFile('teacher-requests',sourceFile,{type:'any',required:true});
+    const requestId=uid('TR');
+    const path=await uploadFile('teacher-requests',sourceFile,{type:'docx',required:true,ownerId:current.id,entityId:requestId,maxBytes:20*1024*1024});
     await insert('teacher_requests',{
-      id:uid('TR'),teacher_id:current.id,teacher_name:current.name,
+      id:requestId,teacher_id:current.id,teacher_name:current.name,
       title:String(f.get('title')).trim(),subject:String(f.get('subject')||''),grade:String(f.get('grade')||''),
       note:String(f.get('note')||''),source_file_path:path||'',source_file_name:sourceFile.name||'',
       source_file_type:'docx',source_mime_type:sourceFile.type||'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -40,7 +41,8 @@ async function sendTeacherBookRequest(){
 
 async function openTeacherPdf(bookletId){
   const b=db.booklets.find(x=>x.id===bookletId); if(!b?.file_path)return alert('لا يوجد ملف PDF لهذه الملزمة');
-  const cleanUrl=mediaUrl(b.file_path);
+  let cleanUrl='';
+  try{cleanUrl=await secureFileUrl(b.file_path,300,'booklets');}catch(e){return alert(e.message||'تعذر فتح ملف الملزمة');}
   checkoutBox.innerHTML=`<h2>مشاهدة الملزمة</h2><div class="pdf-viewer"><div class="pdf-loading">جاري فتح الملزمة...</div></div><div class="row-actions no-print"><button class="secondary" onclick="closeCheckout()">إغلاق</button></div>`;
   checkoutModal.classList.remove('hidden');
   const ok=await checkPublicFile(cleanUrl);
@@ -77,7 +79,8 @@ async function openTeacherRequestSource(id){
     if(typeof window.AlinLoadMammoth!=='function') throw new Error('محمل مكتبة معاينة Word غير متاح');
     await window.AlinLoadMammoth();
     const resolved=typeof alinResolveStoredFile==='function'?await alinResolveStoredFile(r.source_file_path,'teacher-requests'):null;
-    const url=resolved?.url||mediaUrl(r.source_file_path);
+    const url=resolved?.url;
+    if(!url)throw new Error('ملف Word غير محمي أو غير متاح');
     const response=await fetch(url,{cache:'no-store'});
     if(!response.ok) throw new Error('تعذر قراءة ملف Word');
     const arrayBuffer=await response.arrayBuffer();

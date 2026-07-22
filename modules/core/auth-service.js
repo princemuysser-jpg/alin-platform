@@ -1,4 +1,4 @@
-/* ALIN v2.4.1 — Supabase authentication, session restore and login attempt protection. */
+/* ALIN v2.4.2 — Supabase authentication, session restore and login attempt protection. */
 (function(){
   'use strict';
   const ATTEMPT_KEY='alin_auth_attempts_v139',MAX_ATTEMPTS=5,LOCK_MS=10*60*1000;

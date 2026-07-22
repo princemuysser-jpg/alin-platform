@@ -1,5 +1,5 @@
 // === store/student-auth.js ===
-/* ALIN v2.4.1 — student phone login without email autofill. */
+/* ALIN v2.4.2 — student phone login without email autofill. */
 (function(){
   'use strict';
   const ACCOUNTS_KEY='ALIN_STUDENT_ACCOUNTS_V2';
