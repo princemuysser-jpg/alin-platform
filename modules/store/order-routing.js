@@ -24,7 +24,7 @@
       const libraryId=value('libSelect');
       if(!libraryId)throw new Error('اختر مكتبة الاستلام');
       if(!libraryOpen(libraryId))throw new Error('المكتبة المختارة مغلقة حالياً');
-      return {fulfillment_type:'pickup',delivery_type:'library',library_id:libraryId,pickup_library_id:libraryId,courier_id:null,delegate_id:null,delivery_area:null,delivery_address:null,delivery_landmark:null,delivery_fee:0,payment_method:'cash_at_library',payment_status:'cod_pending'};
+      return {fulfillment_type:'pickup',delivery_type:'library',library_id:libraryId,pickup_library_id:libraryId,courier_id:null,delegate_id:null,delivery_area:null,delivery_address:null,delivery_landmark:null,delivery_fee:0,payment_method:'cash_at_library',payment_status:'cod_pending',assignment_status:'pending_admin'};
     }
     const area=value('deliveryArea'),landmark=value('deliveryLandmark');
     const latitude=value('deliveryLatitude'),longitude=value('deliveryLongitude'),locationUrl=value('deliveryLocationUrl'),accuracy=value('deliveryLocationAccuracy');
@@ -38,7 +38,7 @@
     try{return await window.insert('orders',payload)}catch(error){
       const message=String(error?.message||'').toLowerCase();
       if(!(message.includes('column')||message.includes('schema')||message.includes('cache')))throw error;
-      const fallback={id:payload.id,order_number:payload.order_number,kind:payload.kind,item_id:payload.item_id,title:payload.title,student_name:payload.student_name,student_phone:payload.student_phone,library_id:payload.library_id,courier_id:payload.courier_id,qty:payload.qty,unit_price:payload.unit_price,total:payload.total,discount:payload.discount||0,coupon_code:payload.coupon_code||null,status:payload.status,payment_status:payload.payment_status};
+      const fallback={id:payload.id,order_number:payload.order_number,kind:payload.kind,item_id:payload.item_id,title:payload.title,student_name:payload.student_name,student_phone:payload.student_phone,library_id:payload.library_id,courier_id:payload.courier_id,qty:payload.qty,unit_price:payload.unit_price,total:payload.total,discount:payload.discount||0,coupon_code:payload.coupon_code||null,status:payload.status,assignment_status:payload.assignment_status||'pending_admin',payment_status:payload.payment_status};
       return window.insert('orders',fallback);
     }
   }

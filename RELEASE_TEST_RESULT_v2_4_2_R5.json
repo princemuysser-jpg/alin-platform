@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "version": "2.4.2-stage1-r5-library-preview-full-page",
+  "focus": "full-page protected PDF preview in library",
+  "syntax_files": 75,
+  "modules": 66,
+  "stage1_security_checks": 31,
+  "library_preview_checks": 8,
+  "generated_at": "2026-07-22T15:49:27.406796+00:00"
+}

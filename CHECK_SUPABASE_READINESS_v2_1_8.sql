@@ -41,8 +41,10 @@ begin
 
 
   foreach item in array array[
+    'updated_at','status_history','payment_status','notes','library_note','processing_at','ready_at',
     'assignment_status','assigned_at','accepted_at','picked_up_at','out_for_delivery_at',
-    'completed_at','delivered_at','rejected_at','cancelled_at','delivery_note'
+    'completed_at','delivered_at','rejected_at','cancelled_at','cancellation_reason',
+    'cancel_reason','delivery_note','proof_path','handoff_token'
   ] loop
     if not exists(
       select 1 from information_schema.columns

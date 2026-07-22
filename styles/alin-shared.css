@@ -102,3 +102,35 @@ html[dir="ltr"] .alin-option-chevron,html[dir="ltr"] .alin-help-row>span:last-ch
 .alin-about-dialog .alin-about-mark{width:72px;height:72px;display:grid;place-items:center;border-radius:22px;background:linear-gradient(145deg,#0b3158,#16558a);color:#f4c969;font-size:38px;font-weight:900;box-shadow:0 14px 30px rgba(7,36,69,.18)}
 .alin-about-dialog .alin-about-content p{margin:0;max-width:520px;color:var(--ao-muted,#5d6878);font-size:15px;line-height:2}
 html[data-alin-theme="dark"] .alin-about-dialog .alin-about-content p{color:#c5d0dc}
+
+/* ALIN v2.4.2 Stage 1 R5 — full-page protected library preview. */
+.alin-print-v119-status[hidden]{display:none!important}
+.alin-print-v119-pages{
+  grid-auto-rows:max-content!important;
+  align-content:start!important;
+  align-items:start!important;
+}
+.alin-print-v119-page{
+  align-self:start!important;
+  height:auto!important;
+  min-height:0!important;
+  overflow:visible!important;
+}
+.alin-print-v119-surface{
+  position:relative!important;
+  width:100%!important;
+  margin:0 auto!important;
+  overflow:hidden!important;
+  background:#fff!important;
+}
+.alin-print-v119-surface canvas{
+  position:absolute!important;
+  inset:0!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  margin:0!important;
+  pointer-events:none!important;
+}

@@ -1,4 +1,4 @@
-const VERSION='alin-v2.4.2-animated-store-entry';
+const VERSION='alin-v2.4.2-stage1-r5-library-preview-full-page';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[

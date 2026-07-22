@@ -457,7 +457,8 @@ begin
       'id',v_order_id,'order_number',v_order_number,'kind',v_kind,'item_id',v_item_id,'title',v_title,
       'student_name',v_customer_name,'student_phone',v_customer_phone,'qty',v_qty,'unit_price',v_price,
       'total',v_total,'discount',v_discount,'coupon_code',nullif(btrim(p_coupon_code),''),
-      'status','new','payment_status',coalesce(p_fulfillment->>'payment_status','cod_pending'),
+      'status','new','assignment_status','pending_admin',
+      'payment_status',coalesce(p_fulfillment->>'payment_status','cod_pending'),
       'fulfillment_type',p_fulfillment->>'fulfillment_type','delivery_type',p_fulfillment->>'delivery_type',
       'library_id',p_fulfillment->>'library_id','pickup_library_id',p_fulfillment->>'pickup_library_id',
       'delivery_area',p_fulfillment->>'delivery_area','delivery_address',p_fulfillment->>'delivery_address',
@@ -806,7 +807,7 @@ declare
 begin
   if public.alin_is_admin() then return new; end if;
   if v_role='library' then
-    v_allowed:=array['status','updated_at','processing_at','ready_at','completed_at','delivered_at','cancelled_at','cancellation_reason','notes','library_note'];
+    v_allowed:=array['status','status_history','updated_at','processing_at','ready_at','completed_at','delivered_at','cancelled_at','cancellation_reason','cancel_reason','payment_status','notes','library_note'];
   elsif v_role='courier' then
     v_allowed:=array['status','updated_at','out_for_delivery_at','delivered_at','delivery_note','proof_path','handoff_token'];
   else
@@ -1197,6 +1198,17 @@ end $$;
 
 -- v2.1.8: مسار طلبات المندوب الحقيقي.
 -- يضيف حقول التعيين والاستلام ويعتمد حالات التوصيل التي يستخدمها التطبيق.
+alter table public.orders add column if not exists updated_at timestamptz not null default now();
+alter table public.orders add column if not exists status_history jsonb not null default '[]'::jsonb;
+alter table public.orders add column if not exists payment_status text not null default 'cod_pending';
+alter table public.orders add column if not exists notes text;
+alter table public.orders add column if not exists library_note text;
+alter table public.orders add column if not exists processing_at timestamptz;
+alter table public.orders add column if not exists ready_at timestamptz;
+alter table public.orders add column if not exists cancellation_reason text;
+alter table public.orders add column if not exists cancel_reason text;
+alter table public.orders add column if not exists proof_path text;
+alter table public.orders add column if not exists handoff_token text;
 alter table public.orders add column if not exists assignment_status text not null default 'pending_admin';
 alter table public.orders add column if not exists assigned_at timestamptz;
 alter table public.orders add column if not exists accepted_at timestamptz;
@@ -1258,7 +1270,7 @@ declare
 begin
   if public.alin_is_admin() then return new; end if;
   if v_role='library' then
-    v_allowed:=array['status','updated_at','processing_at','ready_at','completed_at','delivered_at','cancelled_at','cancellation_reason','notes','library_note'];
+    v_allowed:=array['status','status_history','updated_at','processing_at','ready_at','completed_at','delivered_at','cancelled_at','cancellation_reason','cancel_reason','payment_status','notes','library_note'];
   elsif v_role='courier' then
     v_allowed:=array[
       'status','assignment_status','updated_at','accepted_at','picked_up_at',

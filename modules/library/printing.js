@@ -68,13 +68,18 @@
       const wrap=document.createElement('article');
       wrap.className='alin-print-v119-page';
       const label=document.createElement('small');label.textContent=`صفحة ${n} من ${pdf.numPages}`;
+      const surface=document.createElement('div');
+      surface.className='alin-print-v119-surface';
+      surface.style.maxWidth=`${Math.ceil(viewport.width)}px`;
+      surface.style.aspectRatio=`${viewport.width} / ${viewport.height}`;
       const canvas=document.createElement('canvas');
       canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
       canvas.setAttribute('aria-label',`صفحة ${n}`);
-      wrap.append(label,canvas);pages.appendChild(wrap);
+      surface.appendChild(canvas);wrap.append(label,surface);pages.appendChild(wrap);
       await page.render({canvasContext:canvas.getContext('2d',{alpha:false}),viewport}).promise;
     }
     status.hidden=true;
+    status.style.display='none';
   }
   async function openPreview(orderId){
     if(rendering) return;

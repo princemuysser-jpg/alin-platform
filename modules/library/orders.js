@@ -65,7 +65,7 @@
     if(!order)throw new Error('الطلب غير موجود');
     const now=new Date().toISOString();
     const history=[...(Array.isArray(order.status_history)?order.status_history:[]),{status:'cancelled',at:now,by:window.current?.id||'library',reason:text}];
-    const payload={status:'cancelled',cancel_reason:text,cancelled_at:now,status_history:history,updated_at:now};
+    const payload={status:'cancelled',cancellation_reason:text,cancelled_at:now,status_history:history,updated_at:now};
     await update('orders',payload,{id:order.id});
     Object.assign(order,payload);
     if(typeof audit==='function')await audit('order',`المكتبة ألغت الطلب ${order.order_number||order.id}: ${text}`);
