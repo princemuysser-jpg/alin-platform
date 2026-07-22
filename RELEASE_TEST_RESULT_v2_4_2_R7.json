@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "version": "2.4.2-stage1-r7-order-status-history-guard",
+  "focus": "database-level order status_history insert guard and explicit initial history",
+  "syntax_files": 75,
+  "modules": 66,
+  "stage1_security_checks": 31,
+  "order_status_history_checks": 7,
+  "library_preview_checks": 8,
+  "library_finance_status_checks": 16,
+  "release_checks": 147,
+  "generated_at": "2026-07-22T16:30:38.618840+00:00"
+}

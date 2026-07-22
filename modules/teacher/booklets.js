@@ -109,8 +109,10 @@ window.AlinTeacherModules['openTeacherRequestSource']=typeof openTeacherRequestS
 async function approveTeacherBooklet(id){
   const booklet=(db.booklets||[]).find(row=>String(row.id)===String(id));
   if(!booklet)throw new Error('الملزمة غير موجودة');
-  const payload={teacher_approved:true,teacher_approved_at:new Date().toISOString(),publish_status:'approved',status:booklet.status==='published'?'published':'approved',updated_at:new Date().toISOString()};
-  await update('booklets',payload,{id:booklet.id});
+  if(!window.sb?.rpc)throw new Error('خدمة الموافقة الآمنة غير متاحة');
+  const {data,error}=await window.sb.rpc('alin_teacher_approve_booklet',{p_booklet_id:String(booklet.id)});
+  if(error)throw error;
+  const payload={teacher_approved:true,teacher_approved_at:new Date().toISOString()};
   Object.assign(booklet,payload);
   if(typeof audit==='function')await audit('booklet','موافقة المدرس على نشر '+(booklet.title||booklet.id));
   if(typeof load==='function')await load();

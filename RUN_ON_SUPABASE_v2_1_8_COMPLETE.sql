@@ -458,6 +458,7 @@ begin
       'student_name',v_customer_name,'student_phone',v_customer_phone,'qty',v_qty,'unit_price',v_price,
       'total',v_total,'discount',v_discount,'coupon_code',nullif(btrim(p_coupon_code),''),
       'status','new','assignment_status','pending_admin',
+      'status_history',jsonb_build_array(jsonb_build_object('status','new','at',now(),'by','store')),
       'payment_status',coalesce(p_fulfillment->>'payment_status','cod_pending'),
       'fulfillment_type',p_fulfillment->>'fulfillment_type','delivery_type',p_fulfillment->>'delivery_type',
       'library_id',p_fulfillment->>'library_id','pickup_library_id',p_fulfillment->>'pickup_library_id',
@@ -2024,3 +2025,271 @@ select
           and coalesce(l.total,0)>0
       )
   ) as completed_orders_missing_finance;
+
+
+-- ============================================================
+-- v2.4.2 R7: Order status_history insert guard
+-- ============================================================
+-- ALIN v2.4.2 Stage 1 R7
+-- إصلاح نهائي لقيمة orders.status_history عند تأكيد الطلب.
+-- السبب: jsonb_populate_record يملأ الحقول غير المرسلة بقيمة NULL، لذلك لا يعمل DEFAULT تلقائياً.
+-- هذا الملف يضيف حارساً على مستوى قاعدة البيانات ويصلح الدالة داخل النسخة الجديدة.
+-- آمن للتنفيذ أكثر من مرة ولا يحذف أي طلب.
+
+begin;
+
+alter table public.orders add column if not exists status text;
+alter table public.orders add column if not exists assignment_status text;
+alter table public.orders add column if not exists status_history jsonb;
+alter table public.orders add column if not exists payment_status text;
+alter table public.orders add column if not exists created_at timestamptz;
+alter table public.orders add column if not exists updated_at timestamptz;
+
+update public.orders
+set status=coalesce(nullif(btrim(status),''),'new')
+where status is null or btrim(status)='';
+
+update public.orders
+set assignment_status=case
+  when status in ('completed','delivered','تم التسليم') then 'completed'
+  when status in ('cancelled','canceled','ملغي') then 'cancelled'
+  when status='rejected' then 'rejected'
+  when status in ('accepted','picked_up','out_for_delivery','out_delivery','processing','printing','ready') then 'accepted'
+  when coalesce(courier_id::text,'')<>'' or coalesce(delegate_id::text,'')<>'' then 'assigned'
+  else 'pending_admin'
+end
+where assignment_status is null or btrim(assignment_status)='';
+
+update public.orders
+set payment_status=case
+  when status in ('completed','delivered','تم التسليم') then 'paid'
+  when status in ('cancelled','canceled','ملغي') then 'cancelled'
+  else 'cod_pending'
+end
+where payment_status is null or btrim(payment_status)='';
+
+update public.orders
+set created_at=now()
+where created_at is null;
+
+update public.orders
+set updated_at=coalesce(created_at,now())
+where updated_at is null;
+
+update public.orders
+set status_history=jsonb_build_array(jsonb_build_object(
+  'status',coalesce(nullif(btrim(status),''),'new'),
+  'at',coalesce(created_at,updated_at,now()),
+  'by','database_repair'
+))
+where status_history is null
+   or jsonb_typeof(status_history)<>'array';
+
+alter table public.orders alter column status set default 'new';
+alter table public.orders alter column assignment_status set default 'pending_admin';
+alter table public.orders alter column status_history set default '[]'::jsonb;
+alter table public.orders alter column payment_status set default 'cod_pending';
+alter table public.orders alter column created_at set default now();
+alter table public.orders alter column updated_at set default now();
+
+alter table public.orders alter column status set not null;
+alter table public.orders alter column assignment_status set not null;
+alter table public.orders alter column status_history set not null;
+alter table public.orders alter column payment_status set not null;
+alter table public.orders alter column created_at set not null;
+alter table public.orders alter column updated_at set not null;
+
+create or replace function public.alin_orders_apply_insert_defaults()
+returns trigger
+language plpgsql
+set search_path=public,pg_temp
+as $$
+begin
+  new.status:=coalesce(nullif(btrim(new.status),''),'new');
+  new.assignment_status:=coalesce(nullif(btrim(new.assignment_status),''),'pending_admin');
+  new.payment_status:=coalesce(nullif(btrim(new.payment_status),''),'cod_pending');
+  new.created_at:=coalesce(new.created_at,now());
+  new.updated_at:=coalesce(new.updated_at,new.created_at,now());
+
+  if new.status_history is null or jsonb_typeof(new.status_history)<>'array' then
+    new.status_history:=jsonb_build_array(jsonb_build_object(
+      'status',new.status,
+      'at',new.created_at,
+      'by','store'
+    ));
+  elsif jsonb_array_length(new.status_history)=0 then
+    new.status_history:=jsonb_build_array(jsonb_build_object(
+      'status',new.status,
+      'at',new.created_at,
+      'by','store'
+    ));
+  end if;
+
+  return new;
+end
+$$;
+
+revoke all on function public.alin_orders_apply_insert_defaults() from public,anon,authenticated;
+
+drop trigger if exists alin_orders_apply_insert_defaults on public.orders;
+create trigger alin_orders_apply_insert_defaults
+before insert on public.orders
+for each row execute function public.alin_orders_apply_insert_defaults();
+
+notify pgrst, 'reload schema';
+commit;
+
+-- النتيجة الصحيحة: القيم الثلاث true والعدد 0.
+select
+  coalesce((
+    select column_default is not null
+    from information_schema.columns
+    where table_schema='public' and table_name='orders' and column_name='status_history'
+  ),false) as status_history_default_exists,
+  exists(
+    select 1
+    from pg_trigger t
+    join pg_class c on c.oid=t.tgrelid
+    join pg_namespace n on n.oid=c.relnamespace
+    where n.nspname='public'
+      and c.relname='orders'
+      and t.tgname='alin_orders_apply_insert_defaults'
+      and not t.tgisinternal
+      and t.tgenabled<>'D'
+  ) as insert_guard_trigger_exists,
+  to_regprocedure('public.alin_orders_apply_insert_defaults()') is not null as insert_guard_function_exists,
+  (select count(*) from public.orders where status_history is null) as null_status_history_rows;
+-- ALIN v2.5.0 Stage 2 — حماية صلاحيات المدرس على الملازم
+begin;
+
+create or replace function public.alin_guard_teacher_booklet_changes()
+returns trigger
+language plpgsql
+security definer
+set search_path=public
+as $$
+declare
+  v_role text:=coalesce(public.alin_current_role(),'');
+  v_account text:=coalesce(public.alin_current_account_id(),'');
+  v_old jsonb;
+  v_new jsonb;
+  v_key text;
+  v_protected text[]:=array[
+    'teacher_id','price','sale_price','deal_price','discount_percent','stock','is_hidden',
+    'status','publish_status','published_at','approved_by','approved_at','reviewed_by','reviewed_at',
+    'teacher_share_percent','library_share_percent','platform_share_percent','admin_note',
+    'rejected_reason','rejection_reason','deleted_at','created_at','id'
+  ];
+begin
+  if public.alin_is_admin() then return new; end if;
+  if v_role<>'teacher' then
+    raise exception 'ليس لديك صلاحية تعديل الملازم';
+  end if;
+
+  if tg_op='INSERT' then
+    if coalesce(to_jsonb(new)->>'teacher_id','')<>v_account then
+      raise exception 'لا يمكنك إنشاء ملزمة لحساب مدرس آخر';
+    end if;
+    v_new:=to_jsonb(new);
+    if coalesce(v_new->>'status','draft') not in ('draft','pending','new','review')
+       or coalesce(v_new->>'publish_status','pending') not in ('','pending','new','review')
+       or coalesce((v_new->>'is_hidden')::boolean,true)=false
+       or nullif(v_new->>'published_at','') is not null
+       or nullif(v_new->>'approved_by','') is not null
+       or nullif(v_new->>'approved_at','') is not null then
+      raise exception 'حالة النشر والسعر والموافقة من صلاحية الإدارة فقط';
+    end if;
+    return new;
+  end if;
+
+  if coalesce(to_jsonb(old)->>'teacher_id','')<>v_account then
+    raise exception 'يمكنك تعديل ملازمك فقط';
+  end if;
+
+  v_old:=to_jsonb(old); v_new:=to_jsonb(new);
+  foreach v_key in array v_protected loop
+    if (v_old->v_key) is distinct from (v_new->v_key) then
+      raise exception 'الحقل % من صلاحية الإدارة فقط',v_key;
+    end if;
+  end loop;
+  return new;
+end;
+$$;
+
+revoke all on function public.alin_guard_teacher_booklet_changes() from public;
+
+drop trigger if exists alin_guard_teacher_booklet_changes on public.booklets;
+create trigger alin_guard_teacher_booklet_changes
+before insert or update on public.booklets
+for each row execute function public.alin_guard_teacher_booklet_changes();
+
+-- موافقة المدرس على النسخة: لا تنشر ولا تغيّر السعر أو الحالة.
+create or replace function public.alin_teacher_approve_booklet(p_booklet_id text)
+returns jsonb
+language plpgsql
+security definer
+set search_path=public
+as $$
+declare
+  v_id text:=coalesce(public.alin_current_account_id(),'');
+  v_role text:=coalesce(public.alin_current_role(),'');
+  v_row public.booklets%rowtype;
+begin
+  if v_role<>'teacher' or v_id='' then raise exception 'يجب تسجيل الدخول بحساب مدرس'; end if;
+  select * into v_row from public.booklets where id::text=p_booklet_id for update;
+  if not found then raise exception 'الملزمة غير موجودة'; end if;
+  if v_row.teacher_id::text<>v_id then raise exception 'يمكنك الموافقة على ملازمك فقط'; end if;
+  if coalesce(v_row.status,'') in ('published','active') then raise exception 'الملزمة منشورة بالفعل'; end if;
+
+  -- تجاوز trigger مضبوط ومحدود داخل دالة الخادم فقط.
+  update public.booklets
+     set teacher_approved=true,
+         teacher_approved_at=now(),
+         updated_at=now()
+   where id::text=p_booklet_id;
+
+  return jsonb_build_object('ok',true,'id',p_booklet_id,'teacher_approved',true);
+end;
+$$;
+revoke all on function public.alin_teacher_approve_booklet(text) from public, anon;
+grant execute on function public.alin_teacher_approve_booklet(text) to authenticated;
+
+-- trigger يسمح للدالة الموثوقة فقط بتغيير حقلي موافقة المدرس.
+create or replace function public.alin_guard_teacher_booklet_changes()
+returns trigger
+language plpgsql
+security definer
+set search_path=public
+as $$
+declare
+  v_role text:=coalesce(public.alin_current_role(),'');
+  v_account text:=coalesce(public.alin_current_account_id(),'');
+  v_old jsonb; v_new jsonb; v_key text;
+  v_protected text[]:=array['teacher_id','price','sale_price','deal_price','discount_percent','stock','is_hidden','status','publish_status','published_at','approved_by','approved_at','reviewed_by','reviewed_at','teacher_share_percent','library_share_percent','platform_share_percent','admin_note','rejected_reason','rejection_reason','deleted_at','created_at','id'];
+begin
+  if public.alin_is_admin() then return new; end if;
+  if v_role<>'teacher' then raise exception 'ليس لديك صلاحية تعديل الملازم'; end if;
+  if coalesce(to_jsonb(coalesce(old,new))->>'teacher_id','')<>v_account then raise exception 'يمكنك تعديل ملازمك فقط'; end if;
+  if tg_op='INSERT' then
+    v_new:=to_jsonb(new);
+    if coalesce(v_new->>'status','draft') not in ('draft','pending','new','review') or coalesce(v_new->>'publish_status','pending') not in ('','pending','new','review') then
+      raise exception 'حالة النشر من صلاحية الإدارة فقط';
+    end if;
+    return new;
+  end if;
+  v_old:=to_jsonb(old); v_new:=to_jsonb(new);
+  foreach v_key in array v_protected loop
+    if (v_old->v_key) is distinct from (v_new->v_key) then raise exception 'الحقل % من صلاحية الإدارة فقط',v_key; end if;
+  end loop;
+  return new;
+end;
+$$;
+
+commit;
+notify pgrst,'reload schema';
+
+select
+  to_regprocedure('public.alin_teacher_approve_booklet(text)') is not null as approval_rpc_exists,
+  exists(select 1 from pg_trigger where tgname='alin_guard_teacher_booklet_changes' and not tgisinternal) as protection_trigger_exists,
+  has_function_privilege('authenticated','public.alin_teacher_approve_booklet(text)','EXECUTE') as teacher_can_call_approval,
+  not has_function_privilege('anon','public.alin_teacher_approve_booklet(text)','EXECUTE') as anon_cannot_call_approval;

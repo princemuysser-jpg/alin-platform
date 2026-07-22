@@ -1,4 +1,4 @@
-const VERSION='alin-v2.4.2-stage1-r6-library-finance-status';
+const VERSION='alin-v2.4.2-stage1-r7-order-status-history-guard';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[

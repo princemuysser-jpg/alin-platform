@@ -144,6 +144,7 @@ begin
       'student_name',v_customer_name,'student_phone',v_customer_phone,'qty',v_qty,'unit_price',v_price,
       'total',v_total,'discount',v_discount,'coupon_code',nullif(btrim(p_coupon_code),''),
       'status','new','assignment_status','pending_admin',
+      'status_history',jsonb_build_array(jsonb_build_object('status','new','at',now(),'by','store')),
       'payment_status',coalesce(p_fulfillment->>'payment_status','cod_pending'),
       'fulfillment_type',p_fulfillment->>'fulfillment_type','delivery_type',p_fulfillment->>'delivery_type',
       'library_id',p_fulfillment->>'library_id','pickup_library_id',p_fulfillment->>'pickup_library_id',
