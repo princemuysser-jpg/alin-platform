@@ -84,7 +84,7 @@ body.store-desktop [data-desktop-control="cart"] small{
 body.store-desktop .store-real-stats{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 body.store-desktop .store-real-stats>div:last-child{border-left:0!important}
 
-/* ALIN v2.3.8 — compact desktop checkout with fixed confirmation area. */
+/* ALIN v2.3.9 — compact desktop checkout with fixed confirmation area. */
 body.store-desktop.alin-cart-open{overflow:hidden!important}
 body.store-desktop.alin-cart-open #checkoutModal{z-index:12000!important;padding:12px!important;overflow:hidden!important}
 body.store-desktop.alin-cart-open #checkoutModal .modal-card{

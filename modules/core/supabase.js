@@ -1,11 +1,11 @@
 // === core/supabase.js ===
-/* ALIN v2.3.8 — authoritative Supabase data service.
+/* ALIN v2.3.9 — authoritative Supabase data service.
    This file is the only owner of query/insert/update/removeRow/load and cloud snapshots.
 */
 (function(){
   'use strict';
 
-  const VERSION='2.3.8';
+  const VERSION='2.3.9';
   const TABLES=[
     'settings','accounts','delivery_areas','couriers','courier_areas','categories',
     'booklets','teacher_requests','teacher_request_versions','products','orders',

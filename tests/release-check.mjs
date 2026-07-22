@@ -7,7 +7,7 @@ const failures=[];
 const required=[
   'index.html','store-desktop.html','store-mobile.html','service-worker.js','VERSION',
   'RUN_ON_SUPABASE_v2_1_8_COMPLETE.sql','CHECK_SUPABASE_READINESS_v2_1_8.sql',
-  'modules/module-order.json','modules/courier/core.js','modules/courier/admin.js','modules/courier/areas.js','modules/courier/assignment.js','modules/courier/dashboard.js','modules/core/config.js','modules/core/i18n-en.js','modules/core/i18n-ku.js','modules/core/i18n.js','modules/core/ui.js','modules/core/platform.js','modules/core/storage.js','modules/core/navigation.js','modules/core/notifications.js','modules/store/discovery-core.js','modules/store/discovery-catalog.js','modules/store/discovery-details.js','modules/store/discovery-growth.js','modules/store/student-auth.js','modules/admin/orders.js',
+  'modules/module-order.json','modules/courier/core.js','modules/courier/admin.js','modules/courier/areas.js','modules/courier/assignment.js','modules/courier/dashboard.js','modules/core/config.js','modules/core/i18n-en.js','modules/core/i18n-ku.js','modules/core/i18n.js','modules/core/ui.js','modules/core/platform.js','modules/core/storage.js','modules/core/navigation.js','modules/core/notifications.js','modules/core/cloud-status.js','modules/core/auth-service.js','modules/core/account-admin-service.js','modules/core/checkout-service.js','modules/core/backend-check.js','modules/core/cloud-status-ui.js','modules/store/tracking.js','modules/store/discovery-core.js','modules/store/discovery-catalog.js','modules/store/discovery-details.js','modules/store/discovery-growth.js','modules/store/student-auth.js','modules/admin/orders.js',
   'store/banners.js','store/notifications.js','core/finance-runtime.js'
 ];
 for(const rel of required){if(!fs.existsSync(path.join(root,rel)))failures.push(`missing:${rel}`)}
@@ -44,7 +44,7 @@ if(!run.includes('alin_public_accounts')||!run.includes('alin_public_settings'))
 const moduleOrder=JSON.parse(fs.readFileSync(path.join(root,'modules/module-order.json'),'utf8'));
 const moduleFiles=[...moduleOrder.early,...moduleOrder.app];
 const appBundle=moduleFiles.map(rel=>fs.readFileSync(path.join(root,rel),'utf8')).join('\n');
-if(moduleOrder.early.length!==23||moduleOrder.app.length!==37)failures.push('modules:unexpected-count');
+if(moduleOrder.early.length!==23||moduleOrder.app.length!==43)failures.push('modules:unexpected-count');
 for(const rel of moduleFiles){if(!fs.existsSync(path.join(root,rel)))failures.push(`modules:missing:${rel}`)}
 if(!appBundle.includes("c.rpc('alin_track_order'"))failures.push('app:secure-tracking-rpc');
 if(!appBundle.includes('alin-copy-tracking')||!appBundle.includes('navigator.clipboard?.writeText')||!appBundle.includes('document.execCommand(\'copy\')'))failures.push('checkout:tracking-copy');
@@ -64,11 +64,11 @@ if(!sharedAdmin.includes('findAuthUserByEmail')||!sharedAdmin.includes('listUser
 
 const accountsModule=fs.readFileSync(path.join(root,'modules/admin/accounts.js'),'utf8');
 const accountsAdvanced=fs.readFileSync(path.join(root,'modules/admin/accounts-advanced.js'),'utf8');
-const cloudStatus=fs.readFileSync(path.join(root,'modules/core/cloud-status-ui.js'),'utf8');
+const accountAdminService=fs.readFileSync(path.join(root,'modules/core/account-admin-service.js'),'utf8');
 const createAccountFn=fs.readFileSync(path.join(root,'supabase/functions/admin-create-account/index.ts'),'utf8');
 if(!accountsModule.includes('v163CourierAreaPicker')||!accountsModule.includes('v131SyncAccountRole')||!accountsModule.includes('مناطق عمل المندوب'))failures.push('courier-areas:add-form');
 if(!accountsAdvanced.includes('v132CourierAreaPicker')||!accountsAdvanced.includes("areas:role==='courier'?selectedAreas:undefined"))failures.push('courier-areas:edit-form');
-if(!cloudStatus.includes("area:role==='courier'?(selectedAreas[0]||'')")||!cloudStatus.includes('areas:selectedAreas'))failures.push('courier-areas:create-payload');
+if(!accountAdminService.includes("area:role==='courier'?(selectedAreas[0]||'')")||!accountAdminService.includes('areas:selectedAreas'))failures.push('courier-areas:create-payload');
 if(!createAccountFn.includes('requestedAreas')||!createAccountFn.includes('areas,')||!updateFn.includes('requestedAreas'))failures.push('courier-areas:edge-functions');
 if(!run.includes('add column areas text[]')||!run.includes("v_jwt_role='service_role'"))failures.push('courier-areas:database');
 
@@ -89,12 +89,12 @@ if(!run.includes("'status','assignment_status','updated_at','accepted_at','picke
 
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  if(!html.includes('version-badge">v2.3.8'))failures.push(`version-badge:${htmlName}`);
+  if(!html.includes('version-badge">v2.3.9'))failures.push(`version-badge:${htmlName}`);
 }
 for(const obsolete of ['dist/js/shared.early.bundle.js','dist/js/shared.app.bundle.js','options.css']){if(fs.existsSync(path.join(root,obsolete)))failures.push(`obsolete:${obsolete}`)}
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  const positions=moduleFiles.map(rel=>html.indexOf(`./${rel}?v=2.3.8`));
+  const positions=moduleFiles.map(rel=>html.indexOf(`./${rel}?v=2.3.9`));
   if(positions.some(pos=>pos<0))failures.push(`modules:not-loaded:${htmlName}`);
   if(positions.some((pos,index)=>index>0&&pos<positions[index-1]))failures.push(`modules:wrong-order:${htmlName}`);
 }
@@ -102,6 +102,7 @@ for(const htmlName of ['store-desktop.html','store-mobile.html']){
 
 const serviceWorker=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
 if(!serviceWorker.includes("'./modules/core/navigation.js'"))failures.push('pwa:navigation-not-cached');
+for(const rel of ['./modules/core/cloud-status.js','./modules/core/auth-service.js','./modules/core/account-admin-service.js','./modules/core/checkout-service.js','./modules/core/backend-check.js','./modules/store/tracking.js','./modules/core/cloud-status-ui.js']){if(!serviceWorker.includes(`'${rel}'`))failures.push(`pwa:cloud-service-not-cached:${rel}`);}
 for(const rel of ['./modules/store/discovery-core.js','./modules/store/discovery-catalog.js','./modules/store/discovery-details.js','./modules/store/discovery-growth.js']){if(!serviceWorker.includes(`'${rel}'`))failures.push(`pwa:discovery-not-cached:${rel}`);}
 for(const rel of ['./modules/courier/core.js','./modules/courier/admin.js','./modules/courier/areas.js','./modules/courier/assignment.js','./modules/courier/dashboard.js']){if(!serviceWorker.includes(`'${rel}'`))failures.push(`pwa:courier-not-cached:${rel}`);}
 if(!serviceWorker.includes("'./modules/core/i18n-en.js'")||!serviceWorker.includes("'./modules/core/i18n-ku.js'")||!serviceWorker.includes("'./modules/core/i18n.js'")||!serviceWorker.includes("'./styles/alin-i18n.css'"))failures.push('pwa:i18n-not-cached');
@@ -112,7 +113,7 @@ for(const token of ['canonicalLedger','librarySummary','teacherSummary',"settlem
 }
 for(const htmlName of ['store-desktop.html','store-mobile.html']){
   const html=fs.readFileSync(path.join(root,htmlName),'utf8');
-  if(!html.includes('core/finance-runtime.js?v=2.3.8'))failures.push(`finance-script:${htmlName}`);
+  if(!html.includes('core/finance-runtime.js?v=2.3.9'))failures.push(`finance-script:${htmlName}`);
 }
 
 const cartModule=fs.readFileSync(path.join(root,'modules/store/cart.js'),'utf8');

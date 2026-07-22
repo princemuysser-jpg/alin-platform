@@ -2,13 +2,10 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 
-const order=JSON.parse(fs.readFileSync(new URL('../modules/module-order.json',import.meta.url),'utf8'));
-const source=order.app.map(rel=>fs.readFileSync(new URL('../'+rel,import.meta.url),'utf8')).join('\n');
-const start=source.indexOf('hardened Supabase Auth and admin account adapter.');
-const blockStart=source.lastIndexOf('/*',start);
-const end=source.indexOf('/* ALIN 2.0.1 — backend readiness diagnostics */',start);
-assert.ok(start>=0&&end>start,'auth adapter block not found');
-const block=source.slice(blockStart,end);
+const block=[
+  fs.readFileSync(new URL('../modules/core/auth-service.js',import.meta.url),'utf8'),
+  fs.readFileSync(new URL('../modules/core/account-admin-service.js',import.meta.url),'utf8')
+].join('\n');
 
 function makeContext({firstInvalid=false}={}){
   let invokeCount=0,refreshCount=0;

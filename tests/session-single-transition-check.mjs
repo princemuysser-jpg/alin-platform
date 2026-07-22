@@ -6,7 +6,7 @@ const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
 const failures=[];
 const platform=read('modules/core/platform.js');
 const navigation=read('modules/core/navigation.js');
-const auth=read('modules/core/cloud-status-ui.js');
+const auth=read('modules/core/auth-service.js');
 const security=read('modules/core/security.js');
 const discovery=read('modules/store/discovery.js');
 const pwa=read('core/pwa-register.js');

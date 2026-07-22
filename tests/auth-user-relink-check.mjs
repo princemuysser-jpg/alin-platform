@@ -6,7 +6,7 @@ const reset=fs.readFileSync(new URL('../supabase/functions/admin-reset-password/
 const update=fs.readFileSync(new URL('../supabase/functions/admin-update-account/index.ts',import.meta.url),'utf8');
 const create=fs.readFileSync(new URL('../supabase/functions/admin-create-account/index.ts',import.meta.url),'utf8');
 const ui=fs.readFileSync(new URL('../modules/admin/accounts-advanced.js',import.meta.url),'utf8');
-const client=fs.readFileSync(new URL('../modules/core/cloud-status-ui.js',import.meta.url),'utf8');
+const client=fs.readFileSync(new URL('../modules/core/account-admin-service.js',import.meta.url),'utf8');
 const sql=fs.readFileSync(new URL('../RUN_ON_SUPABASE_v2_1_8_COMPLETE.sql',import.meta.url),'utf8');
 
 assert.match(shared,/findAuthUserByEmail/);

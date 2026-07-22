@@ -1,4 +1,4 @@
-/* ALIN v2.3.8 — global direction and language polish. */
+/* ALIN v2.3.9 — global direction and language polish. */
 html[dir="ltr"] body{direction:ltr;text-align:left}
 html[dir="rtl"] body{direction:rtl;text-align:right}
 html[dir="ltr"] input,html[dir="ltr"] select,html[dir="ltr"] textarea{text-align:left}

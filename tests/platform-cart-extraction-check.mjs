@@ -4,7 +4,7 @@ const cart=fs.readFileSync('modules/store/cart.js','utf8');
 const routing=fs.readFileSync('modules/store/order-routing.js','utf8');
 const courier=fs.readFileSync('modules/courier/dashboard.js','utf8');
 const delivery=fs.readFileSync('modules/store/delivery.js','utf8');
-const cloud=fs.readFileSync('modules/core/cloud-status-ui.js','utf8');
+const cloud=fs.readFileSync('modules/core/checkout-service.js','utf8');
 const failures=[];
 const names=['openCart','openCheckout','addToCart','cartSave','cartQty','cartRemove','renderCartBadge','confirmCartCheckout','alinOrderExtra','toggleDeliveryFields'];
 for(const name of names){

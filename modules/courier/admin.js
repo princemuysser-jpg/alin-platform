@@ -1,5 +1,5 @@
 // === courier/admin.js ===
-/* ALIN v2.3.8 — courier account administration only. */
+/* ALIN v2.3.9 — courier account administration only. */
 (function(){
   'use strict';
   const core=window.AlinCourierCore;if(!core)throw new Error('AlinCourierCore is required before courier/admin.js');

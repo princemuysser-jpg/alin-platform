@@ -2,13 +2,10 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 
-const source=fs.readFileSync(new URL('../modules/core/cloud-status-ui.js',import.meta.url),'utf8');
-const marker=source.indexOf('hardened Supabase Auth and admin account adapter.');
-const start=source.lastIndexOf('/*',marker);
-const diag=source.indexOf('backend readiness diagnostics',start);
-const end=source.lastIndexOf('/*',diag);
-assert.ok(start>=0&&end>start,'auth adapter block not found');
-const block=source.slice(start,end);
+const block=[
+  fs.readFileSync(new URL('../modules/core/auth-service.js',import.meta.url),'utf8'),
+  fs.readFileSync(new URL('../modules/core/account-admin-service.js',import.meta.url),'utf8')
+].join('\n');
 
 const calls=[];
 const session={access_token:'admin-token',user:{id:'ADMIN-AUTH'}};

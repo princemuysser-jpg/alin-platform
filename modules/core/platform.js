@@ -1,5 +1,5 @@
 // === core/platform.js ===
-/* ALIN v2.3.8 — small authoritative runtime core. Business features live in their own modules. */
+/* ALIN v2.3.9 — small authoritative runtime core. Business features live in their own modules. */
 (function(){
   'use strict';
 
@@ -75,11 +75,11 @@
   async function seedData(){throw new Error('البيانات التجريبية معطلة في النسخة المستقرة')}
 
   Object.assign(window,{
-    ALIN_VERSION:'2.3.8',init,requireConnection,audit,renderAll,seedData,
+    ALIN_VERSION:'2.3.9',init,requireConnection,audit,renderAll,seedData,
     teacherName,libIsOpen,libStatusText,activeLibraries,alinOpenLibraries:activeLibraries,
     alinLibOpen:libIsOpen,deliveryFee,isMissingTableError,usePermit
   });
-  window.AlinRuntime=Object.freeze({version:'2.3.8',init,requireConnection,renderAll,getDb:()=>stateDb,getCurrent:()=>stateCurrent});
+  window.AlinRuntime=Object.freeze({version:'2.3.9',init,requireConnection,renderAll,getDb:()=>stateDb,getCurrent:()=>stateCurrent});
 
   /* PLATFORM STEP 1: coupons are owned by modules/store/coupons.js and modules/admin/coupons.js. */
   /* PLATFORM STEP 2: cart and order creation are owned by modules/store/cart.js and modules/store/order-routing.js. */

@@ -1,5 +1,5 @@
 // === core/i18n.js ===
-/* ALIN v2.3.8 — language runtime for every role and page. Dictionaries load separately. */
+/* ALIN v2.3.9 — language runtime for every role and page. Dictionaries load separately. */
 (function(){
   'use strict';
 

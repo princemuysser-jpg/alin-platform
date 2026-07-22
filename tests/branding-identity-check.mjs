@@ -15,6 +15,6 @@ check(branding.includes("root.className='panel admin-brand-v235'"),'panel-class-
 check(branding.includes('busy=true')&&branding.includes('saveButton.disabled=true'),'double-save-guard');
 check(branding.includes('data-clear="logo"')&&branding.includes('data-clear="logoDark"')&&branding.includes('data-clear="icon"'),'asset-clear-controls');
 check(css.includes('.ab235-templates')&&css.includes('.ab235-uploads')&&css.includes('@media(max-width:760px)'),'responsive-branding-css');
-for(const html of [desktop,mobile])check(html.includes('./styles/alin-branding.css?v=2.3.8'),'branding-css-loaded');
+for(const html of [desktop,mobile])check(html.includes('./styles/alin-branding.css?v=2.3.9'),'branding-css-loaded');
 check(sw.includes("'./styles/alin-branding.css'"),'branding-css-cached');
 console.log(JSON.stringify({ok:true,checks:checks.length},null,2));

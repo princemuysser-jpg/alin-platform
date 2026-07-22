@@ -1,4 +1,4 @@
-/* ALIN v2.3.8 — visual identity editor */
+/* ALIN v2.3.9 — visual identity editor */
 .admin-brand-v235{display:grid;gap:18px;background:transparent!important;padding:0!important;box-shadow:none!important;min-width:0}
 .ab235-head{display:flex;justify-content:space-between;gap:18px;align-items:center;padding:24px 26px;border-radius:24px;background:linear-gradient(135deg,var(--alin-primary,#0b3158),var(--alin-primary-2,#315d7a));color:#fff;box-shadow:0 18px 42px rgba(7,26,55,.16)}
 .ab235-head h2{margin:3px 0 6px;color:#fff;font-size:28px}.ab235-head p{margin:0;color:rgba(255,255,255,.78);line-height:1.75}.ab235-eyebrow{font-size:12px;font-weight:900;color:var(--alin-gold,#c9a24a)}.ab235-version{padding:9px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.12);font-weight:900;white-space:nowrap}

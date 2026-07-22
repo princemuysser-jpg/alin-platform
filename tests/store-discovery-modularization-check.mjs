@@ -9,7 +9,7 @@ const files={
   details:read('modules/store/discovery-details.js'),
   growth:read('modules/store/discovery-growth.js'),
   orchestrator:read('modules/store/discovery.js'),
-  tracking:read('modules/core/cloud-status-ui.js')
+  tracking:read('modules/store/tracking.js')
 };
 const failures=[];let checks=0;
 const check=(value,label)=>{checks++;if(!value)failures.push(label)};

@@ -61,6 +61,12 @@
     "modules/admin/backup.js",
     "modules/admin/system-health.js",
     "modules/core/supabase-ui.js",
+    "modules/core/cloud-status.js",
+    "modules/core/auth-service.js",
+    "modules/core/account-admin-service.js",
+    "modules/core/checkout-service.js",
+    "modules/core/backend-check.js",
+    "modules/store/tracking.js",
     "modules/core/cloud-status-ui.js"
   ]
 }

@@ -1,4 +1,4 @@
-const VERSION='alin-v2.3.8-courier-modularized';
+const VERSION='alin-v2.3.9-cloud-services-modularized';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[
@@ -64,6 +64,12 @@ const CORE=[
   './modules/admin/backup.js',
   './modules/admin/system-health.js',
   './modules/core/supabase-ui.js',
+  './modules/core/cloud-status.js',
+  './modules/core/auth-service.js',
+  './modules/core/account-admin-service.js',
+  './modules/core/checkout-service.js',
+  './modules/core/backend-check.js',
+  './modules/store/tracking.js',
   './modules/core/cloud-status-ui.js',
   './core/lazy-libs.js','./core/finance-runtime.js','./core/pwa-register.js','./core/runtime-guard.js','./core/app-health.js','./core/v2-runtime.js','./options.js',
   './store/banners.css','./store/banners.js','./store/notifications.js',

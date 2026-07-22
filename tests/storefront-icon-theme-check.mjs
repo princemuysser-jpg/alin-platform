@@ -23,4 +23,4 @@ check(mobileCss.includes('.mobile-favorite-icon')&&mobileCss.includes('.mobile-n
 check(mobileCss.includes('.cat-copy strong')&&mobileCss.includes('color:#fff!important'),'mobile-category-white-title');
 check(mobileCss.includes('.cat-copy small')&&mobileCss.includes('rgba(255,255,255,.88)'),'mobile-category-white-subtitle');
 for(const category of ['booklet','stationery','gift','deal'])check(mobile.includes(`data-v99-category="${category}"`),`mobile-category-${category}`);
-console.log(JSON.stringify({ok:true,checks:checks.length,version:'2.3.8'},null,2));
+console.log(JSON.stringify({ok:true,checks:checks.length,version:'2.3.9'},null,2));

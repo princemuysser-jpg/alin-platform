@@ -8,7 +8,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
 const platform=read('modules/core/platform.js');
 const navigation=read('modules/core/navigation.js');
-const auth=read('modules/core/cloud-status-ui.js');
+const auth=read('modules/core/auth-service.js');
 const security=read('modules/core/security.js');
 const courier=read('modules/courier/dashboard.js');
 const adminDashboard=read('modules/admin/dashboard.js');
