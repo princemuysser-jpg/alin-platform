@@ -54,11 +54,18 @@
     return {bucket:isDocumentPath(raw)?PRIVATE_BUCKET:PUBLIC_BUCKET,path:raw,external:false};
   }
 
-  async function requireAuthenticatedSession(){
+  async function requireAuthenticatedSession({refresh=false}={}){
     const c=requireClient();
-    const {data,error}=await c.auth.getSession();
-    if(error||!data?.session?.user)throw new Error('انتهت جلسة الدخول. سجّل الدخول ثم أعد المحاولة');
-    return data.session;
+    let response=refresh&&typeof c.auth.refreshSession==='function'
+      ?await c.auth.refreshSession()
+      :await c.auth.getSession();
+    let session=response?.data?.session||null;
+    if((response?.error||!session?.user)&&!refresh&&typeof c.auth.refreshSession==='function'){
+      response=await c.auth.refreshSession();
+      session=response?.data?.session||null;
+    }
+    if(response?.error||!session?.user)throw new Error('انتهت جلسة الدخول. سجّل الخروج ثم ادخل مرة ثانية');
+    return session;
   }
 
   async function ensureStorageReady(folder='files'){
@@ -138,14 +145,26 @@
   }
 
   async function downloadPrivate(value,preferredFolder=''){
-    await requireAuthenticatedSession();
     const ref=parseStoredRef(value);
     const expectedRoot=rootFolder(preferredFolder||ref.path);
     if(ref.external||ref.bucket!==PRIVATE_BUCKET||!isDocumentPath(ref.path)||!PRIVATE_ROOTS.has(expectedRoot)){
-      throw new Error('هذا ملف قديم غير محمي. يجب على المدير إعادة رفعه إلى التخزين الخاص');
+      throw new Error('مسار الملف غير متوافق مع التخزين الخاص');
     }
-    const {data,error}=await requireClient().storage.from(PRIVATE_BUCKET).download(ref.path);
-    if(error||!data)throw new Error('ليس لديك صلاحية لفتح هذا الملف أو لم يعد مرتبطاً بطلبك');
+    await requireAuthenticatedSession();
+    const c=requireClient();
+    let result=await c.storage.from(PRIVATE_BUCKET).download(ref.path);
+    if(result?.error){
+      await requireAuthenticatedSession({refresh:true});
+      result=await c.storage.from(PRIVATE_BUCKET).download(ref.path);
+    }
+    const data=result?.data,error=result?.error;
+    if(error||!data){
+      const detail=String(error?.message||'').trim();
+      if(/row.level|policy|unauthorized|forbidden|not found|object/i.test(detail)){
+        throw new Error('الملف موجود لكن صلاحية هذا الطلب أو حساب المكتبة غير مكتملة');
+      }
+      throw new Error(detail||'تعذر قراءة ملف الملزمة من التخزين الخاص');
+    }
     if(!Number(data.size))throw new Error('الملف فارغ أو غير متاح');
     return {blob:data,url:registerObjectUrl(data),path:ref.path,bucket:PRIVATE_BUCKET,contentType:data.type||''};
   }

@@ -21,8 +21,8 @@
   async function resolveSource(path){
     if(typeof alinResolveStoredFile!=='function')throw new Error('خدمة المستندات الخاصة غير متاحة');
     const resolved=await alinResolveStoredFile(path,'booklets');
-    if(!resolved?.url)throw new Error('ملف الملزمة غير محمي أو غير مرتبط بهذا الطلب');
-    return resolved.url;
+    if(!resolved?.blob&&!resolved?.url)throw new Error('ملف الملزمة غير محمي أو غير مرتبط بهذا الطلب');
+    return resolved;
   }
   async function ensurePdfJs(){
     if(window.pdfjsLib) return window.pdfjsLib;
@@ -95,16 +95,21 @@
     try{
       const pdfjs=await ensurePdfJs();
       const source=await resolveSource(booklet.file_path);
-      const response=await fetch(String(source).split('#')[0],{cache:'no-store'});
-      if(!response.ok) throw new Error('PDF '+response.status);
-      activeBytes=await response.arrayBuffer();
+      if(source.blob){
+        activeBytes=await source.blob.arrayBuffer();
+      }else{
+        const response=await fetch(String(source.url).split('#')[0],{cache:'no-store'});
+        if(!response.ok) throw new Error('PDF '+response.status);
+        activeBytes=await response.arrayBuffer();
+      }
       activePdf=await pdfjs.getDocument({data:activeBytes.slice(0)}).promise;
       await renderPreview(activePdf);
     }catch(err){
       console.error('[ALIN preview error]',err);
       const status=document.getElementById('alinPrintCanvasStatus');
-      if(status) status.innerHTML='<div class="alin-print-v119-error"><h3>تعذر تجهيز المعاينة</h3><p>تأكد من ملف الملزمة واتصال الإنترنت ثم أعد المحاولة.</p></div>';
-      toastSafe('تعذر عرض ملف الملزمة');
+      const message=String(err?.message||'تعذر عرض ملف الملزمة');
+      if(status) status.innerHTML=`<div class="alin-print-v119-error"><h3>تعذر تجهيز المعاينة</h3><p>${escSafe(message)}</p></div>`;
+      toastSafe(message);
     }finally{rendering=false;}
   }
   async function printPreview(){

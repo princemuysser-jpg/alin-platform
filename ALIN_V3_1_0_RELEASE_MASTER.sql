@@ -1,6 +1,6 @@
 -- ============================================================
--- منصة آلين v3.0.4 — ترقية الإنتاج الموحدة المستقرة
--- يشغّل مرة واحدة بعد v2.8.0، ويجمع حماية السجل والخصوصية
+-- منصة آلين v3.1.0 — إصدار الإنتاج الموحد النهائي
+-- ملف موحد واحد يعيد تثبيت بنية الإنتاج الحالية ويجمع حماية السجل والخصوصية
 -- وتسجيل الدخول وصلاحيات الحسابات وحساب الطالب الآمن.
 -- ============================================================
 
@@ -1195,43 +1195,259 @@ delete from public.student_sessions where expires_at<=now();
 delete from public.auth_login_guard where updated_at<now()-interval '30 days';
 
 insert into public.alin_schema_versions(version,notes)
-values('3.0.4-production-stable-unified','Audit, privacy, secure auth, performance, sparse order insertion, and migration-safe order normalization')
+values('3.1.0-release-unified','Audit, privacy, secure auth, performance, sparse order insertion, migration-safe order normalization, and private document access')
 on conflict(version) do update set applied_at=now(),notes=excluded.notes;
+
+
+
+-- ============================================================
+-- التخزين الخاص للملازم وطلبات المدرسين — سياسة موحدة v3.1.0
+-- تعتمد مباشرة على auth.uid وربط الحساب والطلب، بدون الاعتماد على كاش الواجهة.
+-- ============================================================
+
+update storage.buckets
+set public=true,
+    file_size_limit=5242880,
+    allowed_mime_types=array['image/jpeg','image/png','image/webp']
+where id='alin-files';
+
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+values(
+  'alin-private','alin-private',false,26214400,
+  array[
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ]
+)
+on conflict(id) do update
+set public=false,
+    file_size_limit=excluded.file_size_limit,
+    allowed_mime_types=excluded.allowed_mime_types;
+
+create or replace function public.alin_private_current_account()
+returns jsonb
+language sql stable security definer
+set search_path=public
+as $$
+  select to_jsonb(a)
+  from public.accounts a
+  where a.auth_user_id=auth.uid()
+    and lower(coalesce(a.status,'active'))='active'
+    and nullif(to_jsonb(a)->>'deleted_at','') is null
+  limit 1
+$$;
+
+create or replace function public.alin_private_can_insert_v310(p_name text)
+returns boolean
+language plpgsql stable security definer
+set search_path=public,storage
+as $$
+declare
+  v_parts text[]:=storage.foldername(p_name);
+  v_account jsonb:=public.alin_private_current_account();
+  v_role text:=lower(coalesce(v_account->>'role',''));
+  v_account_id text:=coalesce(v_account->>'id','');
+  v_ext text:=lower(split_part(p_name,'.',array_length(string_to_array(p_name,'.'),1)));
+begin
+  if v_account is null then return false; end if;
+
+  if v_role='admin' then
+    return (
+      (v_parts[1]='booklets' and array_length(v_parts,1)=2 and v_ext='pdf')
+      or
+      (v_parts[1]='teacher-requests' and array_length(v_parts,1)=3 and v_ext='docx')
+    );
+  end if;
+
+  if v_role='teacher' then
+    return v_parts[1]='teacher-requests'
+       and array_length(v_parts,1)=3
+       and v_parts[2]=v_account_id
+       and length(coalesce(v_parts[3],''))>0
+       and v_ext='docx';
+  end if;
+
+  return false;
+end
+$$;
+
+create or replace function public.alin_private_library_has_order_v310(
+  p_library_id text,
+  p_booklet_id text
+)
+returns boolean
+language sql stable security definer
+set search_path=public
+as $$
+  select exists(
+    select 1
+    from public.orders o
+    cross join lateral (select to_jsonb(o) as j) x
+    where coalesce(x.j->>'item_id',x.j->>'booklet_id',x.j->'item'->>'id','')=p_booklet_id
+      and p_library_id in (
+        coalesce(x.j->>'library_id',''),
+        coalesce(x.j->>'pickup_library_id',''),
+        coalesce(x.j->>'assigned_library_id','')
+      )
+      and lower(coalesce(x.j->>'kind',x.j->>'item_kind',x.j->>'item_type','booklet'))
+          in ('booklet','booklets','booklet_product','ملزمة','ملازم')
+      and lower(coalesce(x.j->>'status',x.j->>'order_status','new')) not in (
+        'cancelled','canceled','completed','delivered','rejected','ملغي','مكتمل','تم التسليم'
+      )
+  )
+$$;
+
+create or replace function public.alin_private_can_select_v310(p_name text)
+returns boolean
+language plpgsql stable security definer
+set search_path=public,storage
+as $$
+declare
+  v_parts text[]:=storage.foldername(p_name);
+  v_account jsonb:=public.alin_private_current_account();
+  v_role text:=lower(coalesce(v_account->>'role',''));
+  v_account_id text:=coalesce(v_account->>'id','');
+  v_root text:=coalesce(v_parts[1],'');
+  v_entity text:=coalesce(v_parts[2],'');
+begin
+  if v_account is null then return false; end if;
+  if v_role='admin' then return true; end if;
+
+  if v_root='teacher-requests' then
+    if array_length(v_parts,1)<>3 or v_role<>'teacher' or v_parts[2]<>v_account_id then
+      return false;
+    end if;
+    return exists(
+      select 1
+      from public.teacher_requests r
+      where r.id::text=v_parts[3]
+        and r.teacher_id::text=v_account_id
+    );
+  end if;
+
+  if v_root='booklets' then
+    if array_length(v_parts,1)<>2 or v_entity='' then return false; end if;
+
+    if v_role='teacher' then
+      return exists(
+        select 1
+        from public.booklets b
+        where b.id::text=v_entity
+          and b.teacher_id::text=v_account_id
+      );
+    end if;
+
+    if v_role='library' then
+      return public.alin_private_library_has_order_v310(v_account_id,v_entity);
+    end if;
+  end if;
+
+  return false;
+end
+$$;
+
+revoke all on function public.alin_private_current_account() from public,anon;
+revoke all on function public.alin_private_can_insert_v310(text) from public,anon;
+revoke all on function public.alin_private_library_has_order_v310(text,text) from public,anon;
+revoke all on function public.alin_private_can_select_v310(text) from public,anon;
+grant execute on function public.alin_private_current_account() to authenticated;
+grant execute on function public.alin_private_can_insert_v310(text) to authenticated;
+grant execute on function public.alin_private_library_has_order_v310(text,text) to authenticated;
+grant execute on function public.alin_private_can_select_v310(text) to authenticated;
+
+do $$
+declare p record;
+begin
+  for p in
+    select policyname
+    from pg_policies
+    where schemaname='storage'
+      and tablename='objects'
+      and policyname like 'alin_private_%'
+  loop
+    execute format('drop policy if exists %I on storage.objects',p.policyname);
+  end loop;
+end
+$$;
+
+create policy alin_private_v310_select
+on storage.objects for select to authenticated
+using (
+  bucket_id='alin-private'
+  and public.alin_private_can_select_v310(name)
+);
+
+create policy alin_private_v310_insert
+on storage.objects for insert to authenticated
+with check (
+  bucket_id='alin-private'
+  and public.alin_private_can_insert_v310(name)
+);
+
+create policy alin_private_v310_update_admin
+on storage.objects for update to authenticated
+using (
+  bucket_id='alin-private'
+  and lower(coalesce(public.alin_private_current_account()->>'role','')) ='admin'
+)
+with check (
+  bucket_id='alin-private'
+  and lower(coalesce(public.alin_private_current_account()->>'role','')) ='admin'
+);
+
+create policy alin_private_v310_delete_admin
+on storage.objects for delete to authenticated
+using (
+  bucket_id='alin-private'
+  and lower(coalesce(public.alin_private_current_account()->>'role','')) ='admin'
+);
+
+insert into public.alin_schema_versions(version,notes)
+values(
+  '3.1.0-release-unified',
+  'Unified production schema plus direct authenticated private-document access for admin, owner teacher, and assigned library orders'
+)
+on conflict(version) do update
+set applied_at=now(),notes=excluded.notes;
+
 
 notify pgrst,'reload schema';
 commit;
 
--- فحص نهائي: القيم يجب أن تكون true والعدادات 0.
+-- فحص موحد بعد التنفيذ: القيم المنطقية يجب أن تكون true والعدادات 0.
 select
-  to_regclass('public.audit_events') is not null as audit_events_ready,
-  to_regprocedure('public.alin_audit_write(text,text,jsonb,text,text)') is not null as audit_rpc_ready,
-  to_regprocedure('public.alin_login_guard_check(text,text)') is not null as login_guard_ready,
-  to_regclass('public.account_permissions') is not null as permissions_ready,
-  to_regprocedure('public.alin_student_login(text,text,text)') is not null as student_auth_ready,
-  to_regclass('public.alin_teacher_orders') is not null as teacher_privacy_view_ready,
-  to_regclass('public.notification_reads') is not null as notification_reads_ready,
-  to_regprocedure('public.alin_has_permission(text)') is not null as permission_enforcement_ready,
-  to_regprocedure('public.alin_enforce_admin_permission()') is not null as permission_trigger_ready,
-  (select count(*) from public.audit_events where action is null or trim(action)='') as invalid_audit_rows,
-  (select count(*) from public.student_sessions where expires_at<=now()) as expired_student_sessions,
   to_regprocedure('public.alin_insert_order_payload(jsonb)') is not null as sparse_order_insert_ready,
-  coalesce((select p.prosrc like '%alin_insert_order_payload(v_payload)%' from pg_proc p where p.oid=to_regprocedure('public.alin_create_store_orders(jsonb,jsonb,jsonb,text)')),false) as checkout_uses_sparse_insert,
-  coalesce((select p.prosrc not like '%jsonb_populate_record(null::public.orders,$1)).*%' from pg_proc p where p.oid=to_regprocedure('public.alin_create_store_orders(jsonb,jsonb,jsonb,text)')),false) as checkout_avoids_full_row_nulls,
+  to_regprocedure('public.alin_create_store_orders(jsonb,jsonb,jsonb,text)') is not null as secure_checkout_ready,
+  to_regprocedure('public.alin_private_current_account()') is not null as private_account_resolver_ready,
+  to_regprocedure('public.alin_private_can_select_v310(text)') is not null as private_select_guard_ready,
+  exists(
+    select 1 from storage.buckets
+    where id='alin-private' and public=false
+  ) as private_bucket_ready,
+  exists(
+    select 1 from pg_policies
+    where schemaname='storage' and tablename='objects'
+      and policyname='alin_private_v310_select'
+  ) as private_select_policy_ready,
+  exists(
+    select 1 from pg_policies
+    where schemaname='storage' and tablename='objects'
+      and policyname='alin_private_v310_insert'
+  ) as private_insert_policy_ready,
+  not exists(
+    select 1 from pg_policies
+    where schemaname='storage' and tablename='objects'
+      and roles::text like '%anon%'
+      and coalesce(qual,'') like '%alin-private%'
+  ) as no_public_private_documents,
+  (select count(*) from public.orders where delegate_cash_collected is null) as null_delegate_cash_rows,
   (select count(*) from information_schema.columns c
    where c.table_schema='public' and c.table_name='orders'
      and c.is_nullable='NO' and c.column_default is null
-     and coalesce(c.is_identity,'NO')<>'YES' and coalesce(c.is_generated,'NEVER')='NEVER'
+     and coalesce(c.is_identity,'NO')<>'YES'
+     and coalesce(c.is_generated,'NEVER')='NEVER'
      and c.column_name not in (
        'id','order_number','kind','item_id','title','student_name','student_phone','qty','unit_price','total','discount',
        'status','assignment_status','status_history','payment_status','payment_method','fulfillment_type','delivery_type',
        'created_at','updated_at'
-     )) as unsafe_required_order_columns,
-  coalesce((
-    select t.tgenabled <> 'D'
-    from pg_trigger t
-    where t.tgrelid='public.orders'::regclass
-      and t.tgname='alin_orders_protect_update'
-      and not t.tgisinternal
-    limit 1
-  ),true) as orders_protection_trigger_enabled,
-  (select count(*) from public.orders where delegate_cash_collected is null) as null_delegate_cash_rows;
+     )) as unsafe_required_order_columns;

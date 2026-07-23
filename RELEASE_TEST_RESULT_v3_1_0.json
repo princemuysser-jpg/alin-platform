@@ -1,0 +1,25 @@
+{
+  "version": "3.1.0-release-unified",
+  "javascript_files": 80,
+  "html_files": 3,
+  "checked_local_references": 25,
+  "sql_files": 1,
+  "critical_checks": {
+    "storage_retry": true,
+    "blob_direct_desktop": true,
+    "blob_direct_mobile": true,
+    "private_policy": true,
+    "library_order_guard": true,
+    "one_sql": true
+  },
+  "errors": [],
+  "generated_at_utc": "2026-07-23T12:55:51.097656+00:00",
+  "notes": [
+    "فحص تركيب جميع ملفات JavaScript بواسطة node --check",
+    "فحص جميع مراجع الملفات المحلية في صفحات HTML وService Worker",
+    "التأكد من وجود ملف SQL موحد واحد فقط",
+    "التأكد من تضمين سياسة التخزين الخاصة وربط المكتبة بالطلب",
+    "التأكد من قراءة PDF مباشرة من Blob مع إعادة تحديث جلسة Supabase عند الحاجة",
+    "لم يتم تنفيذ SQL على مشروع Supabase الحقيقي من بيئة الفحص"
+  ]
+}
