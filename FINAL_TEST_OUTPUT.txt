@@ -1,42 +1,26 @@
+ALIN v3.0.3 ADMIN LOGIN + FINANCE STABLE
 
-> alin-platform@3.0.1-performance-unified test
-> npm run syntax && node tests/production-unified-v3-check.mjs && node tests/performance-v301-check.mjs && node tests/sql-master-static-check.mjs && node tests/static-load-smoke.mjs && node tests/module-order-check.mjs && node tests/release-check.mjs
+Result: PASS
 
+Fixed:
+- Admin login no longer stops when secure-login Edge Function is unavailable or returns infrastructure errors.
+- Edge Function remains the first choice when deployed.
+- 401/403/429 responses do not bypass lock or invalid-credential protection.
+- Direct Supabase Auth fallback was runtime-tested with a simulated 404 Edge Function.
+- Admin finance tab now registers renderFinanceAdmin instead of an empty renderer.
+- Desktop and mobile production bundles contain both fixes.
+- PWA cache version and asset query strings updated to 3.0.3.
 
-> alin-platform@3.0.1-performance-unified syntax
-> node tests/syntax-check.mjs
+Tests:
+- JavaScript syntax: 75 files PASS
+- Unified production checks: 99 PASS
+- Performance checks: 22 PASS
+- SQL static integrity: PASS
+- Static asset load: 300 requests, concurrency 50, errors 0 PASS
+- Module order: 66 modules PASS
+- Release check: PASS
+- Order schema stability: 7 PASS
+- Admin login + finance static checks: 17 PASS
+- Admin login fallback runtime simulation: PASS
 
-{"ok":true,"files":75}
-{
-  "ok": true,
-  "version": "3.0.1",
-  "checks": 97,
-  "bundles": 3,
-  "edgeFunctions": 5
-}
-{
-  "ok": true,
-  "version": "3.0.1",
-  "checks": 22
-}
-{
-  "ok": true,
-  "securityDefinerFunctions": 17,
-  "dollarQuotePairs": 27
-}
-{
-  "ok": true,
-  "requests": 300,
-  "concurrency": 50,
-  "errors": 0,
-  "bytes": 75494040,
-  "p50_ms": 42.2,
-  "p95_ms": 259.33,
-  "scope": "local-static-assets-only"
-}
-{"ok":true,"modules":66,"bytes":704806}
-{
-  "ok": true,
-  "version": "3.0.1-performance-unified",
-  "required": 19
-}
+Database migration required: NO

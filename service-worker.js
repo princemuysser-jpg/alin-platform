@@ -1,4 +1,4 @@
-const VERSION='alin-v3.0.1-performance';
+const VERSION='alin-v3.0.4-admin-login-finance-stable';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[

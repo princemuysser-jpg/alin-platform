@@ -1,5 +1,5 @@
 // === store/student-auth.js ===
-/* ALIN v3.0.1 — secure optional student account backed by Supabase RPCs. */
+/* ALIN v3.0.3 — secure optional student account backed by Supabase RPCs. */
 (function(){
   'use strict';
   const SESSION_KEY='alin_student_secure_session_v3';

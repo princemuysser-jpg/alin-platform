@@ -2391,7 +2391,7 @@ window.AlinTeacherModules.unpublishTeacherBooklet=unpublishTeacherBooklet;
 
   window.renderFinanceAdmin=renderFinanceAdmin;
   window.AlinAdminFinance=Object.freeze({render:renderFinanceAdmin,exportLedger});
-  window.AlinAdminModules?.register?.('finance',()=>{});
+  window.AlinAdminModules?.register?.('finance',renderFinanceAdmin);
 })();
 
 ;
@@ -4124,7 +4124,7 @@ window.AlinCourierModules['recordCourierSettlementForOrder']=typeof recordCourie
 /* ALIN v2.4.2 — authoritative backup owner. No admin router wrapping. */
 (function(){
   'use strict';
-  const VERSION='3.0.1';
+  const VERSION='3.0.3';
   const LOG_KEY='alin_backup_log_v227';
   const RESTORABLE=['categories','products','booklets','banners','coupons'];
   let pending=null;
@@ -4350,7 +4350,7 @@ window.AlinCourierModules['recordCourierSettlementForOrder']=typeof recordCourie
 
 ;
 /* modules/core/auth-service.js */
-/* ALIN v3.0.1 — fast cached boot with server-side attempt protection. */
+/* ALIN v3.0.3 — fast cached boot with server-side attempt protection. */
 (function(){
   'use strict';
   const ATTEMPT_KEY='alin_auth_attempts_v139',MAX_ATTEMPTS=5,LOCK_MS=10*60*1000;
@@ -4371,14 +4371,45 @@ window.AlinCourierModules['recordCourierSettlementForOrder']=typeof recordCourie
     try{let value=localStorage.getItem(DEVICE_KEY);if(!value){value=crypto.randomUUID?.()||`${Date.now()}-${Math.random()}`;localStorage.setItem(DEVICE_KEY,value)}return value}
     catch(_){return 'browser-session'}
   }
+  async function directSignIn(username,password){
+    const c=client();if(!c?.auth)throw new Error('خدمة تسجيل الدخول غير متاحة');
+    const result=await c.auth.signInWithPassword({email:emailFor(username),password:String(password||'')});
+    if(result?.error){
+      const text=String(result.error.message||'');
+      if(/invalid login credentials|email not confirmed|invalid credentials/i.test(text))throw new Error('بيانات الدخول غير صحيحة');
+      throw new Error('تعذر تسجيل الدخول حالياً');
+    }
+    if(!result?.data?.session||!result?.data?.user)throw new Error('تعذر تثبيت جلسة الدخول');
+    return result.data;
+  }
+  async function edgeErrorInfo(error){
+    let message=String(error?.message||'');
+    let status=Number(error?.context?.status||0);
+    try{
+      const payload=await error?.context?.clone?.().json?.();
+      if(payload?.error)message=String(payload.error);
+    }catch(_){}
+    return {message,status};
+  }
   async function secureSignIn(username,password){
-    const c=client();if(!c?.functions||!c?.auth)throw new Error('خدمة تسجيل الدخول الآمنة غير متاحة');
-    const {data,error}=await c.functions.invoke('secure-login',{body:{username:String(username||''),password:String(password||''),device_id:deviceId()}});
-    if(error){let message=error.message||'تعذر تسجيل الدخول';try{message=(await error.context?.json())?.error||message}catch(_){}throw new Error(message)}
-    if(!data?.ok||!data?.session?.access_token||!data?.session?.refresh_token)throw new Error(data?.error||'تعذر تسجيل الدخول');
-    const applied=await c.auth.setSession({access_token:data.session.access_token,refresh_token:data.session.refresh_token});
-    if(applied?.error||!applied?.data?.user)throw applied?.error||new Error('تعذر تثبيت جلسة الدخول');
-    return applied.data;
+    const c=client();if(!c?.auth)throw new Error('خدمة تسجيل الدخول غير متاحة');
+    if(c?.functions){
+      const {data,error}=await c.functions.invoke('secure-login',{body:{username:String(username||''),password:String(password||''),device_id:deviceId()}});
+      if(!error&&data?.ok&&data?.session?.access_token&&data?.session?.refresh_token){
+        const applied=await c.auth.setSession({access_token:data.session.access_token,refresh_token:data.session.refresh_token});
+        if(applied?.error||!applied?.data?.user)throw applied?.error||new Error('تعذر تثبيت جلسة الدخول');
+        return applied.data;
+      }
+      if(error){
+        const info=await edgeErrorInfo(error);
+        const hardFailure=[401,403,429].includes(info.status)||/بيانات الدخول غير صحيحة|المحاولات المتبقية|تم إيقاف المحاولات/i.test(info.message);
+        if(hardFailure)throw new Error(info.message||'بيانات الدخول غير صحيحة');
+        console.warn('[ALIN secure-login fallback]',info.status||'network',info.message||'edge unavailable');
+      }else if(data?.error){
+        throw new Error(String(data.error));
+      }
+    }
+    return directSignIn(username,password);
   }
   const readAttempts=()=>{try{return JSON.parse(localStorage.getItem(ATTEMPT_KEY)||'{}')}catch(_){return{}}};
   const writeAttempts=x=>{try{localStorage.setItem(ATTEMPT_KEY,JSON.stringify(x))}catch(_){}};
@@ -5390,7 +5421,7 @@ window.AlinCourierModules['recordCourierSettlementForOrder']=typeof recordCourie
 
   window.addEventListener('load',async()=>{
     try{
-      const registration=await navigator.serviceWorker.register('./service-worker.js?v=3.0.1',{scope:'./',updateViaCache:'none'});
+      const registration=await navigator.serviceWorker.register('./service-worker.js?v=3.0.3',{scope:'./',updateViaCache:'none'});
       registration.addEventListener('updatefound',()=>{
         const worker=registration.installing;
         if(!worker)return;

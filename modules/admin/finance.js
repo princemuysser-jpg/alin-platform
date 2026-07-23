@@ -111,5 +111,5 @@
 
   window.renderFinanceAdmin=renderFinanceAdmin;
   window.AlinAdminFinance=Object.freeze({render:renderFinanceAdmin,exportLedger});
-  window.AlinAdminModules?.register?.('finance',()=>{});
+  window.AlinAdminModules?.register?.('finance',renderFinanceAdmin);
 })();

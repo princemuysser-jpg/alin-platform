@@ -1,5 +1,5 @@
 // === core/notifications.js ===
-/* ALIN v3.0.1 — notifications with per-account server read state. */
+/* ALIN v3.0.3 — notifications with per-account server read state. */
 (function(){
   'use strict';
 

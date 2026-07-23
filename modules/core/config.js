@@ -1,7 +1,7 @@
 // === core/config.js ===
-/* ALIN v3.0.1 — one public runtime configuration source after landing cleanup. */
+/* ALIN v3.0.3 — one public runtime configuration source after landing cleanup. */
 window.ALIN_CONFIG=Object.freeze({
-  version:'3.0.1',
+  version:'3.0.3',
   desktopPage:'./store-desktop.html',
   mobilePage:'./store-mobile.html',
   currency:'د.ع',

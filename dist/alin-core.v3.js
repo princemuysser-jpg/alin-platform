@@ -1,8 +1,8 @@
 /* modules/core/config.js */
 // === core/config.js ===
-/* ALIN v3.0.1 — one public runtime configuration source after landing cleanup. */
+/* ALIN v3.0.3 — one public runtime configuration source after landing cleanup. */
 window.ALIN_CONFIG=Object.freeze({
-  version:'3.0.1',
+  version:'3.0.3',
   desktopPage:'./store-desktop.html',
   mobilePage:'./store-mobile.html',
   currency:'د.ع',
@@ -1214,7 +1214,7 @@ window.Alin.helpers={
 ;
 /* modules/core/platform.js */
 // === core/platform.js ===
-/* ALIN v3.0.1 — small authoritative runtime core. Business features live in their own modules. */
+/* ALIN v3.0.3 — small authoritative runtime core. Business features live in their own modules. */
 (function(){
   'use strict';
 
@@ -1298,11 +1298,11 @@ window.Alin.helpers={
   async function seedData(){throw new Error('البيانات التجريبية معطلة في النسخة المستقرة')}
 
   Object.assign(window,{
-    ALIN_VERSION:'3.0.1',init,requireConnection,audit,renderAll,seedData,
+    ALIN_VERSION:'3.0.3',init,requireConnection,audit,renderAll,seedData,
     teacherName,libIsOpen,libStatusText,activeLibraries,alinOpenLibraries:activeLibraries,
     alinLibOpen:libIsOpen,deliveryFee,isMissingTableError,usePermit
   });
-  window.AlinRuntime=Object.freeze({version:'3.0.1',init,requireConnection,renderAll,getDb:()=>stateDb,getCurrent:()=>stateCurrent});
+  window.AlinRuntime=Object.freeze({version:'3.0.3',init,requireConnection,renderAll,getDb:()=>stateDb,getCurrent:()=>stateCurrent});
 
   /* PLATFORM STEP 1: coupons are owned by modules/store/coupons.js and modules/admin/coupons.js. */
   /* PLATFORM STEP 2: cart and order creation are owned by modules/store/cart.js and modules/store/order-routing.js. */
@@ -1641,13 +1641,13 @@ window.Alin.helpers={
 ;
 /* modules/core/supabase.js */
 // === core/supabase.js ===
-/* ALIN v3.0.1 — authoritative Supabase data service.
+/* ALIN v3.0.3 — authoritative Supabase data service.
    This file is the only owner of query/insert/update/removeRow/load and cloud snapshots.
 */
 (function(){
   'use strict';
 
-  const VERSION='3.0.1';
+  const VERSION='3.0.3';
   const TABLES=[
     'settings','accounts','delivery_areas','couriers','courier_areas','categories',
     'booklets','teacher_requests','teacher_request_versions','products','orders',
@@ -2107,7 +2107,7 @@ window.Alin.helpers={
 ;
 /* modules/core/notifications.js */
 // === core/notifications.js ===
-/* ALIN v3.0.1 — notifications with per-account server read state. */
+/* ALIN v3.0.3 — notifications with per-account server read state. */
 (function(){
   'use strict';
 
@@ -4090,7 +4090,7 @@ window.Alin.helpers={
 ;
 /* modules/store/student-auth.js */
 // === store/student-auth.js ===
-/* ALIN v3.0.1 — secure optional student account backed by Supabase RPCs. */
+/* ALIN v3.0.3 — secure optional student account backed by Supabase RPCs. */
 (function(){
   'use strict';
   const SESSION_KEY='alin_student_secure_session_v3';
