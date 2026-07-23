@@ -1,10 +1,36 @@
 -- ============================================================
--- منصة آلين v3.1.0 — إصدار الإنتاج الموحد النهائي
--- ملف موحد واحد يعيد تثبيت بنية الإنتاج الحالية ويجمع حماية السجل والخصوصية
--- وتسجيل الدخول وصلاحيات الحسابات وحساب الطالب الآمن.
+-- منصة آلين v3.1.2 — إصدار موحّد مستقر للنشر
+-- ملف قاعدة بيانات واحد: الحماية + التخزين الخاص + الطلبات + النظام المالي الذري.
+-- يعالج تعارض ledger_status_valid من المصدر ولا يحذف الطلبات أو الحسابات.
 -- ============================================================
 
 begin;
+
+-- ============================================================
+-- تمهيد توافق مالي آمن قبل أي تحديث للطلبات
+-- قاعدة المستخدم قد تحتوي قيوداً/مشغلات قديمة على ledger من إصدارات سابقة.
+-- تُعطّل مشغلات ledger مؤقتاً داخل هذه المعاملة، وتُزال جميع قيود CHECK
+-- التي تعتمد على status أو settlement_status مهما كان اسمها، ثم تُعاد لاحقاً.
+-- عند أي خطأ تُرجع PostgreSQL كل شيء تلقائياً لأن الملف داخل transaction واحدة.
+-- ============================================================
+do $$
+declare
+  r record;
+begin
+  if to_regclass('public.ledger') is not null then
+    execute 'alter table public.ledger disable trigger user';
+    for r in
+      select conname
+      from pg_constraint
+      where conrelid='public.ledger'::regclass
+        and contype='c'
+        and pg_get_constraintdef(oid) ~* '(status|settlement_status)'
+    loop
+      execute format('alter table public.ledger drop constraint if exists %I',r.conname);
+    end loop;
+  end if;
+end
+$$;
 
 create extension if not exists pgcrypto with schema extensions;
 
@@ -1194,12 +1220,6 @@ revoke all on function public.alin_create_store_orders(jsonb,jsonb,jsonb,text) f
 delete from public.student_sessions where expires_at<=now();
 delete from public.auth_login_guard where updated_at<now()-interval '30 days';
 
-insert into public.alin_schema_versions(version,notes)
-values('3.1.0-release-unified','Audit, privacy, secure auth, performance, sparse order insertion, migration-safe order normalization, and private document access')
-on conflict(version) do update set applied_at=now(),notes=excluded.notes;
-
-
-
 -- ============================================================
 -- التخزين الخاص للملازم وطلبات المدرسين — سياسة موحدة v3.1.0
 -- تعتمد مباشرة على auth.uid وربط الحساب والطلب، بدون الاعتماد على كاش الواجهة.
@@ -1402,52 +1422,854 @@ using (
   and lower(coalesce(public.alin_private_current_account()->>'role','')) ='admin'
 );
 
+
+
+-- ============================================================
+-- النظام المالي الذري الموحد
+-- ============================================================
+create extension if not exists pgcrypto with schema extensions;
+
+-- ============================================================
+-- 1) توحيد أعمدة الطلب والسجل المالي
+-- ============================================================
+alter table public.orders add column if not exists settlement_done boolean not null default false;
+alter table public.orders add column if not exists settlement_cancelled boolean not null default false;
+alter table public.orders add column if not exists settlement_at timestamptz;
+alter table public.orders add column if not exists settlement_party text;
+alter table public.orders add column if not exists platform_profit numeric not null default 0;
+alter table public.orders add column if not exists teacher_profit numeric not null default 0;
+alter table public.orders add column if not exists library_profit numeric not null default 0;
+alter table public.orders add column if not exists delegate_profit numeric not null default 0;
+alter table public.orders add column if not exists courier_profit numeric not null default 0;
+alter table public.orders add column if not exists cash_collected_by text;
+alter table public.orders add column if not exists cash_collected_at timestamptz;
+alter table public.orders add column if not exists library_cash_collected numeric not null default 0;
+alter table public.orders add column if not exists delegate_cash_collected numeric not null default 0;
+alter table public.orders add column if not exists finance_version text;
+alter table public.orders add column if not exists updated_at timestamptz not null default now();
+alter table public.orders add column if not exists completed_at timestamptz;
+alter table public.orders add column if not exists delivered_at timestamptz;
+alter table public.orders add column if not exists cancelled_at timestamptz;
+alter table public.orders add column if not exists cancellation_reason text;
+alter table public.orders add column if not exists cancel_reason text;
+alter table public.orders add column if not exists payment_status text not null default 'cod_pending';
+alter table public.orders add column if not exists assignment_status text not null default 'pending_admin';
+alter table public.orders add column if not exists status_history jsonb not null default '[]'::jsonb;
+alter table public.orders add column if not exists assigned_at timestamptz;
+alter table public.orders add column if not exists accepted_at timestamptz;
+alter table public.orders add column if not exists picked_up_at timestamptz;
+alter table public.orders add column if not exists out_for_delivery_at timestamptz;
+alter table public.orders add column if not exists processing_at timestamptz;
+alter table public.orders add column if not exists ready_at timestamptz;
+
+alter table public.ledger add column if not exists order_id text;
+alter table public.ledger add column if not exists order_number text;
+alter table public.ledger add column if not exists title text;
+alter table public.ledger add column if not exists alin numeric not null default 0;
+alter table public.ledger add column if not exists admin numeric not null default 0;
+alter table public.ledger add column if not exists teacher numeric not null default 0;
+alter table public.ledger add column if not exists teacher_id text;
+alter table public.ledger add column if not exists library numeric not null default 0;
+alter table public.ledger add column if not exists library_id text;
+alter table public.ledger add column if not exists delegate numeric not null default 0;
+alter table public.ledger add column if not exists delegate_id text;
+alter table public.ledger add column if not exists total numeric not null default 0;
+alter table public.ledger add column if not exists merchandise_total numeric not null default 0;
+alter table public.ledger add column if not exists delivery_fee numeric not null default 0;
+alter table public.ledger add column if not exists collector_role text;
+alter table public.ledger add column if not exists collector_id text;
+alter table public.ledger add column if not exists collector_debt numeric not null default 0;
+alter table public.ledger add column if not exists delivery_type text;
+alter table public.ledger add column if not exists settlement_status text not null default 'pending';
+alter table public.ledger add column if not exists finance_version text;
+alter table public.ledger add column if not exists is_current boolean not null default true;
+alter table public.ledger add column if not exists note text;
+alter table public.ledger add column if not exists created_at timestamptz not null default now();
+alter table public.ledger add column if not exists updated_at timestamptz not null default now();
+alter table public.ledger add column if not exists settled_at timestamptz;
+
+-- ============================================================
+-- توحيد حالات السجل المالي بنظام متوافق مع جميع الإصدارات
+-- الحالة الفعالة القياسية: pending. ويُقبل accrued/unsettled للبيانات القديمة.
+-- ============================================================
+alter table public.ledger add column if not exists status text;
+alter table public.ledger add column if not exists settlement_status text;
+
+alter table public.ledger alter column status set default 'pending';
+alter table public.ledger alter column settlement_status set default 'pending';
+
+update public.ledger
+set status = case lower(btrim(coalesce(status,'')))
+  when '' then 'pending'
+  when 'unsettled' then 'pending'
+  when 'accrued' then 'pending'
+  when 'received' then 'settled'
+  when 'paid' then 'settled'
+  when 'canceled' then 'cancelled'
+  when 'active' then 'pending'
+  when 'done' then 'settled'
+  else lower(btrim(status))
+end;
+
+update public.ledger
+set settlement_status = case lower(btrim(coalesce(settlement_status,'')))
+  when '' then case lower(coalesce(status,'pending'))
+    when 'settled' then 'settled'
+    when 'cancelled' then 'cancelled'
+    when 'reversed' then 'reversed'
+    when 'superseded' then 'superseded'
+    else 'pending' end
+  when 'accrued' then 'pending'
+  when 'unsettled' then 'pending'
+  when 'paid' then 'settled'
+  when 'received' then 'settled'
+  when 'canceled' then 'cancelled'
+  when 'active' then 'pending'
+  when 'done' then 'settled'
+  else lower(btrim(settlement_status))
+end;
+
+update public.ledger
+set status='pending'
+where status not in ('pending','unsettled','accrued','settled','paid','received','cancelled','canceled','reversed','superseded');
+
+update public.ledger
+set settlement_status='pending'
+where settlement_status not in ('pending','unsettled','accrued','settled','paid','received','cancelled','canceled','reversed','superseded');
+
+alter table public.ledger alter column status set not null;
+alter table public.ledger alter column settlement_status set not null;
+
+-- إزالة أي قيود حالة متبقية مهما كان اسمها قبل تثبيت القيود القياسية.
+do $$
+declare r record;
+begin
+  for r in
+    select conname
+    from pg_constraint
+    where conrelid='public.ledger'::regclass
+      and contype='c'
+      and pg_get_constraintdef(oid) ~* '(status|settlement_status)'
+  loop
+    execute format('alter table public.ledger drop constraint if exists %I',r.conname);
+  end loop;
+end
+$$;
+
+alter table public.ledger add constraint ledger_status_valid check (
+  status in ('pending','unsettled','accrued','settled','paid','received','cancelled','canceled','reversed','superseded')
+) not valid;
+alter table public.ledger add constraint ledger_settlement_status_valid check (
+  settlement_status in ('pending','unsettled','accrued','settled','paid','received','cancelled','canceled','reversed','superseded')
+) not valid;
+alter table public.ledger validate constraint ledger_status_valid;
+alter table public.ledger validate constraint ledger_settlement_status_valid;
+
+create index if not exists ledger_order_id_stage5_idx on public.ledger ((order_id::text));
+create index if not exists ledger_teacher_stage5_idx on public.ledger ((teacher_id::text),settlement_status);
+create index if not exists ledger_library_stage5_idx on public.ledger ((library_id::text),settlement_status);
+create index if not exists ledger_delegate_stage5_idx on public.ledger ((delegate_id::text),settlement_status);
+
+-- نحتفظ بالسجلات القديمة، لكن سجل واحد فقط يبقى فعالاً لكل طلب.
+with ranked as (
+  select ctid,
+         row_number() over(
+           partition by nullif(order_id::text,'')
+           order by coalesce(settled_at,updated_at,created_at) desc nulls last, ctid desc
+         ) as rn
+  from public.ledger
+  where nullif(order_id::text,'') is not null
+)
+update public.ledger l
+set is_current=(r.rn=1),
+    status=case when r.rn=1 then coalesce(nullif(l.status,''),'pending') else 'superseded' end,
+    settlement_status=case when r.rn=1 then coalesce(nullif(l.settlement_status,''),'pending') else 'superseded' end,
+    updated_at=now()
+from ranked r
+where l.ctid=r.ctid;
+
+create unique index if not exists ledger_one_current_order_stage5_uidx
+on public.ledger ((order_id::text))
+where is_current=true and nullif(order_id::text,'') is not null;
+
+-- ============================================================
+-- 2) جداول التسويات القياسية
+-- ============================================================
+create table if not exists public.library_settlements(
+  id text primary key,
+  receipt_number text,
+  library_id text not null,
+  amount numeric not null default 0,
+  payment_method text not null default 'نقدي',
+  note text,
+  status text not null default 'received',
+  created_by text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.library_settlements add column if not exists receipt_number text;
+alter table public.library_settlements add column if not exists library_id text;
+alter table public.library_settlements add column if not exists amount numeric not null default 0;
+alter table public.library_settlements add column if not exists payment_method text not null default 'نقدي';
+alter table public.library_settlements add column if not exists note text;
+alter table public.library_settlements add column if not exists status text not null default 'received';
+alter table public.library_settlements add column if not exists created_by text;
+alter table public.library_settlements add column if not exists created_at timestamptz not null default now();
+alter table public.library_settlements add column if not exists updated_at timestamptz not null default now();
+
+create table if not exists public.delegate_settlements(
+  id text primary key,
+  receipt_number text,
+  delegate_id text not null,
+  courier_id text,
+  amount numeric not null default 0,
+  payment_method text not null default 'نقدي',
+  note text,
+  status text not null default 'received',
+  created_by text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.delegate_settlements add column if not exists receipt_number text;
+alter table public.delegate_settlements add column if not exists delegate_id text;
+alter table public.delegate_settlements add column if not exists courier_id text;
+alter table public.delegate_settlements add column if not exists amount numeric not null default 0;
+alter table public.delegate_settlements add column if not exists payment_method text not null default 'نقدي';
+alter table public.delegate_settlements add column if not exists note text;
+alter table public.delegate_settlements add column if not exists status text not null default 'received';
+alter table public.delegate_settlements add column if not exists created_by text;
+alter table public.delegate_settlements add column if not exists created_at timestamptz not null default now();
+alter table public.delegate_settlements add column if not exists updated_at timestamptz not null default now();
+
+create table if not exists public.financial_payouts(
+  id text primary key,
+  voucher_number text,
+  party_role text not null,
+  party_id text,
+  party_name text,
+  amount numeric not null default 0,
+  payment_method text not null default 'نقدي',
+  note text,
+  status text not null default 'paid',
+  created_by text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.financial_payouts add column if not exists voucher_number text;
+alter table public.financial_payouts add column if not exists party_role text;
+alter table public.financial_payouts add column if not exists party_id text;
+alter table public.financial_payouts add column if not exists party_name text;
+alter table public.financial_payouts add column if not exists amount numeric not null default 0;
+alter table public.financial_payouts add column if not exists payment_method text not null default 'نقدي';
+alter table public.financial_payouts add column if not exists note text;
+alter table public.financial_payouts add column if not exists status text not null default 'paid';
+alter table public.financial_payouts add column if not exists created_by text;
+alter table public.financial_payouts add column if not exists created_at timestamptz not null default now();
+alter table public.financial_payouts add column if not exists updated_at timestamptz not null default now();
+
+create index if not exists library_settlements_party_stage5_idx on public.library_settlements ((library_id::text),status);
+create index if not exists delegate_settlements_party_stage5_idx on public.delegate_settlements ((coalesce(delegate_id,courier_id)::text),status);
+create index if not exists financial_payouts_party_stage5_idx on public.financial_payouts (party_role,(party_id::text),status);
+
+
+-- توحيد توليد المعرّفات مع قواعد قديمة يكون فيها id نصاً أو UUID.
+do $$
+declare t text; v_udt text;
+begin
+  foreach t in array array['library_settlements','delegate_settlements','financial_payouts'] loop
+    select c.udt_name into v_udt
+    from information_schema.columns c
+    where c.table_schema='public' and c.table_name=t and c.column_name='id';
+    if v_udt='uuid' then
+      execute format('alter table public.%I alter column id set default extensions.gen_random_uuid()',t);
+    elsif v_udt in ('text','varchar','bpchar') then
+      execute format('alter table public.%I alter column id set default (extensions.gen_random_uuid()::text)',t);
+    end if;
+  end loop;
+end $$;
+
+-- ============================================================
+-- 3) أدوات قراءة الإعدادات والقيم
+-- ============================================================
+create or replace function public.alin_setting_numeric(p_key text,p_default numeric)
+returns numeric
+language plpgsql stable security definer
+set search_path=public,pg_temp
+as $$
+declare v numeric;
+begin
+  if to_regclass('public.settings') is null then return p_default; end if;
+  begin
+    execute 'select nullif(value::text,'''')::numeric from public.settings where key::text=$1 limit 1'
+      into v using p_key;
+  exception when others then v:=null;
+  end;
+  return coalesce(v,p_default);
+end
+$$;
+revoke all on function public.alin_setting_numeric(text,numeric) from public,anon,authenticated;
+
+create or replace function public.alin_finance_json_num(p_row jsonb,p_keys text[],p_default numeric default 0)
+returns numeric
+language plpgsql immutable
+as $$
+declare k text; v numeric;
+begin
+  foreach k in array p_keys loop
+    begin
+      if nullif(p_row->>k,'') is not null then
+        v:=(p_row->>k)::numeric;
+        return coalesce(v,p_default);
+      end if;
+    exception when others then null;
+    end;
+  end loop;
+  return p_default;
+end
+$$;
+revoke all on function public.alin_finance_json_num(jsonb,text[],numeric) from public,anon,authenticated;
+
+-- ============================================================
+-- 4) احتساب وتثبيت القيد المالي لطلب مكتمل فقط
+-- ============================================================
+create or replace function public.alin_upsert_order_finance_atomic(p_order_id text)
+returns jsonb
+language plpgsql security definer
+set search_path=public,extensions,pg_temp
+as $$
+declare
+  o public.orders%rowtype;
+  j jsonb;
+  b jsonb:=null;
+  v_kind text;
+  v_fulfillment text;
+  v_order_number text;
+  v_booklet_id text;
+  v_teacher_id text;
+  v_library_id text;
+  v_delegate_id text;
+  v_collector_role text;
+  v_collector_id text;
+  v_total numeric:=0;
+  v_delivery_fee numeric:=0;
+  v_merchandise numeric:=0;
+  v_teacher_pct numeric:=0;
+  v_library_pct numeric:=0;
+  v_delegate_pct numeric:=0;
+  v_teacher numeric:=0;
+  v_library numeric:=0;
+  v_delegate numeric:=0;
+  v_admin numeric:=0;
+  v_debt numeric:=0;
+  v_ledger_id text;
+  v_payload jsonb;
+begin
+  select * into o from public.orders where id::text=p_order_id for update;
+  if not found then raise exception 'الطلب غير موجود'; end if;
+  j:=to_jsonb(o);
+
+  if lower(coalesce(j->>'status','')) not in ('completed','delivered') then
+    raise exception 'لا يمكن إنشاء حسابات قبل تسليم الطلب';
+  end if;
+
+  v_order_number:=coalesce(nullif(j->>'order_number',''),p_order_id);
+  v_kind:=lower(coalesce(nullif(j->>'kind',''),nullif(j->>'item_kind',''),'product'));
+  v_fulfillment:=lower(coalesce(nullif(j->>'fulfillment_type',''),nullif(j->>'delivery_type',''),nullif(j->>'delivery_method',''),''));
+  v_booklet_id:=coalesce(nullif(j->>'item_id',''),nullif(j->>'booklet_id',''));
+  v_teacher_id:=nullif(j->>'teacher_id','');
+  v_library_id:=coalesce(nullif(j->>'library_id',''),nullif(j->>'pickup_library_id',''),nullif(j->>'assigned_library_id',''));
+  v_delegate_id:=coalesce(nullif(j->>'delegate_id',''),nullif(j->>'courier_id',''));
+  v_total:=greatest(public.alin_finance_json_num(j,array['total'],0),0);
+  v_delivery_fee:=least(v_total,greatest(public.alin_finance_json_num(j,array['delivery_fee'],0),0));
+  v_merchandise:=greatest(v_total-v_delivery_fee,0);
+
+  if v_total<=0 then raise exception 'مبلغ الطلب غير صالح للحسابات'; end if;
+
+  if v_booklet_id is not null and to_regclass('public.booklets') is not null then
+    select to_jsonb(x) into b from public.booklets x where x.id::text=v_booklet_id limit 1;
+  end if;
+  if v_teacher_id is null then v_teacher_id:=nullif(b->>'teacher_id',''); end if;
+
+  v_teacher_pct:=least(greatest(
+    case when v_kind in ('booklet','booklets','booklet_product','ملزمة','ملازم')
+      then coalesce(nullif(public.alin_finance_json_num(b,array['teacher_share_percent'],-1),-1),public.alin_setting_numeric('teacher_profit_percent',50))
+      else 0 end,0),100);
+  v_library_pct:=least(greatest(
+    coalesce(nullif(public.alin_finance_json_num(b,array['library_share_percent'],-1),-1),public.alin_setting_numeric('library_profit_percent',30)),0),100);
+  v_delegate_pct:=least(greatest(public.alin_setting_numeric('delegate_profit_percent',30),0),100);
+
+  if v_delegate_id is not null or v_fulfillment ~ '(home_delivery|delivery|courier|delegate|مندوب)' then
+    v_collector_role:='delegate';
+    v_collector_id:=v_delegate_id;
+    if v_collector_id is null then raise exception 'طلب التوصيل غير مرتبط بمندوب'; end if;
+    v_teacher:=least(v_merchandise,greatest(round(v_merchandise*v_teacher_pct/100),0));
+    v_delegate:=least(v_delivery_fee,greatest(round(v_delivery_fee*v_delegate_pct/100),0));
+    v_library:=0;
+    v_admin:=greatest(v_total-v_teacher-v_delegate,0);
+  else
+    v_collector_role:='library';
+    v_collector_id:=v_library_id;
+    if v_collector_id is null then raise exception 'طلب الاستلام غير مرتبط بمكتبة'; end if;
+    v_teacher:=least(v_merchandise,greatest(round(v_merchandise*v_teacher_pct/100),0));
+    v_library:=least(greatest(v_merchandise-v_teacher,0),greatest(round(v_merchandise*v_library_pct/100),0));
+    v_delegate:=0;
+    v_admin:=greatest(v_total-v_teacher-v_library,0);
+  end if;
+
+  -- ضمان أن مجموع الحصص يساوي مبلغ الطلب بالضبط.
+  v_admin:=v_admin+(v_total-(v_admin+v_teacher+v_library+v_delegate));
+  v_debt:=greatest(v_total-case when v_collector_role='library' then v_library else v_delegate end,0);
+
+  select id::text into v_ledger_id
+  from public.ledger
+  where order_id::text=p_order_id and is_current=true
+  order by coalesce(updated_at,created_at) desc nulls last
+  limit 1 for update;
+
+  v_payload:=jsonb_build_object(
+    'order_id',p_order_id,'order_number',v_order_number,
+    'title',coalesce(nullif(j->>'title',''),'طلب منصة آلين'),
+    'alin',v_admin,'admin',v_admin,'teacher',v_teacher,'teacher_id',v_teacher_id,
+    'library',v_library,'library_id',v_library_id,
+    'delegate',v_delegate,'delegate_id',v_delegate_id,
+    'total',v_total,'merchandise_total',v_merchandise,'delivery_fee',v_delivery_fee,
+    'collector_role',v_collector_role,'collector_id',v_collector_id,'collector_debt',v_debt,
+    'delivery_type',v_collector_role,'status','pending','settlement_status','pending',
+    'finance_version','2.8.0','is_current',true,
+    'settled_at',now(),'updated_at',now(),
+    'note','قيد مالي ذري من الطلب المكتمل'
+  );
+
+  if v_ledger_id is null then
+    v_ledger_id:=gen_random_uuid()::text;
+    v_payload:=v_payload||jsonb_build_object('id',v_ledger_id,'created_at',now());
+    insert into public.ledger select (jsonb_populate_record(null::public.ledger,v_payload)).*;
+  else
+    update public.ledger l set
+      order_number=x.order_number,title=x.title,alin=x.alin,admin=x.admin,
+      teacher=x.teacher,teacher_id=x.teacher_id,library=x.library,library_id=x.library_id,
+      delegate=x.delegate,delegate_id=x.delegate_id,total=x.total,
+      merchandise_total=x.merchandise_total,delivery_fee=x.delivery_fee,
+      collector_role=x.collector_role,collector_id=x.collector_id,collector_debt=x.collector_debt,
+      delivery_type=x.delivery_type,status=x.status,settlement_status=x.settlement_status,
+      finance_version=x.finance_version,is_current=true,settled_at=x.settled_at,
+      updated_at=x.updated_at,note=x.note
+    from (select (jsonb_populate_record(null::public.ledger,v_payload)).*) x
+    where l.id::text=v_ledger_id;
+  end if;
+
+  perform set_config('alin.internal_order_transition','on',true);
+  update public.orders set
+    settlement_done=true,settlement_cancelled=false,settlement_at=coalesce(settlement_at,now()),
+    settlement_party=v_collector_role,
+    platform_profit=v_admin,teacher_profit=v_teacher,library_profit=v_library,
+    delegate_profit=v_delegate,courier_profit=v_delegate,
+    cash_collected_by=v_collector_role,cash_collected_at=coalesce(cash_collected_at,now()),
+    library_cash_collected=case when v_collector_role='library' then v_total else 0 end,
+    delegate_cash_collected=case when v_collector_role='delegate' then v_total else 0 end,
+    finance_version='2.8.0',updated_at=now()
+  where id::text=p_order_id;
+  perform set_config('alin.internal_order_transition','off',true);
+
+  return jsonb_build_object(
+    'ledger_id',v_ledger_id,'order_id',p_order_id,'total',v_total,
+    'merchandise_total',v_merchandise,'delivery_fee',v_delivery_fee,
+    'admin',v_admin,'teacher',v_teacher,'library',v_library,'delegate',v_delegate,
+    'collector_role',v_collector_role,'collector_id',v_collector_id,'collector_debt',v_debt
+  );
+end
+$$;
+revoke all on function public.alin_upsert_order_finance_atomic(text) from public,anon,authenticated;
+
+-- توافق مع الاسم السابق، لكنه لم يعد متاحاً مباشرة للمستخدم.
+create or replace function public.alin_upsert_order_finance(p_order_id text)
+returns jsonb language sql security definer
+set search_path=public,extensions,pg_temp
+as $$ select public.alin_upsert_order_finance_atomic(p_order_id) $$;
+revoke all on function public.alin_upsert_order_finance(text) from public,anon,authenticated;
+
+-- ============================================================
+-- 5) انتقال حالة الطلب والحسابات داخل معاملة واحدة
+-- ============================================================
+create or replace function public.alin_order_transition_atomic(
+  p_order_id text,
+  p_status text,
+  p_reason text default null
+)
+returns jsonb
+language plpgsql security definer
+set search_path=public,extensions,pg_temp
+as $$
+declare
+  o public.orders%rowtype;
+  j jsonb;
+  v_role text:=public.alin_current_role();
+  v_account text:=public.alin_current_account_id();
+  v_source text;
+  v_target text:=lower(btrim(coalesce(p_status,'')));
+  v_library text;
+  v_delegate text;
+  v_history jsonb;
+  v_now timestamptz:=now();
+  v_finance jsonb:=null;
+  v_allowed boolean:=false;
+begin
+  select * into o from public.orders where id::text=p_order_id for update;
+  if not found then raise exception 'الطلب غير موجود'; end if;
+  j:=to_jsonb(o);
+  v_source:=lower(coalesce(j->>'status','new'));
+  if v_source='canceled' then v_source:='cancelled'; end if;
+  if v_target='canceled' then v_target:='cancelled'; end if;
+  if v_target='delivered' then v_target:='completed'; end if;
+  v_library:=coalesce(nullif(j->>'library_id',''),nullif(j->>'pickup_library_id',''),nullif(j->>'assigned_library_id',''));
+  v_delegate:=coalesce(nullif(j->>'delegate_id',''),nullif(j->>'courier_id',''));
+
+  if v_target not in ('new','pending_admin','assigned','accepted','picked_up','out_for_delivery','processing','ready','completed','cancelled','rejected') then
+    raise exception 'حالة الطلب المطلوبة غير صحيحة';
+  end if;
+
+  if public.alin_is_finance_staff() then
+    v_allowed:=true;
+  elsif v_role='library' and v_account is not null and v_account=v_library then
+    v_allowed:=(
+      (v_source in ('new','pending','pending_admin','accepted') and v_target in ('processing','cancelled')) or
+      (v_source in ('processing','printing') and v_target in ('ready','cancelled')) or
+      (v_source='ready' and v_target in ('completed','cancelled')) or
+      (v_source='completed' and v_target='completed')
+    );
+  elsif v_role in ('courier','delegate') and v_account is not null and v_account=v_delegate then
+    v_allowed:=(
+      (v_source in ('assigned','new','pending_admin') and v_target in ('accepted','rejected')) or
+      (v_source='accepted' and v_target in ('picked_up','rejected')) or
+      (v_source='picked_up' and v_target in ('out_for_delivery','rejected')) or
+      (v_source in ('out_for_delivery','out_delivery','processing') and v_target in ('completed','rejected')) or
+      (v_source='completed' and v_target='completed')
+    );
+  end if;
+
+  if not v_allowed then raise exception 'غير مسموح بتنفيذ انتقال حالة الطلب'; end if;
+  if v_source in ('completed','delivered') and v_target not in ('completed') then
+    raise exception 'الطلب المكتمل لا يلغى أو يرجع لحالة سابقة. استخدم إجراء إرجاع مالي مستقل.';
+  end if;
+  if v_target in ('cancelled','rejected') and nullif(btrim(coalesce(p_reason,'')),'') is null then
+    raise exception 'اكتب سبب الإلغاء أو الرفض';
+  end if;
+
+  -- إعادة نفس أمر الإكمال تصلح الحسابات فقط من دون تكرار.
+  if v_source in ('completed','delivered') and v_target='completed' then
+    v_finance:=public.alin_upsert_order_finance_atomic(p_order_id);
+    select to_jsonb(x) into j from public.orders x where x.id::text=p_order_id;
+    return jsonb_build_object('ok',true,'order',j,'finance',v_finance,'repaired',true);
+  end if;
+
+  v_history:=coalesce(j->'status_history','[]'::jsonb)||jsonb_build_array(jsonb_build_object(
+    'status',v_target,'at',v_now,'by',coalesce(v_account,'system'),
+    'role',coalesce(v_role,'system'),'reason',nullif(btrim(coalesce(p_reason,'')),'')
+  ));
+
+  perform set_config('alin.internal_order_transition','on',true);
+  update public.orders set
+    status=v_target,status_history=v_history,updated_at=v_now,
+    assignment_status=case
+      when v_target='assigned' then 'assigned'
+      when v_target='accepted' then 'accepted'
+      when v_target='completed' then 'completed'
+      when v_target='cancelled' then 'cancelled'
+      when v_target='rejected' then 'rejected'
+      else assignment_status end,
+    assigned_at=case when v_target='assigned' then coalesce(assigned_at,v_now) else assigned_at end,
+    accepted_at=case when v_target='accepted' then coalesce(accepted_at,v_now) else accepted_at end,
+    picked_up_at=case when v_target='picked_up' then coalesce(picked_up_at,v_now) else picked_up_at end,
+    out_for_delivery_at=case when v_target='out_for_delivery' then coalesce(out_for_delivery_at,v_now) else out_for_delivery_at end,
+    processing_at=case when v_target='processing' then coalesce(processing_at,v_now) else processing_at end,
+    ready_at=case when v_target='ready' then coalesce(ready_at,v_now) else ready_at end,
+    completed_at=case when v_target='completed' then coalesce(completed_at,v_now) else completed_at end,
+    delivered_at=case when v_target='completed' then coalesce(delivered_at,v_now) else delivered_at end,
+    cancelled_at=case when v_target in ('cancelled','rejected') then coalesce(cancelled_at,v_now) else cancelled_at end,
+    cancellation_reason=case when v_target in ('cancelled','rejected') then btrim(p_reason) else cancellation_reason end,
+    cancel_reason=case when v_target in ('cancelled','rejected') then btrim(p_reason) else cancel_reason end,
+    payment_status=case when v_target='completed' then 'paid' when v_target in ('cancelled','rejected') then 'cancelled' else payment_status end,
+    settlement_done=case when v_target='completed' then settlement_done when v_target in ('cancelled','rejected') then false else settlement_done end,
+    settlement_cancelled=case when v_target in ('cancelled','rejected') then true else settlement_cancelled end,
+    platform_profit=case when v_target in ('cancelled','rejected') then 0 else platform_profit end,
+    teacher_profit=case when v_target in ('cancelled','rejected') then 0 else teacher_profit end,
+    library_profit=case when v_target in ('cancelled','rejected') then 0 else library_profit end,
+    delegate_profit=case when v_target in ('cancelled','rejected') then 0 else delegate_profit end,
+    courier_profit=case when v_target in ('cancelled','rejected') then 0 else courier_profit end
+  where id::text=p_order_id;
+  perform set_config('alin.internal_order_transition','off',true);
+
+  if v_target='completed' then
+    v_finance:=public.alin_upsert_order_finance_atomic(p_order_id);
+  elsif v_target in ('cancelled','rejected') then
+    update public.ledger set status='cancelled',settlement_status='cancelled',is_current=false,updated_at=v_now,
+      note=coalesce(note,'')||' | ألغي الطلب قبل التسوية'
+    where order_id::text=p_order_id and is_current=true;
+  end if;
+
+  select to_jsonb(x) into j from public.orders x where x.id::text=p_order_id;
+  return jsonb_build_object('ok',true,'order',j,'finance',v_finance);
+end
+$$;
+revoke all on function public.alin_order_transition_atomic(text,text,text) from public,anon;
+grant execute on function public.alin_order_transition_atomic(text,text,text) to authenticated;
+
+-- الاسم القديم للمكتبة يبقى Wrapper آمن لنفس المعاملة.
+create or replace function public.alin_library_set_order_status(p_order_id text,p_status text,p_reason text default null)
+returns jsonb language sql security definer
+set search_path=public,extensions,pg_temp
+as $$ select public.alin_order_transition_atomic(p_order_id,p_status,p_reason) $$;
+revoke all on function public.alin_library_set_order_status(text,text,text) from public,anon;
+grant execute on function public.alin_library_set_order_status(text,text,text) to authenticated;
+
+-- ============================================================
+-- 6) حماية مشغل الطلب مع السماح للمعاملة الداخلية فقط
+-- ============================================================
+create or replace function public.alin_protect_order_update()
+returns trigger
+language plpgsql security definer
+set search_path=public,pg_temp
+as $$
+declare
+  v_role text:=public.alin_current_role();
+  v_allowed text[];
+begin
+  -- الإنهاء الداخلي الآمن للطلب بعد الشراء (مرحلة 4). لا يسمح إلا بأربعة حقول مشتقة من الخادم.
+  if current_setting('alin.internal_order_update',true)='stage4_checkout_finalize' then
+    v_allowed:=array['checkout_request_key','checkout_group_id','stock_reserved','stock_restored_at'];
+    if (to_jsonb(new)-v_allowed)<>(to_jsonb(old)-v_allowed) then
+      raise exception 'تم منع تعديل داخلي غير مصرح في الطلب';
+    end if;
+    return new;
+  end if;
+  if current_setting('alin.internal_order_transition',true)='on' then return new; end if;
+  if public.alin_is_admin() then return new; end if;
+  if v_role='library' then
+    v_allowed:=array['notes','library_note','updated_at'];
+  elsif v_role in ('courier','delegate') then
+    v_allowed:=array['delivery_note','proof_path','handoff_token','updated_at'];
+  else
+    raise exception 'غير مسموح بتعديل الطلب';
+  end if;
+  if (to_jsonb(new)-v_allowed)<>(to_jsonb(old)-v_allowed) then
+    raise exception 'استخدم خدمة تحديث حالة الطلب الآمنة';
+  end if;
+  return new;
+end
+$$;
+revoke all on function public.alin_protect_order_update() from public,anon,authenticated;
+drop trigger if exists alin_orders_protect_update on public.orders;
+create trigger alin_orders_protect_update before update on public.orders
+for each row execute function public.alin_protect_order_update();
+
+-- ============================================================
+-- 7) حساب الرصيد وتسجيل التسويات بواسطة الإدارة فقط
+-- ============================================================
+create or replace function public.alin_finance_party_balance(p_role text,p_party_id text)
+returns jsonb
+language plpgsql stable security definer
+set search_path=public,pg_temp
+as $$
+declare
+  r text:=lower(replace(coalesce(p_role,''),'courier','delegate'));
+  earned numeric:=0;
+  debt numeric:=0;
+  paid numeric:=0;
+begin
+  if not public.alin_is_finance_staff() then
+    if r='admin' then raise exception 'غير مسموح بعرض رصيد المنصة'; end if;
+    if public.alin_current_account_id() is null or public.alin_current_account_id()<>p_party_id then
+      raise exception 'غير مسموح بعرض رصيد حساب آخر';
+    end if;
+    if not (
+      (r='teacher' and public.alin_current_role()='teacher') or
+      (r='library' and public.alin_current_role()='library') or
+      (r='delegate' and public.alin_current_role() in ('courier','delegate'))
+    ) then raise exception 'نوع الحساب لا يطابق جلسة الدخول'; end if;
+  end if;
+  if r='library' then
+    select coalesce(sum(l.library),0),coalesce(sum(l.collector_debt),0)
+      into earned,debt from public.ledger l
+      where l.is_current=true and l.settlement_status in ('pending','accrued','unsettled') and l.collector_role='library' and l.library_id::text=p_party_id;
+    select coalesce(sum(case when lower(coalesce(status,'received')) in ('received','paid','settled') then amount else 0 end),0)
+      into paid from public.library_settlements where library_id::text=p_party_id;
+    return jsonb_build_object('role',r,'earned',earned,'debt_total',debt,'paid',paid,'remaining',greatest(debt-paid,0));
+  elsif r='delegate' then
+    select coalesce(sum(l.delegate),0),coalesce(sum(l.collector_debt),0)
+      into earned,debt from public.ledger l
+      where l.is_current=true and l.settlement_status in ('pending','accrued','unsettled') and l.collector_role='delegate' and l.delegate_id::text=p_party_id;
+    select coalesce(sum(case when lower(coalesce(status,'received')) in ('received','paid','settled') then amount else 0 end),0)
+      into paid from public.delegate_settlements where coalesce(delegate_id,courier_id)::text=p_party_id;
+    return jsonb_build_object('role',r,'earned',earned,'debt_total',debt,'paid',paid,'remaining',greatest(debt-paid,0));
+  elsif r='teacher' then
+    select coalesce(sum(l.teacher),0) into earned from public.ledger l
+      where l.is_current=true and l.settlement_status in ('pending','accrued','unsettled') and l.teacher_id::text=p_party_id;
+  elsif r='admin' then
+    select coalesce(sum(l.admin),0) into earned from public.ledger l
+      where l.is_current=true and l.settlement_status in ('pending','accrued','unsettled');
+  else
+    raise exception 'نوع الحساب المالي غير صحيح';
+  end if;
+  select coalesce(sum(case when lower(coalesce(status,'paid')) in ('paid','received','settled') then amount else 0 end),0)
+    into paid from public.financial_payouts
+    where lower(replace(coalesce(party_role,''),'courier','delegate'))=r
+      and (r='admin' or party_id::text=p_party_id);
+  return jsonb_build_object('role',r,'earned',earned,'paid',paid,'remaining',greatest(earned-paid,0));
+end
+$$;
+revoke all on function public.alin_finance_party_balance(text,text) from public,anon;
+grant execute on function public.alin_finance_party_balance(text,text) to authenticated;
+
+create or replace function public.alin_finance_record_settlement(
+  p_role text,p_party_id text,p_amount numeric,p_method text default 'نقدي',p_note text default null
+)
+returns jsonb
+language plpgsql security definer
+set search_path=public,extensions,pg_temp
+as $$
+declare
+  r text:=lower(replace(coalesce(p_role,''),'courier','delegate'));
+  v_balance jsonb;
+  v_remaining numeric;
+  v_amount numeric:=round(coalesce(p_amount,0));
+  v_id text;
+  v_nonce text:=gen_random_uuid()::text;
+  v_number text:='FS-'||to_char(now(),'YYYYMMDD-HH24MISS')||'-'||upper(substr(replace(v_nonce,'-',''),1,6));
+  v_actor text:=public.alin_current_account_id();
+begin
+  if not public.alin_is_finance_staff() then raise exception 'هذا الإجراء متاح للإدارة أو المحاسب فقط'; end if;
+  if r not in ('library','delegate','teacher','admin') then raise exception 'نوع التسوية غير صحيح'; end if;
+  if nullif(btrim(coalesce(p_party_id,'')),'') is null and r<>'admin' then raise exception 'الحساب غير محدد'; end if;
+  if v_amount<=0 then raise exception 'مبلغ التسوية غير صحيح'; end if;
+  v_balance:=public.alin_finance_party_balance(r,case when r='admin' then 'admin' else p_party_id end);
+  v_remaining:=coalesce((v_balance->>'remaining')::numeric,0);
+  if v_amount>v_remaining then raise exception 'المبلغ أكبر من الرصيد المتبقي'; end if;
+
+  if r='library' then
+    insert into public.library_settlements(receipt_number,library_id,amount,payment_method,note,status,created_by)
+    values(v_number,p_party_id,v_amount,coalesce(nullif(btrim(p_method),''),'نقدي'),p_note,'received',v_actor)
+    returning id::text into v_id;
+  elsif r='delegate' then
+    insert into public.delegate_settlements(receipt_number,delegate_id,courier_id,amount,payment_method,note,status,created_by)
+    values(v_number,p_party_id,p_party_id,v_amount,coalesce(nullif(btrim(p_method),''),'نقدي'),p_note,'received',v_actor)
+    returning id::text into v_id;
+  else
+    insert into public.financial_payouts(voucher_number,party_role,party_id,party_name,amount,payment_method,note,status,created_by)
+    values(v_number,r,case when r='admin' then 'admin' else p_party_id end,null,v_amount,
+      coalesce(nullif(btrim(p_method),''),'نقدي'),p_note,'paid',v_actor)
+    returning id::text into v_id;
+  end if;
+
+  return jsonb_build_object('ok',true,'id',v_id,'number',v_number,'role',r,'amount',v_amount,
+    'balance',public.alin_finance_party_balance(r,case when r='admin' then 'admin' else p_party_id end));
+end
+$$;
+revoke all on function public.alin_finance_record_settlement(text,text,numeric,text,text) from public,anon;
+grant execute on function public.alin_finance_record_settlement(text,text,numeric,text,text) to authenticated;
+
+create or replace function public.alin_finance_reverse_settlement(
+  p_role text,p_settlement_id text,p_reason text default null
+)
+returns jsonb
+language plpgsql security definer
+set search_path=public,pg_temp
+as $$
+declare r text:=lower(replace(coalesce(p_role,''),'courier','delegate')); v_count integer:=0;
+begin
+  if not public.alin_is_finance_staff() then raise exception 'هذا الإجراء متاح للإدارة أو المحاسب فقط'; end if;
+  if nullif(btrim(coalesce(p_reason,'')),'') is null then raise exception 'اكتب سبب عكس السند'; end if;
+  if r='library' then
+    update public.library_settlements set status='reversed',note=concat_ws(' | ',note,'عكس: '||btrim(p_reason)),updated_at=now()
+    where id::text=p_settlement_id and lower(coalesce(status,'received')) not in ('reversed','cancelled');
+    get diagnostics v_count=row_count;
+  elsif r='delegate' then
+    update public.delegate_settlements set status='reversed',note=concat_ws(' | ',note,'عكس: '||btrim(p_reason)),updated_at=now()
+    where id::text=p_settlement_id and lower(coalesce(status,'received')) not in ('reversed','cancelled');
+    get diagnostics v_count=row_count;
+  elsif r in ('teacher','admin') then
+    update public.financial_payouts set status='reversed',note=concat_ws(' | ',note,'عكس: '||btrim(p_reason)),updated_at=now()
+    where id::text=p_settlement_id and lower(coalesce(status,'paid')) not in ('reversed','cancelled');
+    get diagnostics v_count=row_count;
+  else raise exception 'نوع السند غير صحيح';
+  end if;
+  if v_count=0 then raise exception 'السند غير موجود أو معكوس مسبقاً'; end if;
+  return jsonb_build_object('ok',true,'role',r,'id',p_settlement_id,'status','reversed');
+end
+$$;
+revoke all on function public.alin_finance_reverse_settlement(text,text,text) from public,anon;
+grant execute on function public.alin_finance_reverse_settlement(text,text,text) to authenticated;
+
+-- ============================================================
+-- 8) منع أي كتابة مالية مباشرة من المتصفح
+-- ============================================================
+do $$
+declare t text; p record;
+begin
+  foreach t in array array['ledger','library_settlements','delegate_settlements','financial_payouts'] loop
+    if to_regclass('public.'||t) is null then continue; end if;
+    execute format('alter table public.%I enable row level security',t);
+    for p in select policyname from pg_policies where schemaname='public' and tablename=t loop
+      execute format('drop policy if exists %I on public.%I',p.policyname,t);
+    end loop;
+    execute format(
+      'create policy alin_stage5_%I_read on public.%I for select to authenticated using (public.alin_is_finance_staff() or public.alin_row_owner_match(to_jsonb(%I)))',
+      t,t,t
+    );
+    execute format('revoke insert,update,delete on public.%I from authenticated,anon',t);
+    execute format('grant select on public.%I to authenticated',t);
+    execute format('revoke all on public.%I from anon',t);
+  end loop;
+end $$;
+
+-- ============================================================
+-- 9) إعادة بناء الحسابات للطلبات المكتملة الحالية
+-- ============================================================
+do $$
+declare r record; fixed_count integer:=0;
+begin
+  for r in select id::text id from public.orders where lower(coalesce(status,'')) in ('completed','delivered') loop
+    begin
+      perform public.alin_upsert_order_finance_atomic(r.id);
+      fixed_count:=fixed_count+1;
+    exception when others then
+      raise notice 'Stage5 skipped order %: %',r.id,sqlerrm;
+    end;
+  end loop;
+  raise notice 'ALIN Stage5 rebuilt % completed finance row(s).',fixed_count;
+end $$;
+
+-- إعادة مشغلات ledger بعد اكتمال توحيد البيانات وإعادة بناء الحسابات.
+do $$
+begin
+  if to_regclass('public.ledger') is not null then
+    execute 'alter table public.ledger enable trigger user';
+  end if;
+end
+$$;
+
 insert into public.alin_schema_versions(version,notes)
 values(
-  '3.1.0-release-unified',
-  'Unified production schema plus direct authenticated private-document access for admin, owner teacher, and assigned library orders'
+  '3.1.2-release-ledger-compatible',
+  'Unified release with legacy-compatible pending ledger status, private documents, sparse checkout, and atomic finance'
 )
 on conflict(version) do update
 set applied_at=now(),notes=excluded.notes;
 
-
 notify pgrst,'reload schema';
 commit;
 
--- فحص موحد بعد التنفيذ: القيم المنطقية يجب أن تكون true والعدادات 0.
+-- الفحص النهائي: القيم المنطقية يجب أن تكون true والعدادات الحرجة 0.
 select
   to_regprocedure('public.alin_insert_order_payload(jsonb)') is not null as sparse_order_insert_ready,
   to_regprocedure('public.alin_create_store_orders(jsonb,jsonb,jsonb,text)') is not null as secure_checkout_ready,
-  to_regprocedure('public.alin_private_current_account()') is not null as private_account_resolver_ready,
-  to_regprocedure('public.alin_private_can_select_v310(text)') is not null as private_select_guard_ready,
-  exists(
-    select 1 from storage.buckets
-    where id='alin-private' and public=false
-  ) as private_bucket_ready,
-  exists(
-    select 1 from pg_policies
-    where schemaname='storage' and tablename='objects'
-      and policyname='alin_private_v310_select'
-  ) as private_select_policy_ready,
-  exists(
-    select 1 from pg_policies
-    where schemaname='storage' and tablename='objects'
-      and policyname='alin_private_v310_insert'
-  ) as private_insert_policy_ready,
-  not exists(
-    select 1 from pg_policies
-    where schemaname='storage' and tablename='objects'
-      and roles::text like '%anon%'
-      and coalesce(qual,'') like '%alin-private%'
-  ) as no_public_private_documents,
-  (select count(*) from public.orders where delegate_cash_collected is null) as null_delegate_cash_rows,
-  (select count(*) from information_schema.columns c
-   where c.table_schema='public' and c.table_name='orders'
-     and c.is_nullable='NO' and c.column_default is null
-     and coalesce(c.is_identity,'NO')<>'YES'
-     and coalesce(c.is_generated,'NEVER')='NEVER'
-     and c.column_name not in (
-       'id','order_number','kind','item_id','title','student_name','student_phone','qty','unit_price','total','discount',
-       'status','assignment_status','status_history','payment_status','payment_method','fulfillment_type','delivery_type',
-       'created_at','updated_at'
-     )) as unsafe_required_order_columns;
+  to_regprocedure('public.alin_order_transition_atomic(text,text,text)') is not null as atomic_transition_ready,
+  to_regprocedure('public.alin_upsert_order_finance_atomic(text)') is not null as atomic_finance_ready,
+  to_regprocedure('public.alin_finance_record_settlement(text,text,numeric,text,text)') is not null as settlement_ready,
+  to_regprocedure('public.alin_private_can_select_v310(text)') is not null as private_documents_ready,
+  exists(select 1 from pg_constraint where conrelid='public.ledger'::regclass and conname='ledger_status_valid') as ledger_status_constraint_ready,
+  exists(select 1 from pg_constraint where conrelid='public.ledger'::regclass and conname='ledger_settlement_status_valid') as ledger_settlement_constraint_ready,
+  (select count(*) from public.ledger where status is null or settlement_status is null) as null_ledger_status_rows,
+  (select count(*) from public.ledger where settlement_status not in ('pending','unsettled','accrued','settled','paid','received','cancelled','canceled','reversed','superseded')) as invalid_ledger_settlement_rows,
+  (select count(*) from (
+     select order_id from public.ledger where is_current=true and nullif(order_id::text,'') is not null group by order_id having count(*)>1
+   ) d) as duplicate_current_ledger_rows;

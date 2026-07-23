@@ -1,0 +1,20 @@
+{
+  "version": "3.1.2-release-ledger-compatible",
+  "validation_scope": "static package validation; live Supabase execution required for final confirmation",
+  "checks": {
+    "transaction_begin_commit": true,
+    "early_ledger_trigger_disable": true,
+    "dynamic_legacy_status_constraint_drop": true,
+    "canonical_pending_payload": true,
+    "legacy_active_state_compatibility": true,
+    "final_ledger_trigger_enable": true,
+    "private_document_guard": true,
+    "sparse_checkout": true,
+    "atomic_finance": true,
+    "atomic_transition": true,
+    "dollar_quote_pairs_even": true
+  },
+  "javascript_syntax_files": 80,
+  "html_local_references_checked": 36,
+  "files_before_checksums": 116
+}
