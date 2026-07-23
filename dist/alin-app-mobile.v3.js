@@ -4124,7 +4124,7 @@ window.AlinCourierModules['recordCourierSettlementForOrder']=typeof recordCourie
 /* ALIN v2.4.2 — authoritative backup owner. No admin router wrapping. */
 (function(){
   'use strict';
-  const VERSION='3.0.0';
+  const VERSION='3.0.1';
   const LOG_KEY='alin_backup_log_v227';
   const RESTORABLE=['categories','products','booklets','banners','coupons'];
   let pending=null;
@@ -4350,7 +4350,7 @@ window.AlinCourierModules['recordCourierSettlementForOrder']=typeof recordCourie
 
 ;
 /* modules/core/auth-service.js */
-/* ALIN v3.0.0 — Supabase authentication with server-side attempt protection. */
+/* ALIN v3.0.1 — fast cached boot with server-side attempt protection. */
 (function(){
   'use strict';
   const ATTEMPT_KEY='alin_auth_attempts_v139',MAX_ATTEMPTS=5,LOCK_MS=10*60*1000;
@@ -4465,9 +4465,9 @@ window.AlinCourierModules['recordCourierSettlementForOrder']=typeof recordCourie
   }
   async function openPublicStore(){
     try{window.AlinCloud?.loadCachedSnapshot?.()}catch(_){}
-    try{if(typeof window.load==='function')await window.load()}catch(error){console.warn('[ALIN public data refresh]',error)}
-    if(typeof window.openPage==='function')window.openPage('store',{render:false});
+    if(typeof window.openPage==='function')window.openPage('store',{render:true});
     finishAuthBoot();
+    try{if(typeof window.load==='function')await window.load({reason:'public-boot'})}catch(error){console.warn('[ALIN public data refresh]',error)}
     return false;
   }
   async function restoreSession(){
@@ -4488,11 +4488,12 @@ window.AlinCourierModules['recordCourierSettlementForOrder']=typeof recordCourie
       }
       window.current=accountState(account,session.user);
       try{window.AlinCloud?.loadCachedSnapshot?.()}catch(_){}
-      try{if(typeof window.load==='function')await window.load()}catch(error){console.warn('[ALIN session data refresh]',error)}
       const target=account.role==='accountant'?'admin':account.role;
+      if(typeof window.openPage==='function')window.openPage(target,{render:true});
+      finishAuthBoot();
+      try{if(typeof window.load==='function')await window.load({reason:'session-boot'})}catch(error){console.warn('[ALIN session data refresh]',error)}
       if(typeof window.openPage==='function')window.openPage(target,{render:false});
       if(account.role==='library')window.AlinLibraryModules?.showLibraryPage?.();
-      finishAuthBoot();
       window.dispatchEvent(new CustomEvent('alin:auth-restored',{detail:{account}}));
       return true;
     })().catch(error=>{
@@ -5389,7 +5390,7 @@ window.AlinCourierModules['recordCourierSettlementForOrder']=typeof recordCourie
 
   window.addEventListener('load',async()=>{
     try{
-      const registration=await navigator.serviceWorker.register('./service-worker.js?v=3.0.0',{scope:'./',updateViaCache:'none'});
+      const registration=await navigator.serviceWorker.register('./service-worker.js?v=3.0.1',{scope:'./',updateViaCache:'none'});
       registration.addEventListener('updatefound',()=>{
         const worker=registration.installing;
         if(!worker)return;
@@ -5413,3 +5414,4 @@ window.AlinCourierModules['recordCourierSettlementForOrder']=typeof recordCourie
   window.addEventListener('unhandledrejection',e=>console.error('[ALIN v2 promise]',e.reason));
 })();
 
+;

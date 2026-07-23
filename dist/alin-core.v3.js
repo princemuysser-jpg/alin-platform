@@ -1,8 +1,8 @@
 /* modules/core/config.js */
 // === core/config.js ===
-/* ALIN v3.0.0 — one public runtime configuration source after landing cleanup. */
+/* ALIN v3.0.1 — one public runtime configuration source after landing cleanup. */
 window.ALIN_CONFIG=Object.freeze({
-  version:'3.0.0',
+  version:'3.0.1',
   desktopPage:'./store-desktop.html',
   mobilePage:'./store-mobile.html',
   currency:'د.ع',
@@ -1214,7 +1214,7 @@ window.Alin.helpers={
 ;
 /* modules/core/platform.js */
 // === core/platform.js ===
-/* ALIN v3.0.0 — small authoritative runtime core. Business features live in their own modules. */
+/* ALIN v3.0.1 — small authoritative runtime core. Business features live in their own modules. */
 (function(){
   'use strict';
 
@@ -1298,11 +1298,11 @@ window.Alin.helpers={
   async function seedData(){throw new Error('البيانات التجريبية معطلة في النسخة المستقرة')}
 
   Object.assign(window,{
-    ALIN_VERSION:'3.0.0',init,requireConnection,audit,renderAll,seedData,
+    ALIN_VERSION:'3.0.1',init,requireConnection,audit,renderAll,seedData,
     teacherName,libIsOpen,libStatusText,activeLibraries,alinOpenLibraries:activeLibraries,
     alinLibOpen:libIsOpen,deliveryFee,isMissingTableError,usePermit
   });
-  window.AlinRuntime=Object.freeze({version:'3.0.0',init,requireConnection,renderAll,getDb:()=>stateDb,getCurrent:()=>stateCurrent});
+  window.AlinRuntime=Object.freeze({version:'3.0.1',init,requireConnection,renderAll,getDb:()=>stateDb,getCurrent:()=>stateCurrent});
 
   /* PLATFORM STEP 1: coupons are owned by modules/store/coupons.js and modules/admin/coupons.js. */
   /* PLATFORM STEP 2: cart and order creation are owned by modules/store/cart.js and modules/store/order-routing.js. */
@@ -1641,13 +1641,13 @@ window.Alin.helpers={
 ;
 /* modules/core/supabase.js */
 // === core/supabase.js ===
-/* ALIN v3.0.0 — authoritative Supabase data service.
+/* ALIN v3.0.1 — authoritative Supabase data service.
    This file is the only owner of query/insert/update/removeRow/load and cloud snapshots.
 */
 (function(){
   'use strict';
 
-  const VERSION='3.0.0';
+  const VERSION='3.0.1';
   const TABLES=[
     'settings','accounts','delivery_areas','couriers','courier_areas','categories',
     'booklets','teacher_requests','teacher_request_versions','products','orders',
@@ -1657,6 +1657,36 @@ window.Alin.helpers={
     'student_profiles','product_reviews','stock_alerts','bundles','bundle_items',
     'audit_events','notification_reads','account_permissions','backup_logs','system_health_logs'
   ];
+  const PUBLIC_TABLES=[
+    'settings','accounts','delivery_areas','categories','booklets','products','banners','coupons','notifications'
+  ];
+  const ROLE_TABLES={
+    admin:TABLES,
+    accountant:[
+      'settings','accounts','orders','order_items','order_timeline','ledger','financial_entries','financial_payouts',
+      'withdrawals','library_settlements','teacher_settlements','delegate_settlements','admin_settlements',
+      'notifications','notification_reads','audit_events'
+    ],
+    teacher:[
+      ...PUBLIC_TABLES,'teacher_requests','teacher_request_versions','orders','order_items','order_timeline','ledger',
+      'financial_entries','financial_payouts','withdrawals','teacher_settlements','notification_reads'
+    ],
+    library:[
+      ...PUBLIC_TABLES,'orders','order_items','order_timeline','permits','ledger','financial_entries','financial_payouts',
+      'withdrawals','library_settlements','notification_reads'
+    ],
+    courier:[
+      ...PUBLIC_TABLES,'couriers','courier_areas','orders','order_items','order_timeline','ledger','financial_entries',
+      'financial_payouts','withdrawals','delegate_settlements','notification_reads'
+    ]
+  };
+  const TABLE_LIMITS={
+    orders:1000,order_items:2000,order_timeline:2000,notifications:250,audit_events:500,
+    ledger:1500,financial_entries:1500,financial_payouts:750,withdrawals:750,
+    library_settlements:750,teacher_settlements:750,delegate_settlements:750,admin_settlements:750,
+    teacher_requests:500,teacher_request_versions:750,product_reviews:500,stock_alerts:500,
+    backup_logs:100,system_health_logs:250
+  };
   const REQUIRED_TABLES=['settings','accounts','booklets','products','orders','notifications','audit_events'];
   const SORTED_TABLES=new Set(['orders','notifications','audit_events','order_timeline','financial_entries']);
   const CRITICAL_TABLES=new Set([
@@ -1825,14 +1855,31 @@ window.Alin.helpers={
       return String(data?.role||'');
     }catch(_){return ''}
   }
+  function activeRole(){
+    const role=String(window.current?.role||'').toLowerCase();
+    return role==='accountant'?'accountant':role;
+  }
+  function tablesForRole(role=activeRole()){
+    const selected=ROLE_TABLES[role]||PUBLIC_TABLES;
+    return [...new Set(selected)];
+  }
+  function limitFor(table,role=activeRole()){
+    if(role==='admin'&&['booklets','products','categories','accounts','settings'].includes(table))return undefined;
+    return TABLE_LIMITS[table];
+  }
   async function fetchTable(table,options={}){
+    const role=String(options.role||activeRole());
     if(table==='accounts')return selectAccountsForCurrentSession();
     if(table==='settings')return selectSettingsForCurrentSession();
-    if(table==='orders'&&await currentRole()==='teacher'){
-      const c=client();const {data,error}=await c.from('alin_teacher_orders').select('*').order('created_at',{ascending:false});
-      if(error)throw error;return data||[];
+    if(table==='orders'&&role==='teacher'){
+      const c=client();let request=c.from('alin_teacher_orders').select('*').order('created_at',{ascending:false});
+      const cap=options.limit??limitFor(table,role);if(cap)request=request.limit(cap);
+      const {data,error}=await request;if(error)throw error;return data||[];
     }
-    return selectAll(table,{...options,orderBy:options.orderBy||(SORTED_TABLES.has(table)?'created_at':undefined),ascending:options.ascending??false});
+    return selectAll(table,{
+      ...options,limit:options.limit??limitFor(table,role),
+      orderBy:options.orderBy||(SORTED_TABLES.has(table)?'created_at':undefined),ascending:options.ascending??false
+    });
   }
   async function query(table,options={}){return fetchTable(table,options)}
 
@@ -1963,10 +2010,16 @@ window.Alin.helpers={
     snapshotPromise=(async()=>{
       const c=client();
       if(!c){emit('offline',{reason:'no-client'});return loadCachedSnapshot()||ensureDb()}
-      if(options.status!==false)emit('loading',{reason:options.reason||'load'});
+      const role=activeRole();
+      const selectedTables=Array.isArray(options.tables)&&options.tables.length?[...new Set(options.tables)]:tablesForRole(role);
+      if(options.status!==false)emit('loading',{reason:options.reason||'load',tables:selectedTables.length,role:role||'public'});
+      if(!role){
+        const cached=readJson(SNAPSHOT_KEY,null,localStorage);
+        window.db=cached?.snapshot||publicSnapshot({});
+      }
       const rows={},errors=[];
-      await Promise.all(TABLES.map(async table=>{
-        try{rows[table]=await fetchTable(table)}
+      await Promise.all(selectedTables.map(async table=>{
+        try{rows[table]=await fetchTable(table,{role})}
         catch(error){errors.push({table,error:normalizeError(error)});console.warn('[ALIN cloud]',table,normalizeError(error))}
       }));
       const snapshot=mapCloudToDb(rows);
@@ -1977,7 +2030,7 @@ window.Alin.helpers={
       lastRefreshErrors=errors;
       window.dispatchEvent(new CustomEvent(REFRESH_EVENT,{detail:{version:VERSION,errors,at:nowIso(),reason:options.reason||'load'}}));
       if(options.render!==false){try{window.renderAll?.()}catch(error){console.warn('[ALIN renderAll]',error)}}
-      emit(errors.length?'sync-partial':'online',{tables:TABLES.length,errors:errors.length});
+      emit(errors.length?'sync-partial':'online',{tables:selectedTables.length,errors:errors.length,role:role||'public'});
       return snapshot;
     })();
     try{return await snapshotPromise}finally{snapshotPromise=null}
@@ -2031,7 +2084,7 @@ window.Alin.helpers={
 
   Object.assign(window,{query,insert,update,removeRow,load:loadCloudSnapshot});
   window.AlinCloud=Object.freeze({
-    version:VERSION,client,connected,selectAll,query,insert,update,remove:removeRow,
+    version:VERSION,client,connected,selectAll,query,insert,update,remove:removeRow,tablesForRole,
     flushQueue,loadCloudSnapshot,loadCachedSnapshot,refresh,schemaCheck,verify,health,startRealtime,
     queueSize:()=>readQueue().length,failedQueueSize:()=>readDeadQueue().length,clearPrivateCache
   });
@@ -2054,7 +2107,7 @@ window.Alin.helpers={
 ;
 /* modules/core/notifications.js */
 // === core/notifications.js ===
-/* ALIN v3.0.0 — notifications with per-account server read state. */
+/* ALIN v3.0.1 — notifications with per-account server read state. */
 (function(){
   'use strict';
 
@@ -3505,8 +3558,9 @@ window.Alin.helpers={
   }
 
   async function loadGrowthData(){
-    const names=['student_profiles','bundles','bundle_items','product_reviews','stock_alerts','loyalty_accounts','loyalty_transactions','group_orders','group_order_members','group_order_items'];
-    for(const name of names){state.tables[name]=(await safeTable(name))||[]}
+    const names=['bundles','bundle_items','product_reviews'];
+    const results=await Promise.all(names.map(name=>safeTable(name)));
+    names.forEach((name,index)=>{state.tables[name]=results[index]||[]});
     ctx.renderEffectiveStore?.();
     renderStudentHub();
     renderAdminGrowth();
@@ -3778,7 +3832,9 @@ window.Alin.helpers={
     ctx.renderStore();
     ctx.updateDesktopHeader();
     ctx.updateMobileHeader();
-    ctx.loadGrowthData();
+    const loadOptional=()=>ctx.loadGrowthData().catch(error=>console.warn('[ALIN optional store data]',error));
+    if('requestIdleCallback' in window)window.requestIdleCallback(loadOptional,{timeout:2500});
+    else setTimeout(loadOptional,1200);
     if(!state.timer)state.timer=setInterval(ctx.updateCountdowns,1000);
     const item=new URLSearchParams(location.search).get('item')||location.hash.replace(/^#item=/,'');
     if(item){const [kind,...id]=decodeURIComponent(item).split(':');setTimeout(()=>window.v99OpenDetails?.(kind,id.join(':')),500)}
@@ -4034,7 +4090,7 @@ window.Alin.helpers={
 ;
 /* modules/store/student-auth.js */
 // === store/student-auth.js ===
-/* ALIN v3.0.0 — secure optional student account backed by Supabase RPCs. */
+/* ALIN v3.0.1 — secure optional student account backed by Supabase RPCs. */
 (function(){
   'use strict';
   const SESSION_KEY='alin_student_secure_session_v3';
@@ -4283,3 +4339,4 @@ window.Alin.helpers={
   window.AlinHealth=Object.freeze({check,show,hide});
 })();
 
+;

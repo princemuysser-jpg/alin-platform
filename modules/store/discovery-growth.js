@@ -79,8 +79,9 @@
   }
 
   async function loadGrowthData(){
-    const names=['student_profiles','bundles','bundle_items','product_reviews','stock_alerts','loyalty_accounts','loyalty_transactions','group_orders','group_order_members','group_order_items'];
-    for(const name of names){state.tables[name]=(await safeTable(name))||[]}
+    const names=['bundles','bundle_items','product_reviews'];
+    const results=await Promise.all(names.map(name=>safeTable(name)));
+    names.forEach((name,index)=>{state.tables[name]=results[index]||[]});
     ctx.renderEffectiveStore?.();
     renderStudentHub();
     renderAdminGrowth();

@@ -1,18 +1,23 @@
 
-> alin-platform@3.0.0-production-unified test
-> npm run syntax && node tests/production-unified-v3-check.mjs && node tests/sql-master-static-check.mjs && node tests/static-load-smoke.mjs && node tests/module-order-check.mjs && node tests/release-check.mjs
+> alin-platform@3.0.1-performance-unified test
+> npm run syntax && node tests/production-unified-v3-check.mjs && node tests/performance-v301-check.mjs && node tests/sql-master-static-check.mjs && node tests/static-load-smoke.mjs && node tests/module-order-check.mjs && node tests/release-check.mjs
 
 
-> alin-platform@3.0.0-production-unified syntax
+> alin-platform@3.0.1-performance-unified syntax
 > node tests/syntax-check.mjs
 
 {"ok":true,"files":75}
 {
   "ok": true,
-  "version": "3.0.0",
-  "checks": 99,
+  "version": "3.0.1",
+  "checks": 97,
   "bundles": 3,
   "edgeFunctions": 5
+}
+{
+  "ok": true,
+  "version": "3.0.1",
+  "checks": 22
 }
 {
   "ok": true,
@@ -24,14 +29,14 @@
   "requests": 300,
   "concurrency": 50,
   "errors": 0,
-  "bytes": 75298920,
-  "p50_ms": 39.38,
-  "p95_ms": 254.53,
+  "bytes": 75494040,
+  "p50_ms": 42.2,
+  "p95_ms": 259.33,
   "scope": "local-static-assets-only"
 }
-{"ok":true,"modules":66,"bytes":701836}
+{"ok":true,"modules":66,"bytes":704806}
 {
   "ok": true,
-  "version": "3.0.0-production-unified",
+  "version": "3.0.1-performance-unified",
   "required": 19
 }

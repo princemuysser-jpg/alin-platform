@@ -1,4 +1,4 @@
-/* ALIN v3.0.0 — Supabase authentication with server-side attempt protection. */
+/* ALIN v3.0.1 — fast cached boot with server-side attempt protection. */
 (function(){
   'use strict';
   const ATTEMPT_KEY='alin_auth_attempts_v139',MAX_ATTEMPTS=5,LOCK_MS=10*60*1000;
@@ -113,9 +113,9 @@
   }
   async function openPublicStore(){
     try{window.AlinCloud?.loadCachedSnapshot?.()}catch(_){}
-    try{if(typeof window.load==='function')await window.load()}catch(error){console.warn('[ALIN public data refresh]',error)}
-    if(typeof window.openPage==='function')window.openPage('store',{render:false});
+    if(typeof window.openPage==='function')window.openPage('store',{render:true});
     finishAuthBoot();
+    try{if(typeof window.load==='function')await window.load({reason:'public-boot'})}catch(error){console.warn('[ALIN public data refresh]',error)}
     return false;
   }
   async function restoreSession(){
@@ -136,11 +136,12 @@
       }
       window.current=accountState(account,session.user);
       try{window.AlinCloud?.loadCachedSnapshot?.()}catch(_){}
-      try{if(typeof window.load==='function')await window.load()}catch(error){console.warn('[ALIN session data refresh]',error)}
       const target=account.role==='accountant'?'admin':account.role;
+      if(typeof window.openPage==='function')window.openPage(target,{render:true});
+      finishAuthBoot();
+      try{if(typeof window.load==='function')await window.load({reason:'session-boot'})}catch(error){console.warn('[ALIN session data refresh]',error)}
       if(typeof window.openPage==='function')window.openPage(target,{render:false});
       if(account.role==='library')window.AlinLibraryModules?.showLibraryPage?.();
-      finishAuthBoot();
       window.dispatchEvent(new CustomEvent('alin:auth-restored',{detail:{account}}));
       return true;
     })().catch(error=>{

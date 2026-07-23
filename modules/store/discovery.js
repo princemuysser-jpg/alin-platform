@@ -205,7 +205,9 @@
     ctx.renderStore();
     ctx.updateDesktopHeader();
     ctx.updateMobileHeader();
-    ctx.loadGrowthData();
+    const loadOptional=()=>ctx.loadGrowthData().catch(error=>console.warn('[ALIN optional store data]',error));
+    if('requestIdleCallback' in window)window.requestIdleCallback(loadOptional,{timeout:2500});
+    else setTimeout(loadOptional,1200);
     if(!state.timer)state.timer=setInterval(ctx.updateCountdowns,1000);
     const item=new URLSearchParams(location.search).get('item')||location.hash.replace(/^#item=/,'');
     if(item){const [kind,...id]=decodeURIComponent(item).split(':');setTimeout(()=>window.v99OpenDetails?.(kind,id.join(':')),500)}

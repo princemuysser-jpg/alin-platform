@@ -67,14 +67,14 @@ for(const htmlName of ['store-desktop.html','store-mobile.html']){
   check(html.includes('Content-Security-Policy'),`${htmlName}:csp`);
   check(html.includes('@supabase/supabase-js@2.110.7'),`${htmlName}:supabase-pin`);
   check(html.includes("worker-src 'self' blob: https://cdn.jsdelivr.net"),`${htmlName}:pdf-worker-csp`);
-  check(html.includes('./dist/alin-core.v3.js?v=3.0.0'),`${htmlName}:core-bundle`);
-  check(html.includes(`./dist/${htmlName.includes('mobile')?'alin-app-mobile':'alin-app-desktop'}.v3.js?v=3.0.0`),`${htmlName}:app-bundle`);
+  check(html.includes('./dist/alin-core.v3.js?v=3.0.1'),`${htmlName}:core-bundle`);
+  check(html.includes(`./dist/${htmlName.includes('mobile')?'alin-app-mobile':'alin-app-desktop'}.v3.js?v=3.0.1`),`${htmlName}:app-bundle`);
   const localScripts=[...html.matchAll(/<script[^>]+src="(\.\/[^\"]+)"/g)].map(m=>m[1]);
   check(localScripts.length<=2,`${htmlName}:too-many-local-scripts:${localScripts.length}`);
 }
 const sw=read('service-worker.js');
-check(sw.includes('alin-v3.0.0-production-unified'),'pwa:version');
-for(const rel of ['./dist/alin-core.v3.js','./dist/alin-app-desktop.v3.js','./dist/alin-app-mobile.v3.js'])check(sw.includes(rel),`pwa:${rel}`);
+check(sw.includes('alin-v3.0.1-performance'),'pwa:version');
+check(!sw.match(/const CORE=\[[\s\S]*alin-app-(?:desktop|mobile)/),'pwa:no-dual-app-precache');
 
 const cors=read('supabase/functions/_shared/cors.ts');
 check(!cors.includes("'Access-Control-Allow-Origin': '*'"),'edge:cors-wildcard');
@@ -89,4 +89,4 @@ check(shared.includes('deleted_at'),'admin:archived-rejected');
 check(shared.includes('@supabase/supabase-js@2.110.7'),'edge:supabase-pin');
 
 if(failures.length){console.error(JSON.stringify({ok:false,checks,failures},null,2));process.exit(1)}
-console.log(JSON.stringify({ok:true,version:'3.0.0',checks,bundles:3,edgeFunctions:edge.length},null,2));
+console.log(JSON.stringify({ok:true,version:'3.0.1',checks,bundles:3,edgeFunctions:edge.length},null,2));
