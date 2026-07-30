@@ -1,4 +1,4 @@
--- منصة آلين v4.0.0 — Clean Project Master
+-- منصة آلين v4.1.0 — Clean Project Master
 -- مخصص حصراً لمشروع Supabase جديد وفارغ. لا يُستخدم فوق قاعدة قديمة.
 -- يبني القاعدة من الصفر: الطلبات، المالية، الحسابات، الصلاحيات، التخزين، وحساب الطالب.
 
@@ -1185,6 +1185,213 @@ begin
   return jsonb_build_object('ledger_id',v_ledger_id,'order_id',o.id,'total',v_total,'admin',v_admin,'teacher',v_teacher,'library',v_library,'delegate',v_delegate,'collector_debt',v_debt);
 end $$;
 
+-- =========================================================
+-- ALIN v4.1.0 — authoritative courier assignment and workflow
+-- =========================================================
+
+create or replace function public.alin_admin_assign_order(
+  p_order_id text,
+  p_courier_id text default null,
+  p_library_id text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path=public,extensions,pg_temp
+as $$
+declare
+  o public.orders%rowtype;
+  v_updated public.orders%rowtype;
+  c public.couriers%rowtype;
+  a public.accounts%rowtype;
+  l public.accounts%rowtype;
+  v_actor text:=public.alin_current_account_id();
+  v_role text:=public.alin_current_role();
+  v_courier_id text:=nullif(btrim(coalesce(p_courier_id,'')),'');
+  v_library_id text:=nullif(btrim(coalesce(p_library_id,'')),'');
+  v_now timestamptz:=now();
+  v_area text;
+  v_area_ok boolean:=false;
+  v_same boolean:=false;
+  v_next_status text;
+  v_history_status text;
+begin
+  if not public.alin_is_finance_staff() then
+    raise exception 'هذه العملية متاحة للإدارة فقط';
+  end if;
+
+  select * into o from public.orders where id=p_order_id for update;
+  if not found then raise exception 'الطلب غير موجود'; end if;
+
+  if lower(btrim(coalesce(o.status,''))) in ('completed','delivered','cancelled','canceled','rejected') then
+    raise exception 'لا يمكن تغيير تعيين طلب مكتمل أو ملغي';
+  end if;
+
+  -- طلبات التوصيل المنزلي تعتمد المندوب حصراً.
+  if o.fulfillment_type='home_delivery' or o.delivery_type='courier' then
+    if v_courier_id is null then
+      if lower(btrim(coalesce(o.status,''))) in ('picked_up','out_for_delivery','out_delivery') then
+        raise exception 'لا يمكن إلغاء تعيين المندوب بعد استلام الطلب أو بدء التوصيل';
+      end if;
+
+      if o.courier_id is null and o.delegate_id is null
+         and lower(btrim(coalesce(o.status,'')))='pending_admin' then
+        return jsonb_build_object('ok',true,'order',to_jsonb(o),'idempotent',true);
+      end if;
+
+      perform set_config('alin.internal_order_transition','on',true);
+      update public.orders set
+        courier_id=null,
+        delegate_id=null,
+        status='pending_admin',
+        assignment_status='pending_admin',
+        assigned_at=null,
+        accepted_at=null,
+        picked_up_at=null,
+        out_for_delivery_at=null,
+        status_history=coalesce(status_history,'[]'::jsonb)||jsonb_build_array(jsonb_build_object(
+          'status','pending_admin','at',v_now,'by',coalesce(v_actor,'system'),'role',coalesce(v_role,'system'),
+          'reason','إلغاء تعيين المندوب'
+        )),
+        updated_at=v_now
+      where id=o.id
+      returning * into v_updated;
+      perform set_config('alin.internal_order_transition','off',true);
+
+      insert into public.order_timeline(order_id,status,actor_id,actor_role,reason,meta)
+      values(o.id,'pending_admin',v_actor,coalesce(v_role,'admin'),'إلغاء تعيين المندوب',jsonb_build_object('courier_id',null));
+
+      return jsonb_build_object('ok',true,'order',to_jsonb(v_updated),'unassigned',true);
+    end if;
+
+    select * into a from public.accounts
+    where id=v_courier_id and role='courier' and status='active' and deleted_at is null;
+    if not found then raise exception 'حساب المندوب غير موجود أو غير فعال'; end if;
+
+    select * into c from public.couriers where id=v_courier_id and status='active';
+    if not found then raise exception 'بيانات المندوب غير مهيأة أو الحساب موقوف'; end if;
+
+    v_area:=lower(regexp_replace(
+      btrim(split_part(replace(replace(coalesce(o.delivery_area,''),'–','-'),'—','-'),'-',1)),
+      '\s+',' ','g'
+    ));
+
+    if v_area='' then
+      v_area_ok:=true;
+    else
+      v_area_ok:=
+        lower(regexp_replace(btrim(coalesce(c.area,'')),'\s+',' ','g'))=v_area
+        or exists(
+          select 1 from unnest(coalesce(c.areas,array[]::text[])) area_name
+          where lower(regexp_replace(
+            btrim(split_part(replace(replace(area_name,'–','-'),'—','-'),'-',1)),
+            '\s+',' ','g'
+          ))=v_area
+        )
+        or exists(
+          select 1
+          from public.courier_areas ca
+          join public.delivery_areas da on da.id=ca.area_id
+          where ca.courier_id=v_courier_id
+            and (
+              (o.delivery_area_id is not null and da.id=o.delivery_area_id)
+              or lower(regexp_replace(
+                btrim(split_part(replace(replace(da.name,'–','-'),'—','-'),'-',1)),
+                '\s+',' ','g'
+              ))=v_area
+            )
+        );
+    end if;
+
+    if not v_area_ok then raise exception 'المندوب غير مرتبط بمنطقة الطلب'; end if;
+
+    v_same:=coalesce(o.courier_id,o.delegate_id,'')=v_courier_id;
+    if not v_same and lower(btrim(coalesce(o.status,''))) in ('picked_up','out_for_delivery','out_delivery') then
+      raise exception 'لا يمكن تغيير المندوب بعد استلام الطلب أو بدء التوصيل';
+    end if;
+
+    if v_same and lower(btrim(coalesce(o.status,''))) in ('assigned','accepted','picked_up','out_for_delivery')
+       and o.courier_id=v_courier_id and o.delegate_id=v_courier_id then
+      return jsonb_build_object('ok',true,'order',to_jsonb(o),'idempotent',true);
+    end if;
+
+    v_next_status:=case
+      when v_same and lower(btrim(coalesce(o.status,''))) in ('accepted','picked_up','out_for_delivery')
+        then lower(btrim(o.status))
+      else 'assigned'
+    end;
+
+    perform set_config('alin.internal_order_transition','on',true);
+    update public.orders set
+      courier_id=v_courier_id,
+      delegate_id=v_courier_id,
+      status=v_next_status,
+      assignment_status=case when v_next_status='accepted' then 'accepted' else 'assigned' end,
+      assigned_at=case when v_same then coalesce(assigned_at,v_now) else v_now end,
+      accepted_at=case when v_next_status='accepted' then accepted_at else null end,
+      picked_up_at=case when v_next_status='picked_up' then picked_up_at else null end,
+      out_for_delivery_at=case when v_next_status='out_for_delivery' then out_for_delivery_at else null end,
+      delivery_note=case when v_same then delivery_note else null end,
+      status_history=coalesce(status_history,'[]'::jsonb)||jsonb_build_array(jsonb_build_object(
+        'status',v_next_status,'at',v_now,'by',coalesce(v_actor,'system'),'role',coalesce(v_role,'system'),
+        'reason',case when v_same then 'تثبيت تعيين المندوب' else 'تعيين المندوب' end,
+        'courier_id',v_courier_id
+      )),
+      updated_at=v_now
+    where id=o.id
+    returning * into v_updated;
+    perform set_config('alin.internal_order_transition','off',true);
+
+    insert into public.order_timeline(order_id,status,actor_id,actor_role,reason,meta)
+    values(o.id,v_next_status,v_actor,coalesce(v_role,'admin'),
+      case when v_same then 'تثبيت تعيين المندوب' else 'تعيين المندوب' end,
+      jsonb_build_object('courier_id',v_courier_id,'courier_name',a.name));
+
+    return jsonb_build_object('ok',true,'order',to_jsonb(v_updated),'assigned',true);
+  end if;
+
+  -- طلبات الاستلام من المكتبة تعتمد المكتبة ولا تقبل مندوباً.
+  if v_courier_id is not null then
+    raise exception 'طلب الاستلام من المكتبة لا يقبل تعيين مندوب';
+  end if;
+  if v_library_id is null then raise exception 'اختر مكتبة لاستلام الطلب'; end if;
+
+  select * into l from public.accounts
+  where id=v_library_id and role='library' and status='active' and deleted_at is null;
+  if not found then raise exception 'حساب المكتبة غير موجود أو غير فعال'; end if;
+
+  if o.library_id=v_library_id and o.pickup_library_id=v_library_id
+     and o.courier_id is null and o.delegate_id is null then
+    return jsonb_build_object('ok',true,'order',to_jsonb(o),'idempotent',true);
+  end if;
+
+  perform set_config('alin.internal_order_transition','on',true);
+  update public.orders set
+    library_id=v_library_id,
+    pickup_library_id=v_library_id,
+    courier_id=null,
+    delegate_id=null,
+    assignment_status='pending_admin',
+    assigned_at=null,
+    accepted_at=null,
+    picked_up_at=null,
+    out_for_delivery_at=null,
+    status_history=coalesce(status_history,'[]'::jsonb)||jsonb_build_array(jsonb_build_object(
+      'status',o.status,'at',v_now,'by',coalesce(v_actor,'system'),'role',coalesce(v_role,'system'),
+      'reason','تعيين مكتبة الاستلام','library_id',v_library_id
+    )),
+    updated_at=v_now
+  where id=o.id
+  returning * into v_updated;
+  perform set_config('alin.internal_order_transition','off',true);
+
+  insert into public.order_timeline(order_id,status,actor_id,actor_role,reason,meta)
+  values(o.id,v_updated.status,v_actor,coalesce(v_role,'admin'),'تعيين مكتبة الاستلام',
+    jsonb_build_object('library_id',v_library_id,'library_name',l.name));
+
+  return jsonb_build_object('ok',true,'order',to_jsonb(v_updated),'library_assigned',true);
+end $$;
+
 create or replace function public.alin_order_transition_atomic(
   p_order_id text,
   p_status text,
@@ -1210,6 +1417,9 @@ begin
   if not found then raise exception 'الطلب غير موجود'; end if;
 
   v_source:=lower(btrim(coalesce(o.status,'new')));
+  if v_source='delivered' then v_source:='completed'; end if;
+  if v_source='out_delivery' then v_source:='out_for_delivery'; end if;
+  if v_source='canceled' then v_source:='cancelled'; end if;
   if v_target='delivered' then v_target:='completed'; end if;
   if v_target='out_delivery' then v_target:='out_for_delivery'; end if;
   if v_target='canceled' then v_target:='cancelled'; end if;
@@ -1218,29 +1428,39 @@ begin
     raise exception 'حالة الطلب المطلوبة غير صحيحة';
   end if;
 
+  if v_source='completed' and v_target='completed' then
+    v_finance:=public.alin_upsert_order_finance_atomic(o.id);
+    select * into v_updated from public.orders where id=o.id;
+    return jsonb_build_object('ok',true,'status','completed','order',to_jsonb(v_updated),'finance',v_finance,'idempotent',true);
+  end if;
+  if v_source='completed' then raise exception 'الطلب المكتمل لا يرجع لحالة سابقة'; end if;
+  if v_source in ('cancelled','rejected') then raise exception 'الطلب الملغي أو المرفوض لا يمكن تحديثه'; end if;
+
   if public.alin_is_finance_staff() then
     v_allowed:=true;
   elsif v_role='library' and v_account in (o.library_id,o.pickup_library_id) then
-    v_allowed:=(v_source in ('new','pending_admin','processing','printing','ready','completed')
-      and v_target in ('processing','printing','ready','completed','cancelled'));
-  elsif v_role in ('courier','delegate') and v_account in (o.courier_id,o.delegate_id) then
-    -- دعم الطلبات القديمة التي بقيت new/pending_admin/processing بعد تعيين المندوب.
-    v_allowed:=(v_source in ('new','pending','pending_admin','assigned','accepted','picked_up','out_for_delivery','processing','completed')
-      and v_target in ('accepted','picked_up','out_for_delivery','completed','rejected'));
+    v_allowed:=
+      (v_source in ('new','pending','pending_admin','accepted') and v_target in ('processing','cancelled'))
+      or (v_source in ('processing','printing') and v_target in ('ready','cancelled'))
+      or (v_source='ready' and v_target in ('completed','cancelled'));
+  elsif v_role='courier' and v_account in (o.courier_id,o.delegate_id) then
+    v_allowed:=
+      (v_source in ('new','pending','pending_admin','assigned') and v_target in ('accepted','rejected'))
+      or (v_source='accepted' and v_target='picked_up')
+      or (v_source='picked_up' and v_target='out_for_delivery')
+      or (v_source='out_for_delivery' and v_target='completed');
   end if;
 
   if not v_allowed then
-    raise exception 'غير مسموح بتنفيذ انتقال حالة الطلب (الدور: %، الحالة الحالية: %، الحالة المطلوبة: %)',coalesce(v_role,'بدون'),v_source,v_target;
+    raise exception 'غير مسموح بانتقال الطلب من الحالة % إلى % لهذا الحساب',v_source,v_target;
   end if;
-  if v_source='completed' and v_target<>'completed' then raise exception 'الطلب المكتمل لا يرجع لحالة سابقة'; end if;
+
   if v_target in ('cancelled','rejected') and nullif(btrim(coalesce(p_reason,'')),'') is null then
     raise exception 'اكتب سبب الإلغاء أو الرفض';
   end if;
 
-  if v_source='completed' and v_target='completed' then
-    v_finance:=public.alin_upsert_order_finance_atomic(o.id);
-    select * into v_updated from public.orders where id=o.id;
-    return jsonb_build_object('ok',true,'status','completed','order',to_jsonb(v_updated),'finance',v_finance,'repaired',true);
+  if v_source=v_target then
+    return jsonb_build_object('ok',true,'status',v_target,'order',to_jsonb(o),'idempotent',true);
   end if;
 
   if v_target in ('cancelled','rejected') and o.stock_reserved and o.stock_restored_at is null and o.kind<>'booklet' then
@@ -1297,12 +1517,13 @@ begin
   elsif v_target in ('cancelled','rejected') then
     update public.ledger
     set status='cancelled',settlement_status='cancelled',is_current=false,
-        note=coalesce(note,'')||' | ألغي الطلب قبل التسوية'
+        note=coalesce(note,'')||' | ألغي الطلب قبل التسوية',updated_at=v_now
     where order_id=o.id and status<>'settled';
   end if;
 
   return jsonb_build_object('ok',true,'status',v_target,'order',to_jsonb(v_updated),'finance',v_finance);
 end $$;
+
 
 create or replace function public.alin_library_set_order_status(p_order_id text,p_status text,p_reason text default null)
 returns jsonb language sql security definer set search_path=public,extensions,pg_temp as $$
@@ -1638,6 +1859,7 @@ grant execute on function public.alin_student_orders(text,text) to anon,authenti
 
 grant execute on function public.alin_library_set_order_status(text,text,text) to authenticated;
 grant execute on function public.alin_order_transition_atomic(text,text,text) to authenticated;
+grant execute on function public.alin_admin_assign_order(text,text,text) to authenticated;
 grant execute on function public.alin_set_library_open(boolean) to authenticated;
 grant execute on function public.alin_teacher_approve_booklet(text) to authenticated;
 grant execute on function public.alin_audit_write(text,text,text,text,jsonb) to authenticated;
@@ -1653,7 +1875,8 @@ grant execute on function public.alin_finance_party_balance(text,text) to authen
 -- =========================================================
 
 insert into public.settings(key,value,version) values
-('alin_db_version','4.0.2-clean','4.0.2'),
+('alin_db_version','4.1.0-clean','4.1.0'),
+('courier_workflow_version','4.1.0','4.1.0'),
 ('platform_name','منصة آلين','4.0.0'),
 ('platform_phone','','4.0.0'),
 ('delivery_enabled','true','4.0.0'),

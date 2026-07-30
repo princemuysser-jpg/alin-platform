@@ -1,11 +1,11 @@
-const VERSION='alin-v4.0.15-courier-workflow';
+const VERSION='alin-v4.1.0-courier-rebuilt';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[
   './','./index.html','./alin-config.js','./manifest-desktop.webmanifest','./manifest-mobile.webmanifest',
   './styles/alin-splash.css','./core/device-router.js','./core/runtime-guard.js','./core/splash.js','./core/pwa-register.js',
   './assets/images/alin-splash-desktop.webp','./assets/images/alin-splash-mobile.webp',
-  './assets/icons/icon-192.png','./assets/icons/icon-512.png','./hotfixes/courier-workflow-v4.0.2.js'
+  './assets/icons/icon-192.png','./assets/icons/icon-512.png'
 ];
 
 async function cacheCore(){

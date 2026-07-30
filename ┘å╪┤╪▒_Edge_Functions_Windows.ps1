@@ -4,7 +4,7 @@
   [Parameter(Mandatory=$true)][string]$AllowedOrigins
 )
 $ErrorActionPreference = 'Stop'
-Write-Host '1/3 ربط المشروع الجديد...'
+Write-Host '1/3 ربط المشروع...'
 npx supabase link --project-ref $ProjectRef
 Write-Host '2/3 حفظ الأسرار...'
 npx supabase secrets set "ALIN_BOOTSTRAP_KEY=$BootstrapKey" "ALIN_ALLOWED_ORIGINS=$AllowedOrigins" --project-ref $ProjectRef
@@ -15,6 +15,5 @@ npx supabase functions deploy admin-create-account --project-ref $ProjectRef
 npx supabase functions deploy admin-update-account --project-ref $ProjectRef
 npx supabase functions deploy admin-delete-account --project-ref $ProjectRef
 npx supabase functions deploy admin-reset-password --project-ref $ProjectRef
-npx supabase functions deploy admin-assign-order --project-ref $ProjectRef
 Write-Host 'تم نشر وظائف منصة آلين.' -ForegroundColor Green
 Write-Host 'بعد إنشاء أول مدير غيّر أو احذف ALIN_BOOTSTRAP_KEY واحذف setup-new-project.html من الموقع العام.' -ForegroundColor Yellow

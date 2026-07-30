@@ -1,56 +1,97 @@
-
-OK JavaScript syntax (81 files)
+OK JavaScript syntax (82 files)
 OK Edge Function TypeScript parse (8 files)
 OK HTML local assets: index.html
 OK HTML local assets: setup-new-project.html
 OK HTML local assets: store-desktop.html
 OK HTML local assets: store-mobile.html
-OK Exactly one root SQL file
+OK Clean master SQL exists
+OK Single courier rebuild SQL exists
+OK Exactly two intentional SQL files
 OK Clean-project safety guard
-OK Single transactional clean master
-OK Balanced PL/pgSQL dollar delimiters
+OK Transactional v4.1.0 clean master
+OK Transactional v4.1.0 existing-project rebuild
+OK Balanced PL/pgSQL dollar delimiters: master
+OK No invalid top-level PERFORM: master
+OK No duplicate DECLARE blocks: master
+OK Balanced PL/pgSQL dollar delimiters: migration
+OK No invalid top-level PERFORM: migration
+OK No duplicate DECLARE blocks: migration
 OK Clean base tables (35)
 OK No duplicate base table definitions
 OK Required clean tables present
-OK Orders schema is bounded (69 columns, not legacy 99)
-OK RPC alin_create_store_orders_guarded
-OK RPC alin_order_transition_atomic
-OK RPC alin_upsert_order_finance_atomic
-OK RPC alin_finance_record_settlement
-OK RPC alin_finance_reverse_settlement
-OK Single canonical ledger status set
-OK Initial test delivery area
+OK Orders schema is bounded (69 columns)
+OK Master RPC alin_create_store_orders_guarded
+OK Master RPC alin_admin_assign_order
+OK Master RPC alin_order_transition_atomic
+OK Master RPC alin_upsert_order_finance_atomic
+OK Master RPC alin_finance_record_settlement
+OK Master RPC alin_finance_reverse_settlement
+OK Migration RPC alin_admin_assign_order
+OK Master/migration RPC identical: alin_admin_assign_order
+OK Migration RPC alin_order_transition_atomic
+OK Master/migration RPC identical: alin_order_transition_atomic
+OK Assignment RPC grant in master
+OK Assignment RPC grant in migration
+OK PostgREST schema reload requested
+OK Courier workflow version stamped
+OK Legacy repair is narrowly scoped
+OK Migration does not delete order data
+OK Courier transition contract: v_source in ('new','pending','pending_admin','assigned') and v_target in ('accepted','rejected')
+OK Courier transition contract: v_source='accepted' and v_target='picked_up'
+OK Courier transition contract: v_source='picked_up' and v_target='out_for_delivery'
+OK Courier transition contract: v_source='out_for_delivery' and v_target='completed'
+OK Reassignment blocked after pickup
+OK Server validates courier area
+OK Transition returns updated order
+OK Canonical ledger status set
+OK Initial delivery area
 OK Private document storage policies
 OK Orders and finance RLS
-OK Safe public and library booklet views
-OK Teacher cannot read student PII from base orders
-OK Default PUBLIC function execution revoked
-OK Permission administration requires super admin
-OK Public booklet view hides private file paths
-OK Internal RPCs are not public by default
+OK Safe booklet views
+OK Default function execution revoked
 OK Internal finance writer is not client-callable
-OK Coupon validation uses full cart and eligible items
-OK Courier self-update fields are protected
-OK Single order-update protection trigger
-OK No duplicate order protection trigger
-OK Product category uses FK id
-OK Banner mutation uses clean timestamp columns
-OK Notification mutation uses clean columns
-OK Coupon mutation uses max_uses
-OK Storefront and library read safe booklet views
-OK Cart confirmation routing is bundled
-OK External one-file configuration override
-OK store-desktop.html loads config before core
-OK store-mobile.html loads config before core
-OK No patch SQL files anywhere in release
-OK No legacy SQL patch artifacts
+OK Courier self-update protected
+OK Single order protection trigger
 OK Idempotent checkout flow
 OK Server-side stock reservation
 OK Cancellation restores stock once
 OK One financial ledger row per order
 OK Settled ledger is not overwritten
+OK Courier core calls assignment RPC
+OK Assignment module has no direct sensitive order update
+OK Admin orders does not call removed Edge Function
+OK Admin orders uses authoritative courier core
+OK Double-click protection on admin and courier actions
+OK Legacy assigned rows can enter only at acceptance step
+OK Delivery completion button appears only after delivery starts
+OK Removed assignment Edge Function from config/deploy
+OK No hotfix directory
+OK No assignment Edge Function directory
+OK desktop bundle includes rebuilt courier core
+OK desktop bundle calls assignment RPC
+OK desktop bundle excludes old Edge assignment
+OK mobile bundle includes rebuilt courier core
+OK mobile bundle calls assignment RPC
+OK mobile bundle excludes old Edge assignment
+OK store-desktop.html has no hotfix script
+OK store-desktop.html cache/version updated
+OK store-desktop.html loads config before core
+OK store-mobile.html has no hotfix script
+OK store-mobile.html cache/version updated
+OK store-mobile.html loads config before core
+OK Service worker cache is clean v4.1.0
+OK Service worker core assets exist (13)
+OK VERSION file
+OK Workflow smoke: assigned -> accepted
+OK Workflow smoke: accepted -> picked_up
+OK Workflow smoke: picked_up -> out_for_delivery
+OK Workflow smoke: out_for_delivery -> completed
+OK Workflow rejects accepted -> completed jump
+OK Workflow rejects picked_up -> completed jump
+OK Legacy pending_admin -> accepted compatibility
+OK Legacy row cannot skip acceptance
 OK Finance smoke: booklet pickup
 OK Finance smoke: booklet delivery
 OK Finance smoke: product delivery
 
-PASS: 53 checks
+PASS: 95 checks
