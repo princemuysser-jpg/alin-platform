@@ -1,0 +1,56 @@
+
+OK JavaScript syntax (81 files)
+OK Edge Function TypeScript parse (8 files)
+OK HTML local assets: index.html
+OK HTML local assets: setup-new-project.html
+OK HTML local assets: store-desktop.html
+OK HTML local assets: store-mobile.html
+OK Exactly one root SQL file
+OK Clean-project safety guard
+OK Single transactional clean master
+OK Balanced PL/pgSQL dollar delimiters
+OK Clean base tables (35)
+OK No duplicate base table definitions
+OK Required clean tables present
+OK Orders schema is bounded (69 columns, not legacy 99)
+OK RPC alin_create_store_orders_guarded
+OK RPC alin_order_transition_atomic
+OK RPC alin_upsert_order_finance_atomic
+OK RPC alin_finance_record_settlement
+OK RPC alin_finance_reverse_settlement
+OK Single canonical ledger status set
+OK Initial test delivery area
+OK Private document storage policies
+OK Orders and finance RLS
+OK Safe public and library booklet views
+OK Teacher cannot read student PII from base orders
+OK Default PUBLIC function execution revoked
+OK Permission administration requires super admin
+OK Public booklet view hides private file paths
+OK Internal RPCs are not public by default
+OK Internal finance writer is not client-callable
+OK Coupon validation uses full cart and eligible items
+OK Courier self-update fields are protected
+OK Single order-update protection trigger
+OK No duplicate order protection trigger
+OK Product category uses FK id
+OK Banner mutation uses clean timestamp columns
+OK Notification mutation uses clean columns
+OK Coupon mutation uses max_uses
+OK Storefront and library read safe booklet views
+OK Cart confirmation routing is bundled
+OK External one-file configuration override
+OK store-desktop.html loads config before core
+OK store-mobile.html loads config before core
+OK No patch SQL files anywhere in release
+OK No legacy SQL patch artifacts
+OK Idempotent checkout flow
+OK Server-side stock reservation
+OK Cancellation restores stock once
+OK One financial ledger row per order
+OK Settled ledger is not overwritten
+OK Finance smoke: booklet pickup
+OK Finance smoke: booklet delivery
+OK Finance smoke: product delivery
+
+PASS: 53 checks

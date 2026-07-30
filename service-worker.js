@@ -1,8 +1,8 @@
-const VERSION='alin-v3.1.2-release-unified';
+const VERSION='alin-v4.0.1-courier-assignment';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[
-  './','./index.html','./manifest-desktop.webmanifest','./manifest-mobile.webmanifest',
+  './','./index.html','./alin-config.js','./manifest-desktop.webmanifest','./manifest-mobile.webmanifest',
   './styles/alin-splash.css','./core/device-router.js','./core/runtime-guard.js','./core/splash.js','./core/pwa-register.js',
   './assets/images/alin-splash-desktop.webp','./assets/images/alin-splash-mobile.webp',
   './assets/icons/icon-192.png','./assets/icons/icon-512.png'
