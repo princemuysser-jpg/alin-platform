@@ -1,4 +1,4 @@
-OK JavaScript syntax (82 files)
+OK JavaScript syntax (83 files)
 OK Edge Function TypeScript parse (8 files)
 OK HTML local assets: index.html
 OK HTML local assets: setup-new-project.html
@@ -79,8 +79,16 @@ OK store-desktop.html loads config before core
 OK store-mobile.html has no hotfix script
 OK store-mobile.html cache/version updated
 OK store-mobile.html loads config before core
-OK Service worker cache is clean v4.1.0
-OK Service worker core assets exist (13)
+OK Service worker cache is clean v4.1.1
+OK Service worker core assets exist (32)
+OK Application bundles are precached
+OK No 3.5-second application cutoff
+OK Code assets use resilient stale-while-revalidate
+OK Automatic boot recovery is installed
+OK store-desktop.html loads updater and recovery
+OK store-desktop.html detects bundle load failure
+OK store-mobile.html loads updater and recovery
+OK store-mobile.html detects bundle load failure
 OK VERSION file
 OK Workflow smoke: assigned -> accepted
 OK Workflow smoke: accepted -> picked_up
@@ -94,4 +102,4 @@ OK Finance smoke: booklet pickup
 OK Finance smoke: booklet delivery
 OK Finance smoke: product delivery
 
-PASS: 95 checks
+PASS: 103 checks
