@@ -6,10 +6,10 @@
 <meta content="no-cache" http-equiv="Pragma"/>
 <meta content="0" http-equiv="Expires"/>
 <meta charset="utf-8"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; worker-src 'self' blob: https://cdn.jsdelivr.net; frame-src 'self' blob:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; worker-src 'self' blob: https://cdn.jsdelivr.net; frame-src 'self' blob:;">
 <script>(function(){try{var mode=localStorage.getItem('alin_theme_v234')==='dark'?'dark':'light';document.documentElement.dataset.alinTheme=mode;document.documentElement.dataset.alinThemeMode=mode}catch(_){document.documentElement.dataset.alinTheme='light';document.documentElement.dataset.alinThemeMode='light'}})();</script>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
-<title>متجر آلين v4.0.0</title>
+<title>متجر آلين v4.0.2</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
 <meta content="#f8f3e8" name="theme-color"/>
@@ -25,7 +25,7 @@
 <link href="./styles/alin-branding.css?v=4.0.1" rel="stylesheet"/>
 <link href="./styles/alin-i18n.css?v=4.0.1" rel="stylesheet"/>
 <link href="./styles/alin-desktop.css?v=4.0.1" rel="stylesheet"/>
-<link rel="preload" href="./dist/alin-app-desktop.v4.js?v=4.0.1" as="script">
+<link rel="preload" href="./dist/alin-app-desktop.v4.js?v=4.0.14" as="script">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7" defer onerror="window.__ALIN_CDN_ERROR__=true;console.error('تعذر تحميل Supabase')"></script>
 <script src="./alin-config.js?v=4.0.1"></script>
 <script src="./dist/alin-core.v4.js?v=4.0.1" defer></script>
@@ -195,7 +195,7 @@
 <main id="courierV161Content"></main>
 </section>
 <section class="page hidden" id="adminPage">
-<div class="admin-heading"><div><h2>لوحة إدارة آلين</h2><p>إدارة المنصة من مكان واحد</p></div><span class="version-badge">v4.0.0</span></div>
+<div class="admin-heading"><div><h2>لوحة إدارة آلين</h2><p>إدارة المنصة من مكان واحد</p></div><span class="version-badge">v4.0.2</span></div>
 <div class="stats" id="adminStats"></div>
 <div class="admin-tabs">
 <button onclick="adminTab('dashboard')">الرئيسية</button>
@@ -271,6 +271,10 @@
   
 
 
-<script src="./dist/alin-app-desktop.v4.js?v=4.0.1" defer></script>
+<script src="./modules/core/navigation.js?v=4.0.1" defer></script>
+<script src="./dist/alin-app-desktop.v4.js?v=4.0.14" defer></script>
+<script src="./hotfixes/courier-workflow-v4.0.2.js?v=4.0.2" defer></script>
+<script src="./modules/core/account-admin-service.js?v=4.0.3" defer></script>
+<script src="./modules/teacher/admin-word-download.js?v=4.0.8" defer></script>
 </body>
 </html>

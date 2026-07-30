@@ -1,11 +1,11 @@
-const VERSION='alin-v4.0.1-courier-assignment';
+const VERSION='alin-v4.0.15-courier-workflow';
 const STATIC_CACHE=`${VERSION}-static`;
 const RUNTIME_CACHE=`${VERSION}-runtime`;
 const CORE=[
   './','./index.html','./alin-config.js','./manifest-desktop.webmanifest','./manifest-mobile.webmanifest',
   './styles/alin-splash.css','./core/device-router.js','./core/runtime-guard.js','./core/splash.js','./core/pwa-register.js',
   './assets/images/alin-splash-desktop.webp','./assets/images/alin-splash-mobile.webp',
-  './assets/icons/icon-192.png','./assets/icons/icon-512.png'
+  './assets/icons/icon-192.png','./assets/icons/icon-512.png','./hotfixes/courier-workflow-v4.0.2.js'
 ];
 
 async function cacheCore(){
@@ -42,13 +42,13 @@ async function networkFirst(request){
     if(response.ok)await cache.put(request,response.clone());
     return response;
   }catch(_){
-    return (await cache.match(request,{ignoreSearch:true}))||(await caches.match(request,{ignoreSearch:true}))||Response.error();
+    return (await cache.match(request,{ignoreSearch:false}))||(await caches.match(request,{ignoreSearch:false}))||Response.error();
   }
 }
 
 async function staleWhileRevalidate(request,event){
   const cache=await caches.open(STATIC_CACHE);
-  const cached=await cache.match(request,{ignoreSearch:true});
+  const cached=await cache.match(request,{ignoreSearch:false});
   const refresh=fetch(request,{cache:'no-store'}).then(async response=>{
     if(response.ok)await cache.put(request,response.clone());
     return response;
@@ -59,7 +59,7 @@ async function staleWhileRevalidate(request,event){
 
 async function cacheFirstRuntime(request){
   const cache=await caches.open(RUNTIME_CACHE);
-  const cached=await cache.match(request,{ignoreSearch:true});
+  const cached=await cache.match(request,{ignoreSearch:false});
   if(cached)return cached;
   const response=await fetch(request);
   if(response.ok)await cache.put(request,response.clone());
@@ -75,14 +75,14 @@ self.addEventListener('fetch',event=>{
   if(request.mode==='navigate'){
     event.respondWith(networkFirst(request).then(async response=>
       response&&response.type!=='error'?response:
-      (await caches.match(request,{ignoreSearch:true}))||(await caches.match('./index.html'))
+      (await caches.match(request,{ignoreSearch:false}))||(await caches.match('./index.html'))
     ));
     return;
   }
 
   if(url.origin===self.location.origin){
     const codeAsset=['script','style','worker'].includes(request.destination)||/\.(?:html?|css|js|json|webmanifest)$/i.test(url.pathname);
-    if(codeAsset){event.respondWith(staleWhileRevalidate(request,event));return;}
+    if(codeAsset){event.respondWith(networkFirst(request));return;}
     event.respondWith(cacheFirstRuntime(request));
     return;
   }
