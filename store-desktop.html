@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar" data-alin-auth-boot="1" data-alin-theme="light" data-alin-theme-mode="light">
+<head>
+<meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/>
+<meta content="no-cache" http-equiv="Pragma"/>
+<meta content="0" http-equiv="Expires"/>
+<meta charset="utf-8"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; worker-src 'self' blob: https://cdn.jsdelivr.net; frame-src 'self' blob:;">
+<script>(function(){try{var mode=localStorage.getItem('alin_theme_v234')==='dark'?'dark':'light';document.documentElement.dataset.alinTheme=mode;document.documentElement.dataset.alinThemeMode=mode}catch(_){document.documentElement.dataset.alinTheme='light';document.documentElement.dataset.alinThemeMode='light'}})();</script>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<title>متجر آلين v4.1.5 — تتبع آمن</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+<meta content="#f8f3e8" name="theme-color"/>
+<meta content="yes" name="mobile-web-app-capable"/>
+<meta content="yes" name="apple-mobile-web-app-capable"/>
+<meta content="منصة آلين" name="apple-mobile-web-app-title"/>
+<link href="./manifest-desktop.webmanifest" rel="manifest"/>
+<link href="assets/icons/icon-192.png" rel="icon" sizes="192x192" type="image/png"/>
+<link href="assets/icons/icon-192.png" rel="apple-touch-icon"/>
+<link href="./dist/css/desktop.bundle.css?v=4.1.5" rel="stylesheet"/>
+<link href="./styles/alin-tokens.css?v=4.1.5" rel="stylesheet"/>
+<link href="./styles/alin-shared.css?v=4.1.5-receipts2" rel="stylesheet"/>
+<link href="./styles/alin-branding.css?v=4.1.5" rel="stylesheet"/>
+<link href="./styles/alin-i18n.css?v=4.1.5" rel="stylesheet"/>
+<link href="./styles/alin-desktop.css?v=4.1.5" rel="stylesheet"/>
+<link rel="preload" href="./alin-app-desktop.v4.1.5.js?v=4.1.5-receipts2" as="script">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7" defer onerror="window.__ALIN_CDN_ERROR__=true;console.error('تعذر تحميل Supabase')"></script>
+<script src="./alin-config.js?v=4.1.5"></script>
+<script src="./dist/alin-core.v4.js?v=4.1.5" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="./store/banners.css?v=4.1.5">
+<style id="alinAuthBootStyle">html[data-alin-auth-boot="1"] body>*{visibility:hidden!important}html[data-alin-auth-boot="1"] body::before{content:"جارٍ فتح منصة آلين...";visibility:visible;position:fixed;inset:0;display:grid;place-items:center;background:#f7f9fc;color:#102342;font:800 18px system-ui;z-index:2147483647}</style>
+<script>setTimeout(()=>document.documentElement.removeAttribute('data-alin-auth-boot'),3500)</script>
+
+<style id="alinTrack415SafeStyle">
+/* ALIN 4.1.5 — isolated desktop tracking. No shared modal classes and no SVG. */
+#alinTrack415Layer[hidden]{display:none!important}
+#alinTrack415Layer{position:fixed!important;inset:0!important;z-index:2147482000!important;display:grid!important;place-items:center!important;padding:24px!important;background:rgba(3,16,34,.72)!important;backdrop-filter:blur(6px)!important;font-family:Tahoma,Arial,sans-serif!important;direction:rtl!important}
+#alinTrack415Panel{position:relative!important;width:min(920px,calc(100vw - 48px))!important;max-height:92vh!important;overflow:auto!important;border:1px solid #dce5ef!important;border-radius:26px!important;background:#f6f8fb!important;box-shadow:0 30px 90px rgba(0,0,0,.38)!important;color:#102b50!important}
+#alinTrack415Close{position:absolute!important;top:16px!important;left:16px!important;z-index:5!important;width:42px!important;height:42px!important;padding:0!important;border:1px solid #d8e2ec!important;border-radius:13px!important;background:#fff!important;color:#173a61!important;font-size:25px!important;line-height:1!important;box-shadow:0 8px 20px rgba(8,36,70,.13)!important}
+#alinTrack415Header{display:flex!important;align-items:center!important;gap:18px!important;padding:30px 74px 27px 28px!important;border-radius:25px 25px 0 0!important;background:linear-gradient(135deg,#082d57,#105487)!important;color:#fff!important}
+#alinTrack415Header .alin-track415-mark{width:66px!important;height:66px!important;min-width:66px!important;border-radius:20px!important;background:linear-gradient(145deg,#fff8df,#e2b852)!important;color:#0a315a!important;box-shadow:0 14px 30px rgba(0,0,0,.18)!important}
+#alinTrack415Header h2{margin:0 0 6px!important;color:#fff!important;font-size:29px!important}
+#alinTrack415Header p{margin:0!important;color:rgba(255,255,255,.84)!important;font-size:14px!important}
+#alinTrack415Search{display:grid!important;grid-template-columns:minmax(0,1fr) 165px!important;gap:12px!important;padding:21px 26px!important;background:#fff!important;border-bottom:1px solid #e3e9f0!important}
+#alinTrack415Search label{display:grid!important;gap:7px!important}
+#alinTrack415Search label span{color:#43546a!important;font-size:12px!important;font-weight:800!important}
+#alinTrack415Input{width:100%!important;height:53px!important;padding:0 15px!important;border:1px solid #cbd7e4!important;border-radius:14px!important;background:#fbfcfe!important;color:#102b50!important;font:700 16px Tahoma,Arial!important;text-align:left!important;direction:ltr!important}
+#alinTrack415Input:focus{outline:3px solid rgba(214,166,51,.24)!important;border-color:#d4a63c!important}
+#alinTrack415Search button{align-self:end!important;height:53px!important;border:0!important;border-radius:14px!important;background:linear-gradient(135deg,#0a315a,#155b91)!important;color:#fff!important;font:800 15px Tahoma,Arial!important;box-shadow:0 10px 22px rgba(8,47,88,.19)!important}
+#alinTrack415Result{min-height:180px!important;padding:24px 26px 28px!important;background:#f6f8fb!important}
+.alin415-track-empty{min-height:132px!important;display:grid!important;place-items:center!important;align-content:center!important;gap:7px!important;border:1px dashed #cbd7e4!important;border-radius:19px!important;background:#fff!important;text-align:center!important;color:#64748b!important}
+.alin415-track-empty .symbol{width:44px!important;height:44px!important;display:grid!important;place-items:center!important;border-radius:14px!important;background:#fff3cf!important;color:#9a6b12!important;font-size:24px!important;font-weight:900!important}
+.alin415-track-empty b{color:#173a61!important;font-size:17px!important}
+.alin415-track-loading{min-height:132px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:12px!important;color:#173a61!important;font-weight:800!important}
+.alin415-track-loading i{width:27px!important;height:27px!important;border:3px solid #dce5ee!important;border-top-color:#d4a43b!important;border-radius:50%!important;animation:alinTrack415Spin .75s linear infinite!important}
+@keyframes alinTrack415Spin{to{transform:rotate(360deg)}}
+.alin415-track-alert{padding:18px!important;border:1px solid #efcf7c!important;border-radius:16px!important;background:#fff7df!important;color:#80580f!important;text-align:center!important}
+.alin415-track-alert.error{border-color:#efc2bd!important;background:#fff2f1!important;color:#a52b22!important}
+.alin415-track-head{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:18px!important;padding:18px 20px!important;border:1px solid #e0e7ef!important;border-radius:19px!important;background:#fff!important;box-shadow:0 8px 22px rgba(10,38,72,.05)!important}
+.alin415-track-head small{display:block!important;color:#7b8797!important;font-size:11px!important}
+.alin415-track-head h3{margin:5px 0 4px!important;color:#0b3158!important;font-size:22px!important;overflow-wrap:anywhere!important}
+.alin415-track-head p{margin:0!important;color:#667085!important}
+.alin415-track-status{flex:0 0 auto!important;padding:8px 12px!important;border:1px solid #efd28c!important;border-radius:999px!important;background:#fff1cf!important;color:#8a6114!important;font-size:12px!important;font-weight:900!important}
+.alin415-track-status.done{border-color:#bce5cd!important;background:#e9f8ef!important;color:#16794a!important}
+.alin415-track-status.cancel{border-color:#f0c4c0!important;background:#fff0ef!important;color:#b42318!important}
+.alin415-track-details{display:grid!important;grid-template-columns:minmax(210px,.42fr) minmax(0,1fr)!important;gap:10px!important;margin-top:12px!important}
+.alin415-track-detail{min-width:0!important;padding:13px 14px!important;border:1px solid #e1e8f0!important;border-radius:16px!important;background:#fff!important}
+.alin415-track-detail small{display:block!important;margin-bottom:6px!important;color:#7c8898!important;font-size:11px!important}
+.alin415-track-detail b{display:block!important;color:#203b5d!important;font-size:14px!important;line-height:1.65!important;overflow-wrap:anywhere!important}
+.alin415-track-timeline{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8px!important;margin-top:16px!important;padding:18px 12px!important;border:1px solid #e0e8f1!important;border-radius:19px!important;background:#fff!important}
+.alin415-track-step{display:grid!important;justify-items:center!important;gap:7px!important;text-align:center!important;color:#8491a0!important;min-width:0!important}
+.alin415-track-step i{width:38px!important;height:38px!important;display:grid!important;place-items:center!important;border-radius:50%!important;background:#eef2f6!important;color:#788595!important;font-style:normal!important;font-weight:900!important}
+.alin415-track-step.done i{background:#0d477b!important;color:#fff!important}.alin415-track-step.current i{background:#d8ad48!important;color:#102b50!important;box-shadow:0 0 0 4px rgba(216,173,72,.18)!important}
+.alin415-track-step b{color:#536276!important;font-size:11px!important;line-height:1.5!important}.alin415-track-step.done b,.alin415-track-step.current b{color:#173a61!important}
+.alin415-track-summary{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important;margin-top:13px!important}
+.alin415-track-summary article{padding:13px 15px!important;border-radius:15px!important;background:#0b3158!important;color:#fff!important}.alin415-track-summary small{display:block!important;margin-bottom:5px!important;color:#c7d5e4!important;font-size:10px!important}.alin415-track-summary b{color:#fff!important;font-size:16px!important;overflow-wrap:anywhere!important}
+.alin-track415-button{position:relative!important}.alin-track415-mark{position:relative!important;width:36px!important;height:36px!important;min-width:36px!important;display:block!important;border:1px solid rgba(204,160,63,.55)!important;border-radius:12px!important;background:linear-gradient(145deg,#fff8e7,#f1d99e)!important;box-shadow:0 7px 16px rgba(7,38,73,.10)!important;overflow:hidden!important}
+.alin-track415-mark:before{content:""!important;position:absolute!important;width:15px!important;height:12px!important;right:7px!important;bottom:6px!important;border:2px solid #0b3158!important;border-radius:3px!important;background:transparent!important;box-sizing:border-box!important}
+.alin-track415-mark:after{content:""!important;position:absolute!important;width:9px!important;height:9px!important;left:7px!important;top:5px!important;border:3px solid #b98214!important;border-radius:50% 50% 50% 0!important;background:#fff7df!important;transform:rotate(-45deg)!important;box-sizing:border-box!important}
+.alin-track415-mark i{position:absolute!important;width:2px!important;height:9px!important;right:14px!important;bottom:8px!important;background:#0b3158!important;transform:rotate(90deg)!important}
+body.store-desktop .alin-track415-button:hover .alin-track415-mark,body.store-desktop .alin-track415-button:focus-visible .alin-track415-mark{background:linear-gradient(145deg,#0b3158,#155487)!important}.alin-track415-button:hover .alin-track415-mark:before,.alin-track415-button:focus-visible .alin-track415-mark:before{border-color:#fff!important}.alin-track415-button:hover .alin-track415-mark i,.alin-track415-button:focus-visible .alin-track415-mark i{background:#fff!important}
+@media(max-width:850px){#alinTrack415Layer{padding:10px!important}#alinTrack415Panel{width:100%!important;max-height:95vh!important;border-radius:20px!important}#alinTrack415Header{padding:24px 60px 22px 18px!important}#alinTrack415Header .alin-track415-mark{width:56px!important;height:56px!important;min-width:56px!important}#alinTrack415Search{grid-template-columns:1fr!important;padding:16px!important}#alinTrack415Result{padding:16px!important}.alin415-track-details{grid-template-columns:1fr!important}.alin415-track-timeline{overflow-x:auto!important;grid-template-columns:repeat(4,135px)!important;justify-content:start!important}}
+</style>
+</head>
+<body class="store-desktop">
+<section class="login" id="login">
+<div class="login-card">
+<div class="logo">آ</div>
+<h1>منصة آلين</h1>
+<p>للتصميم والقرطاسية والملازم</p>
+<div class="login-actions">
+<button onclick="openPage('store')">المتجر</button>
+<button onclick="showLogin('teacher')">دخول المدرس</button>
+<button onclick="openLibraryJoinPortal()">لوحة المكتبة</button>
+<button onclick="showLogin('courier')">المندوب</button>
+<button class="admin" onclick="showLogin('admin')">لوحة آلين</button>
+</div>
+<div class="login-form hidden" id="loginForm">
+<input id="loginU" placeholder="اسم الدخول"/>
+<input id="loginPass" placeholder="الرمز السري" type="password"/>
+<button onclick="doLogin()">دخول</button>
+<div id="loginMsg"></div>
+</div>
+</div>
+</section>
+<section class="hidden" id="app">
+<header class="topbar">
+<div class="brand"><div class="logo small">آ</div><div><b>آلين</b><small>تصاميم • ملازم • قرطاسية</small></div></div>
+<nav id="activeNav"></nav>
+<button onclick="logout()">خروج</button>
+</header>
+<main>
+<section class="page alin-storefront" id="storePage">
+<header class="alin98-header">
+<div class="alin98-brand">
+<b class="alin98-logo">آ</b>
+<span><strong>منصة آلين</strong><small>ملازم • قرطاسية • هدايا</small></span>
+</div>
+<label aria-label="البحث في المتجر" class="desktop-header-search">
+<span aria-hidden="true" class="desktop-search-icon"></span>
+<input id="searchInput" oninput="renderStore()" placeholder="ابحث عن ملزمة، مادة، مدرس أو منتج" type="search"/>
+</label>
+<div class="alin98-actions desktop-store-actions">
+<button id="alinTrack415Button" class="desktop-action alin-track415-button" type="button" aria-label="تتبع الطلب" onclick="AlinTrack415Safe.open()"><span class="alin-track415-mark" aria-hidden="true"><i></i></span><small>تتبع الطلب</small></button>
+<button aria-label="المفضلة" class="desktop-action" data-desktop-control="favorites" data-v99-action="desktopFavorites" type="button"><span aria-hidden="true" class="desktop-favorite-icon"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"/></svg></span><small>المفضلة</small><span class="desktop-action-count" hidden="" id="v99DesktopFavoriteCount">0</span></button>
+<button aria-label="الإشعارات" class="desktop-action desktop-notification" data-desktop-control="notifications" onclick="AlinStoreNotifications?.open?.()" type="button"><span aria-hidden="true" class="desktop-notification-icon"><svg viewBox="0 0 24 24"><path d="M6.5 9.25a5.5 5.5 0 0 1 11 0c0 4.2 1.15 5.75 2.25 6.9H4.25c1.1-1.15 2.25-2.7 2.25-6.9Z"/><path d="M9.4 19a2.8 2.8 0 0 0 5.2 0"/><path d="M12 3V1.75"/></svg></span><small>الإشعارات</small><span class="alin98-notify-count desktop-action-count" hidden="">0</span></button>
+<button aria-label="سلة المشتريات" class="desktop-action desktop-cart" data-desktop-control="cart" onclick="openCart()" type="button"><svg aria-hidden="true" class="desktop-cart-icon alin-cart-nav-icon" style="stroke:#0b5fa5" viewBox="0 0 28 28"><path d="M2.8 4.5h3.1l2.2 11.1a2.3 2.3 0 0 0 2.3 1.9h10.2a2.3 2.3 0 0 0 2.2-1.8l1.5-7.1H7"/><path d="M10 12.9h12.9"/><circle cx="11" cy="22.2" r="1.7"/><circle cx="21" cy="22.2" r="1.7"/></svg><small>السلة</small><span class="desktop-action-count" hidden="" id="desktopCartCount">0</span></button>
+<button aria-label="خروج إلى القائمة الرئيسية" class="desktop-action desktop-exit" data-desktop-control="exit" onclick="logout()" type="button"><span aria-hidden="true" class="desktop-exit-icon"></span><small>خروج</small></button>
+</div>
+</header>
+<section id="alinStoreBanners" class="alin-store-banners" aria-label="إعلانات منصة آلين" hidden></section>
+<section class="alin98-cats">
+<button aria-pressed="false" data-v99-category="booklet" type="button"><span class="cat-icon cat-book"></span><span class="cat-copy"><strong>ملازم</strong><small>جميع المواد والمراحل</small></span></button>
+<button aria-pressed="false" data-v99-category="stationery" type="button"><span class="cat-icon cat-pen"></span><span class="cat-copy"><strong>قرطاسية</strong><small>أدوات الدراسة والكتب</small></span></button>
+<button aria-pressed="false" data-v99-category="gift" type="button"><span class="cat-icon cat-gift"></span><span class="cat-copy"><strong>هدايا</strong><small>هدايا راقية ومميزة</small></span></button>
+<button aria-pressed="false" data-v99-category="deal" type="button"><span class="cat-icon cat-deal">%</span><span class="cat-copy"><strong>عروض</strong><small>خصومات وعروض حصرية</small></span></button>
+</section>
+<section class="v99-rail-root" id="v99NewArrivals"></section>
+<section aria-live="polite" class="v99-personalized" id="v99Personalized"></section>
+<div class="store-shell">
+<div id="bannerBox" class="alin-legacy-banner-sink" hidden aria-hidden="true"></div>
+<section aria-live="polite" class="v99-rail-root" id="v99DailyDeals"></section>
+<div class="v99-curated-rails">
+<section class="v99-rail-root" id="v99BestSellers"></section>
+<section aria-hidden="true" class="v99-rail-root" hidden="" id="v99TeacherRail"></section>
+<section class="v99-rail-root" id="v99Bundles"></section>
+</div>
+<div class="alin98-title">
+<div id="v99CatalogHeading" tabindex="-1"><small id="v99CatalogKicker">الكتالوج الكامل</small><h2 id="v99CatalogTitle">كل المنتجات</h2></div>
+<button data-v99-action="clearDesktopCategory" type="button">عرض الكل</button>
+</div>
+<div class="store-products-head compact-store-head" id="storeProducts"></div>
+<div class="grid store-product-grid" id="storeGrid"></div>
+<section class="v99-student-hub" id="v99StudentHub"></section>
+<section class="store-real-stats" id="storeAbout"><div><span id="alinStatBooklets">0</span><small>ملزمة متاحة</small></div><div><span id="alinStatTeachers">0</span><small>مدرس</small></div><div><span id="alinStatLibraries">0</span><small>مكتبة</small></div></section>
+<nav aria-label="بوابات الشركاء" class="desktop-partner-access"><span>بوابات الشركاء:</span><button onclick="logout();showLogin('teacher')" type="button">المدرس</button><button onclick="logout();openLibraryJoinPortal()" type="button">المكتبة</button><button onclick="logout();showLogin('admin')" type="button">الإدارة</button></nav>
+<div class="store-success">آلين... نرافقك في طريق النجاح ♡</div>
+</div>
+</section>
+<section class="page hidden" id="teacherPage">
+<h2>لوحة المدرس</h2>
+<div class="stats" id="teacherStats"></div>
+<div class="teacher-tabs">
+<button onclick="teacherTab('dashboard')">الرئيسية</button>
+<button onclick="teacherTab('booklets')">ملازمي</button>
+<button onclick="teacherTab('orders')">الطلبات</button>
+<button onclick="teacherTab('finance')">الأرباح</button>
+<button data-teacher-tab="receipts" onclick="teacherTab('receipts')" type="button">الوصولات</button>
+<button data-teacher-tab="notifications" id="teacherNotificationsTabV160" onclick="teacherTab('notifications')" type="button"><span aria-hidden="true">🔔</span> الإشعارات <span class="teacher-v160-badge" hidden="" id="teacherNotificationsBadgeV160">0</span></button>
+<button onclick="teacherTab('requests')">رفع ملزمة</button>
+<button onclick="teacherTab('review')">طلبات النشر</button>
+<button onclick="teacherTab('profile')">ملفي</button>
+</div>
+<div class="panel" id="teacherContent"></div>
+</section>
+<section class="page hidden library-v116-page" id="libraryPage">
+<header class="library-v116-header">
+<div class="library-v116-identity">
+<div aria-hidden="true" class="library-v116-logo">م</div>
+<div><small>لوحة إدارة المكتبة</small><h2 id="libraryV116Name">المكتبة</h2><p id="libraryV116Location">إدارة الطلبات والطباعة والتسليم</p></div>
+</div>
+<div id="libraryV116Status"></div>
+</header>
+<nav aria-label="أقسام المكتبة" class="library-v116-tabs">
+<button class="active" data-library-tab="home" type="button">الرئيسية</button>
+<button data-library-tab="orders" type="button">الطلبات <span hidden="" id="libraryV116OrdersBadge">0</span></button>
+<button data-library-tab="finance" type="button">الحسابات</button>
+<button data-alin415-receipts-role="library" type="button">الوصولات</button>
+<button data-library-tab="notifications" type="button">الإشعارات <span hidden="" id="libraryV116NotifyBadge">0</span></button>
+<button data-library-tab="settings" type="button">الإعدادات</button>
+</nav>
+<main aria-live="polite" class="library-v116-content" id="libraryV116Content"></main>
+<div class="hidden" id="libraryStats"></div><div class="hidden" id="libraryPermits"></div><div class="hidden" id="libraryHistory"></div>
+</section>
+<section class="page hidden courier-v161-page" id="courierPage">
+<header class="courier-v161-hero"><div><small>صفحة المندوب</small><h1 id="courierV161Name">المندوب</h1><p>مناطق العمل: <span id="courierV161Areas">—</span></p></div><span>منصة آلين للتوصيل</span></header>
+<nav class="courier-v161-tabs"><button class="active" data-courier-tab="home" onclick="renderCourierDashboard('home')">الرئيسية</button><button data-courier-tab="current" onclick="renderCourierDashboard('current')">طلبات التوصيل</button><button data-courier-tab="completed" onclick="renderCourierDashboard('completed')">المكتملة</button><button data-courier-tab="finance" onclick="renderCourierDashboard('finance')">الحسابات</button><button data-alin415-receipts-role="courier" type="button">الوصولات</button><button data-courier-tab="notifications" onclick="renderCourierDashboard('notifications')">الإشعارات</button><button data-courier-tab="profile" onclick="renderCourierDashboard('profile')">حسابي</button></nav>
+<main id="courierV161Content"></main>
+</section>
+<section class="page hidden" id="adminPage">
+<div class="admin-heading"><div><h2>لوحة إدارة آلين</h2><p>إدارة المنصة من مكان واحد</p></div><span class="version-badge">v4.1.5</span></div>
+<div class="stats" id="adminStats"></div>
+<div class="admin-tabs">
+<button onclick="adminTab('dashboard')">الرئيسية</button>
+<button onclick="adminTab('accounts')">الحسابات</button>
+<button onclick="adminTab('booklets')">الملازم</button>
+<button onclick="adminTab('teacherRequests')">طلبات المدرسين</button>
+<button onclick="adminTab('products')">المنتجات</button>
+<button onclick="adminTab('categories')">الأقسام</button>
+<button onclick="adminTab('orders')">الطلبات</button>
+<button onclick="adminTab('couriers')">إدارة المندوبين</button>
+<button onclick="adminTab('courierAreas')">إدارة المناطق</button>
+<button onclick="adminTab('deliveryOrders')">طلبات التوصيل</button>
+<button onclick="adminTab('courierSettlements')">تسويات المندوبين</button>
+<button onclick="adminTab('finance')">الأرباح</button>
+<button data-admin-tab="receipts" onclick="adminTab('receipts')" type="button">الوصولات</button>
+<button onclick="adminTab('ads')">الإعلانات</button>
+<button onclick="adminTab('coupons')">الكوبونات</button>
+<button onclick="adminTab('notifications')">مركز الإشعارات</button>
+<button onclick="adminTab('audit')">السجل</button>
+<button onclick="adminTab('brandIdentity')">الهوية البصرية</button>
+<button onclick="adminTab('backup')">النسخ الاحتياطي</button>
+<button onclick="adminTab('systemHealth')">صحة النظام</button>
+<button onclick="adminTab('settings')">الإعدادات</button>
+</div>
+<div class="panel" id="adminContent"></div>
+</section>
+<footer class="alin-footer">منصة آلين للتصميم والملازم والقرطاسية</footer>
+</main>
+</section>
+<div class="modal hidden" id="studentAuthModal">
+<div class="modal-card student-auth-card">
+<button class="x" onclick="closeStudentAuth()">×</button>
+<div id="studentAuthBox"></div>
+</div>
+</div>
+<div class="modal hidden" id="checkoutModal">
+<div class="modal-card">
+<button class="x" onclick="closeCheckout()">×</button>
+<div id="checkoutBox"></div>
+</div>
+</div>
+<aside aria-hidden="true" hidden="" id="alin98Menu"></aside>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<script src="./core/pwa-register.js?v=4.1.5" defer></script>
+<script src="./core/boot-recovery.js?v=4.1.5" defer></script>
+<script src="./modules/core/navigation.js?v=4.1.5" defer></script>
+<script src="./alin-app-desktop.v4.1.5.js?v=4.1.5-receipts2" defer onload="alinAppBundleLoaded()" onerror="alinAppBundleFailed()"></script>
+<script src="./modules/core/account-admin-service.js?v=4.1.5" defer></script>
+<script src="./modules/teacher/admin-word-download.js?v=4.1.5" defer></script>
+
+<div id="alinTrack415Layer" hidden aria-hidden="true">
+  <section id="alinTrack415Panel" role="dialog" aria-modal="true" aria-labelledby="alinTrack415Title">
+    <button id="alinTrack415Close" type="button" aria-label="إغلاق" onclick="AlinTrack415Safe.close()">×</button>
+    <header id="alinTrack415Header">
+      <span class="alin-track415-mark" aria-hidden="true"><i></i></span>
+      <div><h2 id="alinTrack415Title">تتبع الطلب</h2><p>أدخل رقم الطلب حتى تظهر الحالة والتفاصيل الحالية.</p></div>
+    </header>
+    <div id="alinTrack415Search">
+      <label><span>رقم الطلب</span><input id="alinTrack415Input" type="text" autocomplete="off" placeholder="مثال: ALIN-0001"></label>
+      <button type="button" onclick="AlinTrack415Safe.search()">تتبع الآن</button>
+    </div>
+    <div id="alinTrack415Result" aria-live="polite"></div>
+  </section>
+</div>
+<script id="alinTrack415SafeScript">
+(function(){
+  'use strict';
+  const $=id=>document.getElementById(id);
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const first=(obj,keys,fallback='—')=>{for(const k of keys){const v=obj?.[k];if(v!==undefined&&v!==null&&String(v).trim()!=='')return v}return fallback};
+  const money=v=>{const n=Number(v);return Number.isFinite(n)?n.toLocaleString('ar-IQ',{maximumFractionDigits:0})+' د.ع':'—'};
+  const date=v=>{if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString('ar-IQ',{dateStyle:'medium',timeStyle:'short'})};
+  const normalizeStatus=value=>String(value||'new').trim().toLowerCase();
+  const isCourierOrder=row=>{
+    const fulfillment=String(first(row,['fulfillment_type','delivery_type','shipping_type','order_delivery_type'],'')).toLowerCase();
+    return ['home_delivery','delivery','courier','door_delivery'].includes(fulfillment)
+      || Boolean(first(row,['courier_id','assigned_courier_id','courier_name','delivery_area'],''));
+  };
+  const isPrintableOrder=row=>{
+    const kind=String(first(row,['item_type','product_type','category','order_type'],'')).toLowerCase();
+    const title=String(first(row,['title','item_name','product_name','order_title'],'')).toLowerCase();
+    return ['booklet','booklets','print','printing','malzama'].some(token=>kind.includes(token))
+      || /ملزمة|ملازم|طباعة/.test(title);
+  };
+  const flowFor=(row,status)=>{
+    const courier=isCourierOrder(row);
+    const printable=isPrintableOrder(row);
+    const cancelled=['cancelled','canceled','rejected'].includes(status);
+    if(cancelled)return {courier,printable,cancelled:true,index:-1,steps:[]};
+    if(courier){
+      let index=0;
+      if(['assigned','accepted','picked_up','processing','printing','ready'].includes(status))index=1;
+      if(['out_delivery','out_for_delivery'].includes(status))index=2;
+      if(['completed','delivered'].includes(status))index=3;
+      return {courier,printable,cancelled:false,index,steps:['تم الاستلام','تم تعيين المندوب','في الطريق','تم التسليم']};
+    }
+    let index=0;
+    if(['assigned','accepted','processing','printing'].includes(status))index=1;
+    if(['ready','picked_up','out_delivery','out_for_delivery'].includes(status))index=2;
+    if(['completed','delivered'].includes(status))index=3;
+    return {courier,printable,cancelled:false,index,steps:['تم الاستلام',printable?'قيد الطباعة':'قيد التجهيز','جاهز','تم التسليم']};
+  };
+  const statusLabel=(row,status)=>{
+    const flow=flowFor(row,status);
+    if(flow.cancelled)return 'ملغي';
+    if(['completed','delivered'].includes(status))return 'تم التسليم';
+    if(flow.courier){
+      if(['out_delivery','out_for_delivery'].includes(status))return 'في الطريق';
+      if(['accepted','picked_up'].includes(status))return 'استلم المندوب الطلب';
+      if(['assigned','processing','printing','ready'].includes(status))return 'تم تعيين المندوب';
+      return 'تم الاستلام';
+    }
+    if(['ready','picked_up','out_delivery','out_for_delivery'].includes(status))return 'جاهز';
+    if(['assigned','accepted','processing','printing'].includes(status))return flow.printable?'قيد الطباعة':'قيد التجهيز';
+    return 'تم الاستلام';
+  };
+  const empty=()=>'<div class="alin415-track-empty"><span class="symbol">⌖</span><b>جاهز لتتبع طلبك</b><small>أدخل رقم الطلب واضغط «تتبع الآن».</small></div>';
+  const normalize=data=>{if(Array.isArray(data))return data[0]||null;if(data&&typeof data==='object'&&Array.isArray(data.data))return data.data[0]||null;if(data&&typeof data==='object'&&data.data&&typeof data.data==='object')return data.data;return data&&typeof data==='object'?data:null};
+  const candidates=value=>{const raw=String(value||'').trim();return [...new Set([raw,raw.toUpperCase(),raw.toLowerCase()])].filter(Boolean)};
+  const render=(row,typed)=>{
+    const box=$('alinTrack415Result');if(!box)return;
+    const status=normalizeStatus(first(row,['status','order_status'],'new'));
+    const flow=flowFor(row,status);
+    const number=first(row,['order_number','tracking_code','id'],typed);
+    const title=first(row,['title','item_name','product_name','order_title'],'طلب منصة آلين');
+    const notes=first(row,['notes','note','status_note','delivery_notes'],'لا توجد ملاحظات');
+    const created=date(first(row,['created_at','order_date','updated_at'],''));
+    box.innerHTML=`<section class="alin415-track-head"><div><small>رقم الطلب</small><h3>${esc(number)}</h3><p>${esc(title)}</p></div><span class="alin415-track-status ${flow.cancelled?'cancel':flow.index===3?'done':''}">${esc(statusLabel(row,status))}</span></section>
+    <section class="alin415-track-details compact">
+      <article class="alin415-track-detail"><small>التاريخ</small><b>${esc(created)}</b></article>
+      <article class="alin415-track-detail"><small>الملاحظات</small><b>${esc(notes)}</b></article>
+    </section>
+    ${flow.cancelled?'<div class="alin415-track-alert error" style="margin-top:14px">هذا الطلب ملغي.</div>':`<section class="alin415-track-timeline">${flow.steps.map((name,i)=>`<article class="alin415-track-step ${i<flow.index?'done':i===flow.index?'current':''}"><i>${i<flow.index?'✓':i+1}</i><b>${name}</b></article>`).join('')}</section>`}`;
+  };
+  async function search(){
+    const input=$('alinTrack415Input'),box=$('alinTrack415Result');if(!box)return false;
+    const code=String(input?.value||'').trim();
+    if(code.length<4){box.innerHTML='<div class="alin415-track-alert">اكتب رقم الطلب الكامل أولاً.</div>';return false}
+    box.innerHTML='<div class="alin415-track-loading"><i></i><span>جارٍ التحقق من حالة الطلب...</span></div>';
+    try{
+      const client=window.sb||(window.AlinCloud&&window.AlinCloud.client?.());
+      if(!client?.rpc)throw new Error('tracking client unavailable');
+      let row=null,lastError=null;
+      for(const c of candidates(code)){
+        const {data,error}=await client.rpc('alin_track_order',{p_order_number:c});
+        if(error){lastError=error;continue}
+        const candidate=normalize(data);
+        if(candidate && candidate.found!==false){row=candidate;break}
+      }
+      if(!row){if(lastError)console.warn('[ALIN 4.1.5 tracking]',lastError);box.innerHTML='<div class="alin415-track-alert error"><b>لم يتم العثور على الطلب</b><br><small>تأكد من رقم الطلب وأعد المحاولة.</small></div>';return false}
+      render(row,code);return true;
+    }catch(err){console.error('[ALIN 4.1.5 safe tracking]',err);box.innerHTML='<div class="alin415-track-alert error"><b>تعذر التحقق الآن</b><br><small>أعد المحاولة بعد قليل.</small></div>';return false}
+  }
+  function open(){const layer=$('alinTrack415Layer');if(!layer)return;layer.hidden=false;layer.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';$('alinTrack415Result').innerHTML=empty();setTimeout(()=>$('alinTrack415Input')?.focus(),40)}
+  function close(){const layer=$('alinTrack415Layer');if(!layer)return;layer.hidden=true;layer.setAttribute('aria-hidden','true');document.body.style.overflow='';return true}
+  window.AlinTrack415Safe={open,close,search};
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('alinTrack415Layer')?.hidden)close();if(e.key==='Enter'&&document.activeElement===$('alinTrack415Input')){e.preventDefault();search()}});
+  document.addEventListener('click',e=>{if(e.target===$('alinTrack415Layer'))close()});
+  document.addEventListener('DOMContentLoaded',()=>{const box=$('alinTrack415Result');if(box)box.innerHTML=empty()});
+})();
+</script>
+</body>
+</html>
